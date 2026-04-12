@@ -5,6 +5,9 @@ import { Players } from '@/pages/Players';
 import { MatchEntries } from '@/pages/MatchEntries';
 import { Matches } from '@/pages/Matches';
 import { News } from '@/pages/News';
+import { LoginForm } from '@/features/auth/components/LoginForm';
+import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
+import { useAuthStore } from '@/features/auth/store/useAuthStore';
 
 // A proxy component so Overview can still call `setTab` logically, mapped to navigate since we use React Router now.
 function OverviewRouterProxy() {
@@ -12,10 +15,24 @@ function OverviewRouterProxy() {
   return <Overview setTab={(tab) => navigate(`/${tab}`)} />;
 }
 
+function LoginRedirect() {
+  const { isAuthenticated } = useAuthStore();
+  if (isAuthenticated) return <Navigate to="/overview" replace />;
+  return <LoginForm />;
+}
+
 export const router = createBrowserRouter([
   {
+    path: "/login",
+    element: <LoginRedirect />,
+  },
+  {
     path: "/",
-    element: <AppShell />,
+    element: (
+      <ProtectedRoute>
+        <AppShell />
+      </ProtectedRoute>
+    ),
     children: [
       { index: true, element: <Navigate to="/overview" replace /> },
       { path: "overview", element: <OverviewRouterProxy /> },

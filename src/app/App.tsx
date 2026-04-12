@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useFootballStore } from '@/store/footballStore';
-import { Hexagon, Users, ClipboardList, Trophy, Newspaper } from 'lucide-react';
+import { useAuthStore } from '@/features/auth/store/useAuthStore';
+import { Hexagon, Users, ClipboardList, Trophy, Newspaper, LogOut } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 
 const NAV = [
@@ -13,6 +14,7 @@ const NAV = [
 
 export function AppShell() {
   const state = useFootballStore();
+  const { user, logout } = useAuthStore();
   const location = useLocation();
 
   const counts: Record<string, number> = {
@@ -72,18 +74,35 @@ export function AppShell() {
             })}
           </nav>
 
-          <div className="border-t border-border mt-auto p-2 sm:p-4 bg-muted/20 shrink-0">
-            <div className="flex items-center justify-center sm:justify-start gap-3">
-              <div className="w-8 sm:w-9 h-8 sm:h-9 rounded-full bg-primary flex items-center justify-center text-[12px] font-bold text-white shrink-0 shadow-md">
-                A
+          <div className="border-t border-border mt-auto p-2 sm:p-3 bg-muted/20 shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-[11px] font-bold text-white shrink-0 shadow-md">
+                  {user?.name?.charAt(0) || 'A'}
+                </div>
+                <div className="hidden sm:block overflow-hidden">
+                  <p className="text-[12px] font-semibold text-foreground leading-tight truncate">{user?.name || 'Admin User'}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{user?.email || 'Super admin'}</p>
+                </div>
               </div>
-              <div className="hidden sm:block">
-                <p className="text-[13px] font-semibold text-foreground leading-tight">Admin User</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Super admin</p>
-              </div>
+              <button 
+                onClick={() => logout()}
+                className="hidden sm:flex p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors tooltip outline-none"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
+            {/* Mobile Logout Button Icons only */}
+            <button 
+              onClick={() => logout()}
+              className="flex sm:hidden w-full items-center justify-center mt-3 p-2 text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <LogOut className="w-[18px] h-[18px]" />
+            </button>
           </div>
         </aside>
+
 
         {/* Main Content */}
         <main className="flex-1 bg-background overflow-y-auto p-4 sm:p-6 lg:p-8 relative w-full h-full">

@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './routes';
+import { useAuthStore } from '@/features/auth/store/useAuthStore';
 
 export function AppProvider() {
+  const { checkAuth } = useAuthStore();
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
@@ -11,6 +13,10 @@ export function AppProvider() {
       },
     },
   }));
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   // children is ignored here because RouterProvider renders the tree
   return (
