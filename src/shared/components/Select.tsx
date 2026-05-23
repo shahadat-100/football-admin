@@ -12,7 +12,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       <div className="w-full">
         <select
           className={cn(
-            "flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-[12px] text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 appearance-none",
+            "flex h-9 w-full rounded-md border border-input bg-muted px-3 py-1 text-[12px] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 appearance-none !text-[#1a1f3c] !bg-[#fdf6e3] !border-foreground",
             error && "border-destructive focus-visible:ring-destructive",
             className
           )}

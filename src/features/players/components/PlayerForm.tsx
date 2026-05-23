@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { playerFormSchema } from '../schemas';
 import { Player, PlayerFormValues } from '../types';
@@ -31,13 +31,7 @@ interface PlayerFormProps {
 }
 
 export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    formState: { errors },
-  } = useForm<PlayerFormValues>({
+  const form = useForm<PlayerFormValues>({
     resolver: zodResolver(playerFormSchema),
     defaultValues: {
       name: initial?.name ?? '',
@@ -47,7 +41,15 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
       jerseyNumber: initial?.jerseyNumber ?? '',
       playerRoles: initial?.playerRoles ?? [],
       customTags: initial?.customTags?.join(', ') ?? '',
+      previousSeasons: (initial as any)?.previousSeasons ?? [],
     } as any,
+  });
+
+  const { register, handleSubmit, watch, setValue, control, formState: { errors } } = form;
+
+  const { fields: seasonFields, append: appendSeason, remove: removeSeason } = useFieldArray({
+    control,
+    name: 'previousSeasons' as any,
   });
 
   const onSubmit = (values: PlayerFormValues) => {
@@ -105,6 +107,54 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
       <div className="grid gap-2">
         <label className="text-[12px] font-medium text-slate-300">Custom Tags</label>
         <Input {...register('customTags')} placeholder="pacey, clinical, season 3 champs" error={errors.customTags?.message} />
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between border-b-2 border-dashed border-foreground pb-2">
+          <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            Previous Season Stats
+          </label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-none border-2 border-foreground font-mono text-xs uppercase tracking-widest shadow-retro"
+            onClick={() => appendSeason({ season: '', goals: 0 } as any)}
+          >
+            + Add Season
+          </Button>
+        </div>
+
+        {seasonFields.length === 0 && (
+          <p className="text-xs text-muted-foreground font-mono">
+            No previous seasons. Click "+ Add season" to enter historical data.
+          </p>
+        )}
+
+        {seasonFields.map((field, index) => (
+          <div key={field.id} className="flex gap-2 items-center">
+            <Input
+              placeholder="Season (e.g. 2024)"
+              className="rounded-none border-2 border-foreground font-mono text-xs"
+              {...register(`previousSeasons.${index}.season` as any)}
+            />
+            <Input
+              type="number"
+              placeholder="Goals"
+              className="rounded-none border-2 border-foreground font-mono text-xs w-24"
+              {...register(`previousSeasons.${index}.goals` as any, { valueAsNumber: true })}
+            />
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              className="rounded-none border-2 border-foreground font-mono text-xs"
+              onClick={() => removeSeason(index)}
+            >
+              ✕
+            </Button>
+          </div>
+        ))}
       </div>
 
       <div className="flex gap-2 justify-end mt-4">

@@ -18,15 +18,28 @@
     background-position: -12px -12px;
   }
 
-  input, select, textarea,
-  [type='text'], [type='email'],
-  [type='password'], [type='number'] {
+  input,
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="url"],
+  select,
+  textarea,
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
     color: #1a1f3c !important;
     background-color: #fdf6e3 !important;
     border-color: #1a1f3c !important;
+    -webkit-text-fill-color: #1a1f3c !important;
+    -webkit-box-shadow: 0 0 0 1000px #fdf6e3 inset !important;
     caret-color: #c8102e !important;
+    color-scheme: light !important;
   }
-  input::placeholder, textarea::placeholder {
+  input::placeholder,
+  textarea::placeholder {
     color: #5a5340 !important;
     opacity: 1 !important;
   }

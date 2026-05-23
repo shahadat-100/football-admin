@@ -45,4 +45,8 @@ export const playerFormSchema = playerSchema.omit({ id: true, createdAt: true, s
     }
     return v || [];
   }),
+  previousSeasons: z.array(z.object({
+    season: z.string(),
+    goals: z.number(),
+  })).default([]),
 });
