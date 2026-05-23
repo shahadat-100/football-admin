@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { playerFormSchema } from '../schemas';
-import { Player, PlayerFormValues } from '../types';
+import { Player, PlayerFormValues, Season } from '../types';
 import { Button, Input } from '@/shared/components';
 import { PlayerTagSelector } from './PlayerTagSelector';
+import { SeasonStatsEditor } from './SeasonStatsEditor';
 
 const CollapsibleContext = createContext<{ open: boolean; setOpen: (open: boolean) => void }>({ open: false, setOpen: () => {} });
 
@@ -31,7 +32,11 @@ interface PlayerFormProps {
 }
 
 export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
-  const form = useForm<PlayerFormValues>({
+  const [seasons, setSeasons] = useState<Season[]>((initial as any)?.seasons ?? []);
+  const [showAddSeason, setShowAddSeason] = useState(false);
+  const [newSeasonYear, setNewSeasonYear] = useState('');
+
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<PlayerFormValues>({
     resolver: zodResolver(playerFormSchema),
     defaultValues: {
       name: initial?.name ?? '',
@@ -41,19 +46,26 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
       jerseyNumber: initial?.jerseyNumber ?? '',
       playerRoles: initial?.playerRoles ?? [],
       customTags: initial?.customTags?.join(', ') ?? '',
-      previousSeasons: (initial as any)?.previousSeasons ?? [],
     } as any,
   });
 
-  const { register, handleSubmit, watch, setValue, control, formState: { errors } } = form;
-
-  const { fields: seasonFields, append: appendSeason, remove: removeSeason } = useFieldArray({
-    control,
-    name: 'previousSeasons' as any,
-  });
+  const handleAddSeason = () => {
+    const yr = Number(newSeasonYear);
+    if (!yr || yr < 1900 || yr >= new Date().getFullYear() + 1) {
+      alert('Enter a valid year (e.g., 2023)');
+      return;
+    }
+    if (seasons.find(s => s.year === yr)) {
+      alert('Season ' + yr + ' already added');
+      return;
+    }
+    setSeasons(prev => [...prev, { year: yr, monthlyStats: [] }].sort((a, b) => a.year - b.year));
+    setShowAddSeason(false);
+    setNewSeasonYear('');
+  };
 
   const onSubmit = (values: PlayerFormValues) => {
-    onSave(values);
+    onSave({ ...values, seasons } as any);
   };
 
   return (
@@ -109,51 +121,45 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
         <Input {...register('customTags')} placeholder="pacey, clinical, season 3 champs" error={errors.customTags?.message} />
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between border-b-2 border-dashed border-foreground pb-2">
-          <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-            Previous Season Stats
-          </label>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="rounded-none border-2 border-foreground font-mono text-xs uppercase tracking-widest shadow-retro"
-            onClick={() => appendSeason({ season: '', goals: 0 } as any)}
-          >
-            + Add Season
-          </Button>
+      <div className="border-t border-border mt-2 pt-4">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[13px] font-semibold text-slate-300">Previous season stats</span>
+          {!showAddSeason && (
+            <Button size="sm" variant="secondary" onClick={() => setShowAddSeason(true)} type="button">
+              + Add season
+            </Button>
+          )}
         </div>
 
-        {seasonFields.length === 0 && (
-          <p className="text-xs text-muted-foreground font-mono">
+        {showAddSeason && (
+          <div className="bg-muted border border-border p-3 rounded-lg mb-4 flex items-end gap-3">
+            <div className="flex-1">
+              <label className="text-[11px] text-muted-foreground block mb-1">Year (e.g. 2023)</label>
+              <Input
+                type="number"
+                value={newSeasonYear}
+                onChange={e => setNewSeasonYear(e.target.value)}
+                placeholder="2023"
+              />
+            </div>
+            <Button type="button" onClick={handleAddSeason} className="h-9">Add</Button>
+            <Button type="button" variant="ghost" onClick={() => setShowAddSeason(false)} className="h-9">Cancel</Button>
+          </div>
+        )}
+
+        {seasons.length === 0 && !showAddSeason && (
+          <p className="text-[12px] text-muted-foreground mb-4">
             No previous seasons. Click "+ Add season" to enter historical data.
           </p>
         )}
 
-        {seasonFields.map((field, index) => (
-          <div key={field.id} className="flex gap-2 items-center">
-            <Input
-              placeholder="Season (e.g. 2024)"
-              className="rounded-none border-2 border-foreground font-mono text-xs"
-              {...register(`previousSeasons.${index}.season` as any)}
-            />
-            <Input
-              type="number"
-              placeholder="Goals"
-              className="rounded-none border-2 border-foreground font-mono text-xs w-24"
-              {...register(`previousSeasons.${index}.goals` as any, { valueAsNumber: true })}
-            />
-            <Button
-              type="button"
-              variant="danger"
-              size="sm"
-              className="rounded-none border-2 border-foreground font-mono text-xs"
-              onClick={() => removeSeason(index)}
-            >
-              ✕
-            </Button>
-          </div>
+        {seasons.map((s, i) => (
+          <SeasonStatsEditor
+            key={i}
+            season={s}
+            onChange={(updated) => setSeasons(prev => prev.map((old, idx) => idx === i ? updated : old))}
+            onRemove={() => setSeasons(prev => prev.filter((_, idx) => idx !== i))}
+          />
         ))}
       </div>
 
