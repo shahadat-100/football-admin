@@ -18,9 +18,16 @@
     background-position: -12px -12px;
   }
 
-  input, select, textarea {
+  input, select, textarea,
+  input:hover, select:hover, textarea:hover,
+  input:focus, select:focus, textarea:focus {
     color: #1a1f3c !important;
     background: #fdf6e3 !important;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #5a5340 !important;
+    opacity: 1;
   }
 }
 
