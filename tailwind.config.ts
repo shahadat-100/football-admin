@@ -26,7 +26,7 @@ const config: Config = {
         'destructive-foreground': '#ffffff',
         border: '#1e3d2b', // Thin dark green borders
         input: '#112318',
-        ring: '#e8ff00', // Electric yellow for focus rings
+        ring: '#999a8dff', // Electric yellow for focus rings
       },
       fontFamily: {
         sans: ['"Inter"', '"DM Sans"', 'sans-serif'], // Clean readable body
