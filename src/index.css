@@ -18,20 +18,28 @@
     background-position: -12px -12px;
   }
 
-  input, select, textarea,
-  input:hover, select:hover, textarea:hover,
-  input:focus, select:focus, textarea:focus {
-    color: #1a1f3c !important;
+  input,
+  select,
+  textarea,
+  input:hover,
+  select:hover,
+  textarea:hover,
+  input:focus,
+  select:focus,
+  textarea:focus {
+    color: #0b0d1b !important;
     background: #fdf6e3 !important;
   }
 
-  input::placeholder, textarea::placeholder {
+  input::placeholder,
+  textarea::placeholder {
     color: #5a5340 !important;
     opacity: 1;
   }
 }
 
 @layer components {
+
   /* Retro card and button styles based on neobrutalism */
   .retro-border {
     border: 3px solid theme('colors.border');
@@ -41,7 +49,7 @@
     box-shadow: 4px 4px 0px 0px theme('colors.border');
     transition: all 0.2s ease;
   }
-  
+
   .retro-shadow:hover {
     transform: translate(-2px, -2px);
     box-shadow: 6px 6px 0px 0px theme('colors.border');
@@ -58,13 +66,16 @@
     height: 12px;
     border-left: 2px solid theme('colors.border');
   }
+
   ::-webkit-scrollbar-track {
     background: theme('colors.background');
   }
+
   ::-webkit-scrollbar-thumb {
     background: theme('colors.primary');
     border: 2px solid theme('colors.border');
   }
+
   ::-webkit-scrollbar-corner {
     background: theme('colors.border');
   }
