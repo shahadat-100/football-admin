@@ -14,7 +14,7 @@ const config: Config = {
         'card-foreground': '#f5f5f5',
         popover: '#112318',
         'popover-foreground': '#f5f5f5',
-        primary: '#e8ff00', // Electric yellow
+        primary: '#566685ff', // Electric yellow
         'primary-foreground': '#0a0f0d',
         secondary: '#0d1f17', // Dark forest green
         'secondary-foreground': '#f5f5f5',
