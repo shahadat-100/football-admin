@@ -1,15 +1,20 @@
 import React from 'react';
 
-type TagColor = 'gold' | 'red' | 'plain';
+export interface PlayerTagSelectorProps {
+  value: string[];
+  onChange: (tags: string[]) => void;
+}
 
-interface TagDefinition {
+type TagColorType = 'gold' | 'red' | 'plain';
+
+interface TagConfig {
   value: string;
-  color: TagColor;
+  color: TagColorType;
 }
 
 interface TagCategory {
   name: string;
-  tags: TagDefinition[];
+  tags: TagConfig[];
 }
 
 const TAG_CATEGORIES: TagCategory[] = [
@@ -28,9 +33,9 @@ const TAG_CATEGORIES: TagCategory[] = [
     tags: [
       { value: 'Captain', color: 'gold' },
       { value: 'Vice Captain', color: 'plain' },
-      { value: 'Key Player', color: 'gold' },
+      { value: 'Key Player', color: 'plain' },
       { value: 'Rotation', color: 'plain' },
-      { value: 'Impact Sub', color: 'plain' },
+      { value: 'Impact Sub', color: 'red' },
     ],
   },
   {
@@ -38,7 +43,7 @@ const TAG_CATEGORIES: TagCategory[] = [
     tags: [
       { value: 'Contracted', color: 'plain' },
       { value: 'Transfer Listed', color: 'red' },
-      { value: 'Left Club', color: 'red' },
+      { value: 'Left Club', color: 'plain' },
       { value: 'On Loan', color: 'plain' },
       { value: 'Loan Return', color: 'plain' },
       { value: 'Contract Expired', color: 'red' },
@@ -75,12 +80,7 @@ const TAG_CATEGORIES: TagCategory[] = [
   },
 ];
 
-interface PlayerTagSelectorProps {
-  value: string[];
-  onChange: (tags: string[]) => void;
-}
-
-export const PlayerTagSelector: React.FC<PlayerTagSelectorProps> = ({ value, onChange }) => {
+export function PlayerTagSelector({ value = [], onChange }: PlayerTagSelectorProps) {
   const toggleTag = (tagValue: string) => {
     if (value.includes(tagValue)) {
       onChange(value.filter((t) => t !== tagValue));
@@ -89,51 +89,59 @@ export const PlayerTagSelector: React.FC<PlayerTagSelectorProps> = ({ value, onC
     }
   };
 
-  const getTagStyles = (isSelected: boolean, colorType: TagColor) => {
-    const baseStyles = 'px-3 py-1.5 font-mono uppercase tracking-widest text-xs rounded-none border-2 transition-all cursor-pointer select-none font-bold text-center';
+  const getTagClasses = (isSelected: boolean, colorType: TagColorType) => {
+    const baseClasses = 'font-mono uppercase tracking-widest text-xs px-3 py-1.5 rounded-none transition-all active:translate-y-0.5';
     
     if (!isSelected) {
-      return `${baseStyles} bg-card text-foreground border-foreground shadow-retro hover:shadow-retro-hover`;
+      return `${baseClasses} bg-card text-foreground border-2 border-foreground shadow-retro hover:shadow-retro-active`;
     }
 
-    const colorStyles = {
-      gold: 'bg-accent text-foreground border-foreground',
-      red: 'bg-primary text-primary-foreground border-foreground',
-      plain: 'bg-secondary text-secondary-foreground border-foreground'
-    };
-
-    return `${baseStyles} ${colorStyles[colorType]} shadow-retro-active translate-y-[2px] translate-x-[2px]`;
+    // When selected
+    const selectedShadow = 'shadow-retro-active translate-y-[2px] border-2 border-transparent';
+    switch (colorType) {
+      case 'gold':
+        return `${baseClasses} bg-accent text-foreground ${selectedShadow}`;
+      case 'red':
+        return `${baseClasses} bg-primary text-primary-foreground ${selectedShadow}`;
+      case 'plain':
+      default:
+        return `${baseClasses} bg-secondary text-secondary-foreground ${selectedShadow}`;
+    }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {TAG_CATEGORIES.map((category) => (
-          <div key={category.name} className="flex flex-col gap-3">
-            <h3 className="text-muted-foreground uppercase tracking-widest text-[10px] border-b border-dashed border-muted-foreground pb-1">
-              {category.name}
-            </h3>
-            <div className="flex flex-wrap gap-3">
-              {category.tags.map((tag) => {
-                const isSelected = value.includes(tag.value);
-                return (
-                  <button
-                    type="button"
-                    key={tag.value}
-                    onClick={() => toggleTag(tag.value)}
-                    className={getTagStyles(isSelected, tag.color)}
-                  >
-                    {tag.value}
-                  </button>
-                );
-              })}
-            </div>
+    <div className="flex flex-col gap-6">
+      {TAG_CATEGORIES.map((category) => (
+        <div key={category.name} className="flex flex-col gap-3">
+          <h4 className="text-muted-foreground uppercase tracking-widest text-[10px] border-b border-dashed border-muted-foreground pb-1">
+            {category.name}
+          </h4>
+          <div className="flex flex-wrap gap-3">
+            {category.tags.map((tag) => {
+              const isSelected = value.includes(tag.value);
+              
+              return (
+                <button
+                  key={tag.value}
+                  type="button"
+                  onClick={() => toggleTag(tag.value)}
+                  className={getTagClasses(isSelected, tag.color)}
+                >
+                  {tag.value}
+                </button>
+              );
+            })}
           </div>
-        ))}
-      </div>
-      <div className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-        Selected Tags: {value.length}
+        </div>
+      ))}
+
+      {/* Selected Count Indicator */}
+      <div className="mt-2 text-[10px] font-mono text-muted-foreground uppercase tracking-widest border-t border-dashed border-muted-foreground/30 pt-3 flex justify-between items-center">
+        <span>Selected Tags</span>
+        <span className="bg-foreground text-background px-2 py-0.5 rounded-none">
+          {value.length}
+        </span>
       </div>
     </div>
   );
-};
+}
