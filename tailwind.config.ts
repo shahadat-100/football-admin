@@ -8,29 +8,29 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: '#0a0a0f',
-        foreground: '#e2e8f0',
-        card: '#111827',
-        'card-foreground': '#f8fafc',
-        popover: '#0d1117',
-        'popover-foreground': '#f8fafc',
-        primary: '#6366f1',
+        background: '#ffffff', // Stark white
+        foreground: '#000000', // Pure black
+        card: '#f9f9f9', // Very light grey
+        'card-foreground': '#000000',
+        popover: '#ffffff',
+        'popover-foreground': '#000000',
+        primary: '#e3000f', // Bold Swiss Red
         'primary-foreground': '#ffffff',
-        secondary: '#1f2937',
-        'secondary-foreground': '#e2e8f0',
-        muted: '#1a1a2e',
-        'muted-foreground': '#94a3b8',
-        accent: '#2e1065',
-        'accent-foreground': '#c4b5fd',
-        destructive: '#7f1d1d',
-        'destructive-foreground': '#fca5a5',
-        border: '#1f2937',
-        input: '#2a2a3e',
-        ring: '#6366f1',
+        secondary: '#f2f2f2', // Light gray
+        'secondary-foreground': '#000000',
+        muted: '#f2f2f2',
+        'muted-foreground': '#737373', // Mid gray
+        accent: '#000000', // Black accents
+        'accent-foreground': '#ffffff',
+        destructive: '#e3000f',
+        'destructive-foreground': '#ffffff',
+        border: '#e5e5e5', // Soft gray borders
+        input: '#ffffff',
+        ring: '#000000',
       },
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-      }
+        sans: ['Inter', '"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
+      },
     },
   },
   plugins: [],
