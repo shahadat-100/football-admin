@@ -47,12 +47,12 @@ export function MatchForm({ initial, onSave, onClose }: MatchFormProps) {
       <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-end">
         <div className="grid gap-2 relative">
           <label className="text-[12px] font-medium text-slate-300">Home team</label>
-          <Input value={HOME_TEAM} readOnly className="bg-background/50 text-slate-400 font-semibold cursor-not-allowed border-dashed" />
+          <Input value={HOME_TEAM} readOnly className="font-semibold cursor-not-allowed border-dashed text-[#1a1f3c] bg-[#fdf6e3]/50" />
         </div>
         <div className="pb-2 text-muted-foreground font-semibold text-[13px]">vs</div>
         <div className="grid gap-2">
           <label className="text-[12px] font-medium text-slate-300">Away team *</label>
-          <Input {...register('awayTeam')} placeholder="Man City" error={errors.awayTeam?.message} />
+          <Input {...register('awayTeam')} placeholder="Man City" error={errors.awayTeam?.message} className="text-[#1a1f3c] bg-[#fdf6e3]" />
         </div>
       </div>
 
@@ -60,11 +60,11 @@ export function MatchForm({ initial, onSave, onClose }: MatchFormProps) {
         <div className="grid grid-cols-2 gap-4 p-3 bg-muted/40 rounded-lg border border-border/50 animate-in fade-in slide-in-from-top-1">
           <div className="grid gap-2">
             <label className="text-[12px] font-medium text-slate-300">Home score</label>
-            <Input type="number" min={0} {...register('homeScore')} error={errors.homeScore?.message} />
+            <Input type="number" min={0} {...register('homeScore')} error={errors.homeScore?.message} className="text-[#1a1f3c] bg-[#fdf6e3]" />
           </div>
           <div className="grid gap-2">
             <label className="text-[12px] font-medium text-slate-300">Away score</label>
-            <Input type="number" min={0} {...register('awayScore')} error={errors.awayScore?.message} />
+            <Input type="number" min={0} {...register('awayScore')} error={errors.awayScore?.message} className="text-[#1a1f3c] bg-[#fdf6e3]" />
           </div>
         </div>
       )}
@@ -72,7 +72,7 @@ export function MatchForm({ initial, onSave, onClose }: MatchFormProps) {
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
           <label className="text-[12px] font-medium text-slate-300">Date</label>
-          <Input type="date" {...register('date')} error={errors.date?.message} />
+          <Input type="date" {...register('date')} error={errors.date?.message} className="text-[#1a1f3c] bg-[#fdf6e3]" />
         </div>
         <div className="grid gap-2">
           <label className="text-[12px] font-medium text-slate-300">Status</label>
@@ -80,6 +80,7 @@ export function MatchForm({ initial, onSave, onClose }: MatchFormProps) {
             {...register('status')}
             options={MATCH_STATUSES.map(s => ({ label: s.charAt(0).toUpperCase() + s.slice(1), value: s }))}
             error={errors.status?.message}
+            className="text-[#1a1f3c] bg-[#fdf6e3]"
           />
         </div>
       </div>
@@ -90,7 +91,8 @@ export function MatchForm({ initial, onSave, onClose }: MatchFormProps) {
           list="competitions"
           {...register('competition')} 
           placeholder="e.g. Premier League"
-          error={errors.competition?.message} 
+          error={errors.competition?.message}
+          className="text-[#1a1f3c] bg-[#fdf6e3]"
         />
         <datalist id="competitions">
           {COMPETITIONS.map(c => <option key={c} value={c} />)}

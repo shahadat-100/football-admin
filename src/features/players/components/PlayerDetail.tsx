@@ -66,15 +66,18 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
 
       <div className="bg-card border border-border rounded-xl p-5 mb-4 shadow-sm">
         <div className="flex gap-4 items-start flex-wrap">
-          <Avatar name={player.name} size={64} src={player.profileImage} />
+          <Avatar name={player.name} size={64} src={player.profileImageUrl} />
           <div className="flex-1">
             <div className="flex justify-between flex-wrap gap-3">
               <div>
                 <h2 className="font-bold text-[20px]">{player.name}</h2>
-                <p className="text-muted-foreground text-[13px] font-medium">#{player.jersey || '—'} · {player.position}</p>
+                <p className="text-muted-foreground text-[13px] font-medium">#{player.jerseyNumber || '—'}</p>
                 <div className="flex gap-1.5 flex-wrap mt-2">
-                  {(player.tags ?? []).map(t => (
+                  {(player.playerRoles ?? []).map(t => (
                     <Badge key={t} bg="#2e1065" c="#c4b5fd">{t}</Badge>
+                  ))}
+                  {(player.customTags ?? []).map(t => (
+                    <Badge key={t} bg="#4b5563" c="#e5e7eb">{t}</Badge>
                   ))}
                 </div>
               </div>

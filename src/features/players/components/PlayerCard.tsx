@@ -26,13 +26,12 @@ export function PlayerCard({ player, onView, onEdit, onDelete }: PlayerCardProps
     >
       <div className="flex items-start justify-between mb-3">
         <div className="flex gap-3 items-center">
-          <Avatar name={player.name} size={44} src={player.profileImage} />
+          <Avatar name={player.name} size={44} src={player.profileImageUrl} />
           <div>
             <p className="font-semibold text-[14px]">{player.name}</p>
-            <p className="text-muted-foreground text-[11px]">#{player.jersey || '—'}</p>
+            <p className="text-muted-foreground text-[11px]">#{player.jerseyNumber || '—'}</p>
           </div>
         </div>
-        <Badge bg="#2e1065" c="#c4b5fd">{player.position}</Badge>
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-3">
@@ -49,7 +48,7 @@ export function PlayerCard({ player, onView, onEdit, onDelete }: PlayerCardProps
       </div>
 
       <div className="flex flex-wrap gap-1.5 mb-3">
-        {(player.tags ?? []).slice(0, 3).map(t => (
+        {(player.playerRoles ?? []).slice(0, 3).map(t => (
           <Badge key={t}>{t}</Badge>
         ))}
       </div>

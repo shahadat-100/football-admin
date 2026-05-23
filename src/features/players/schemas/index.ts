@@ -27,16 +27,22 @@ export const seasonSchema = z.object({
 export const playerSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Name is required"),
-  jersey: z.number().min(0).max(99).optional().nullable(),
-  email: z.string().email("Invalid email").optional().or(z.literal('')),
-  profileImage: z.string().optional(),
-  credential: z.string().min(4, "Min 4 characters").optional(),
-  tags: z.array(z.string()).default([]),
+  email: z.string().email(),
+  password: z.string().min(6),
+  profileImageUrl: z.string().optional(),
+  jerseyNumber: z.number().optional(),
+  playerRoles: z.array(z.string()).default([]),
+  customTags: z.array(z.string()).default([]),
   createdAt: z.string(),
   seasons: z.array(seasonSchema).default([]),
 });
 
-export const playerFormSchema = playerSchema.omit({ id: true, createdAt: true }).extend({
-  tags: z.array(z.string()).optional(),
-  jersey: z.union([z.string(), z.number()]).optional(),
+export const playerFormSchema = playerSchema.omit({ id: true, createdAt: true, seasons: true }).extend({
+  jerseyNumber: z.union([z.string(), z.number()]).optional().transform(v => v === '' ? undefined : Number(v)),
+  customTags: z.union([z.string(), z.array(z.string())]).optional().transform(v => {
+    if (typeof v === 'string') {
+      return v.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return v || [];
+  }),
 });
