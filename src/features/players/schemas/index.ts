@@ -27,7 +27,6 @@ export const seasonSchema = z.object({
 export const playerSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Name is required"),
-  position: z.enum(POSITIONS as unknown as [string, ...string[]]),
   jersey: z.number().min(0).max(99).optional().nullable(),
   email: z.string().email("Invalid email").optional().or(z.literal('')),
   profileImage: z.string().optional(),
@@ -38,6 +37,6 @@ export const playerSchema = z.object({
 });
 
 export const playerFormSchema = playerSchema.omit({ id: true, createdAt: true }).extend({
-  tags: z.string().optional(),
+  tags: z.array(z.string()).optional(),
   jersey: z.union([z.string(), z.number()]).optional(),
 });

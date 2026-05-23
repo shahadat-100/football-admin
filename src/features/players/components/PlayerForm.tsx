@@ -3,9 +3,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { playerFormSchema } from '../schemas';
 import { Player, PlayerFormValues, Season } from '../types';
-import { Button, Input, Select } from '@/shared/components';
-import { POSITIONS } from '@/shared/lib/constants';
+import { Button, Input } from '@/shared/components';
 import { SeasonStatsEditor } from './SeasonStatsEditor';
+import { PlayerTagSelector } from './PlayerTagSelector';
 
 interface PlayerFormProps {
   initial?: Player;
@@ -21,6 +21,8 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<PlayerFormValues>({
     resolver: zodResolver(playerFormSchema),
@@ -28,10 +30,9 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
       name: initial?.name ?? '',
       profileImage: initial?.profileImage ?? '',
       jersey: initial?.jersey ?? '',
-      position: initial?.position ?? 'Forward',
       email: initial?.email ?? '',
       credential: initial?.credential ?? '',
-      tags: initial?.tags?.join(', ') ?? '',
+      tags: initial?.tags ?? [],
     },
   });
 
@@ -39,13 +40,12 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
     onSave({
       name: values.name,
       profileImage: values.profileImage,
-      position: values.position,
       jersey: values.jersey ? Number(values.jersey) : undefined,
       email: values.email ?? '',
       credential: values.credential ?? '',
-      tags: values.tags ? values.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+      tags: values.tags ?? [],
       seasons: seasons,
-    });
+    } as Omit<Player, 'id' | 'createdAt'>);
   };
 
   const handleAddSeason = () => {
@@ -86,24 +86,19 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
         <Input {...register('profileImage')} placeholder="https://api.dicebear.com/7.x/avataaars/svg?seed=Salah" error={errors.profileImage?.message} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="grid gap-2">
-          <label className="text-[12px] font-medium text-slate-300">Jersey #</label>
-          <Input type="number" {...register('jersey')} error={errors.jersey?.message} />
-        </div>
-        <div className="grid gap-2">
-          <label className="text-[12px] font-medium text-slate-300">Position</label>
-          <Select
-            {...register('position')}
-            options={POSITIONS.map(p => ({ label: p, value: p }))}
-            error={errors.position?.message}
-          />
-        </div>
+      <div className="grid gap-2">
+        <label className="text-[12px] font-medium text-slate-300">Jersey #</label>
+        <Input type="number" {...register('jersey')} error={errors.jersey?.message} />
       </div>
 
-      <div className="grid gap-2">
-        <label className="text-[12px] font-medium text-slate-300">Tags (comma separated)</label>
-        <Input {...register('tags')} placeholder="pacey, clinical" error={errors.tags?.message} />
+      <div className="space-y-1">
+        <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+          Player Role & Status
+        </label>
+        <PlayerTagSelector
+          value={watch("tags") ?? []}
+          onChange={(val) => setValue("tags", val)}
+        />
       </div>
 
       <div className="border-t border-border mt-2 pt-4">

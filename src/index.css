@@ -18,23 +18,17 @@
     background-position: -12px -12px;
   }
 
-  input,
-  select,
-  textarea,
-  input:hover,
-  select:hover,
-  textarea:hover,
-  input:focus,
-  select:focus,
-  textarea:focus {
-    color: #0b0d1b !important;
-    background: #fdf6e3 !important;
+  input, select, textarea,
+  [type='text'], [type='email'],
+  [type='password'], [type='number'] {
+    color: #1a1f3c !important;
+    background-color: #fdf6e3 !important;
+    border-color: #1a1f3c !important;
+    caret-color: #c8102e !important;
   }
-
-  input::placeholder,
-  textarea::placeholder {
+  input::placeholder, textarea::placeholder {
     color: #5a5340 !important;
-    opacity: 1;
+    opacity: 1 !important;
   }
 }
 
