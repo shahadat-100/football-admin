@@ -27,8 +27,6 @@ export const seasonSchema = z.object({
 export const playerSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Name is required"),
-  email: z.string().email(),
-  password: z.string().min(6),
   profileImageUrl: z.string().optional(),
   jerseyNumber: z.number().optional(),
   playerRoles: z.array(z.string()).default([]),

@@ -40,8 +40,6 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
     resolver: zodResolver(playerFormSchema),
     defaultValues: {
       name: initial?.name ?? '',
-      email: initial?.email ?? '',
-      password: initial?.password ?? '',
       profileImageUrl: initial?.profileImageUrl ?? '',
       jerseyNumber: initial?.jerseyNumber ?? '',
       playerRoles: initial?.playerRoles ?? [],
@@ -75,16 +73,6 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
         <Input {...register('name')} placeholder="Mohamed Salah" error={errors.name?.message} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="grid gap-2">
-          <label className="text-[12px] font-medium text-gray-400">Email</label>
-          <Input {...register('email')} placeholder="player@team.com" error={errors.email?.message} />
-        </div>
-        <div className="grid gap-2">
-          <label className="text-[12px] font-medium text-gray-400">Password</label>
-          <Input type="password" {...register('password')} placeholder="****" error={errors.password?.message} />
-        </div>
-      </div>
 
       <div className="grid gap-2">
         <label className="text-[12px] font-medium text-gray-400">Profile Image URL</label>
