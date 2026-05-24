@@ -9,7 +9,7 @@ interface OverviewProps {
 }
 
 export function Overview({ setTab }: OverviewProps) {
-  const { players, matchEntries, matches, news } = useFootballStore();
+  const { players, matchEntries, matches } = useFootballStore();
 
   // ── Club-wide totals: live match entries ─────────────────────────
   const liveGoals   = matchEntries.reduce((s, e) => s + e.goals, 0);
@@ -90,10 +90,10 @@ export function Overview({ setTab }: OverviewProps) {
               {topScorers.map(({ player, goals }, i) => (
                 <div key={player.id} className="flex items-center gap-4 bg-muted/40 p-2.5 rounded-lg border border-border/40 hover:bg-muted/60 transition-colors">
                   <div className="font-bold text-muted-foreground w-4 text-[12px] text-center">{i + 1}</div>
-                  <Avatar name={player.name} size={36} src={(player as any).profileImage} />
+                  <Avatar name={player.name} size={36} src={(player as any).profileImageUrl} />
                   <div className="flex-1">
                     <p className="text-[13px] font-semibold">{player.name}</p>
-                    <p className="text-[11px] text-muted-foreground uppercase tracking-widest">{(player as any).position}</p>
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-widest">{player.playerRoles?.[0]}</p>
                   </div>
                   <span className="font-black text-gray-100 text-[18px] mr-2">{goals}</span>
                 </div>

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { POSITIONS } from '@/shared/lib/constants';
+
 import { TAG_CATEGORIES } from '../components/PlayerTagSelector';
 
 const ALL_TAGS = TAG_CATEGORIES.flatMap((c) => c.tags.map((t) => t.value));

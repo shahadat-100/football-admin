@@ -36,11 +36,11 @@ interface FootballStore {
 }
 
 const initialPlayers: Player[] = [
-  {id:'p1',name:'Mohamed Salah',jersey:11,position:'Forward',email:'salah@example.com',credential:'1234',tags:['pacey','clinical'],createdAt:'2024-01-10',
-   profileImage: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Salah',
+  {id:'p1',name:'Mohamed Salah',jerseyNumber:11,playerRoles:['First Team'],customTags:['pacey','clinical'],createdAt:'2024-01-10',
+   profileImageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Salah',
    seasons:[{year:2024,monthlyStats:[{month:1,weeklyStats:[{week:1,matches:5,win:3,loss:1,draw:1,goalsScored:10,goalsConceded:4,hattricks:2,motm:1,cleanSheet:1},{week:2,matches:3,win:1,loss:1,draw:1,goalsScored:5,goalsConceded:5,hattricks:0,motm:0,cleanSheet:0}]},{month:2,weeklyStats:[{week:1,matches:4,win:2,loss:1,draw:1,goalsScored:8,goalsConceded:3,hattricks:1,motm:2,cleanSheet:1}]}]},{year:CURRENT_YEAR,monthlyStats:[]}]},
-  {id:'p2',name:'Bukayo Saka',jersey:7,position:'Winger',email:'saka@example.com',credential:'1234',tags:['technical','young'],createdAt:'2024-01-12',
-   profileImage: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Saka',
+  {id:'p2',name:'Bukayo Saka',jerseyNumber:7,playerRoles:['First Team'],customTags:['technical','young'],createdAt:'2024-01-12',
+   profileImageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Saka',
    seasons:[{year:2024,monthlyStats:[]},{year:CURRENT_YEAR,monthlyStats:[]}]},
 ];
 

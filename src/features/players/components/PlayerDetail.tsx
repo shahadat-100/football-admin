@@ -36,7 +36,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
          <Modal title="Edit player" onClose={() => setModal(null)} isOpen wide>
            <PlayerForm 
              initial={player} 
-             onSave={(d) => { updatePlayer({ ...d, id: player.id, createdAt: player.createdAt } as Player); setModal(null); }}
+             onSave={(d) => { updatePlayer({ ...d, id: player.id, createdAt: player.createdAt } as unknown as Player); setModal(null); }}
              onClose={() => setModal(null)} 
            />
          </Modal>

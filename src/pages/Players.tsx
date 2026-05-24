@@ -16,14 +16,14 @@ export function Players() {
     return <PlayerDetail playerId={selectedId} onBack={() => setSelectedId(null)} />;
   }
 
-  const filtered = fuzzyFilter(players, search, ['name', 'position']);
+  const filtered = fuzzyFilter(players, search, ['name']);
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
       {modal?.type === 'add' && (
         <Modal title="Add player" onClose={() => setModal(null)} isOpen wide>
           <PlayerForm 
-            onSave={(d) => { addPlayer({ ...d, id: Math.random().toString(36).slice(2,9), createdAt: new Date().toISOString() } as Player); setModal(null); }}
+            onSave={(d) => { addPlayer({ ...d, id: Math.random().toString(36).slice(2,9), createdAt: new Date().toISOString() } as unknown as Player); setModal(null); }}
             onClose={() => setModal(null)}
           />
         </Modal>
@@ -32,7 +32,7 @@ export function Players() {
         <Modal title="Edit player" onClose={() => setModal(null)} isOpen wide>
           <PlayerForm 
             initial={modal.data}
-            onSave={(d) => { updatePlayer({ ...d, id: modal.data!.id, createdAt: modal.data!.createdAt } as Player); setModal(null); }}
+            onSave={(d) => { updatePlayer({ ...d, id: modal.data!.id, createdAt: modal.data!.createdAt } as unknown as Player); setModal(null); }}
             onClose={() => setModal(null)}
           />
         </Modal>
