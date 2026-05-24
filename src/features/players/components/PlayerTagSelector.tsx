@@ -17,7 +17,7 @@ interface TagCategory {
   tags: TagConfig[];
 }
 
-const TAG_CATEGORIES: TagCategory[] = [
+export const TAG_CATEGORIES: TagCategory[] = [
   {
     name: 'Status',
     tags: [

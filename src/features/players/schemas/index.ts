@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { POSITIONS } from '@/shared/lib/constants';
+import { TAG_CATEGORIES } from '../components/PlayerTagSelector';
+
+const ALL_TAGS = TAG_CATEGORIES.flatMap((c) => c.tags.map((t) => t.value));
+const PlayerRoleEnum = z.enum([ALL_TAGS[0], ...ALL_TAGS.slice(1)]);
 
 export const weeklyStatSchema = z.object({
   week: z.number().min(1).max(5),
@@ -29,7 +33,7 @@ export const playerSchema = z.object({
   name: z.string().min(1, "Name is required"),
   profileImageUrl: z.string().optional(),
   jerseyNumber: z.number().optional(),
-  playerRoles: z.array(z.string()).default([]),
+  playerRoles: z.array(PlayerRoleEnum).default([]),
   customTags: z.array(z.string()).default([]),
   createdAt: z.string(),
   seasons: z.array(seasonSchema).default([]),
