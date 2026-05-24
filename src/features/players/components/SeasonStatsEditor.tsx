@@ -54,7 +54,7 @@ export function SeasonStatsEditor({ season, onChange, onRemove }: SeasonStatsEdi
       </Button>
       
       <div className="flex items-center justify-between mb-3 pr-16">
-        <span className="text-[13px] font-semibold text-slate-300">Season {season.year}</span>
+        <span className="text-[13px] font-semibold text-gray-400">Season {season.year}</span>
         <Button size="sm" variant="secondary" onClick={addMonth} type="button">+ Month</Button>
       </div>
       

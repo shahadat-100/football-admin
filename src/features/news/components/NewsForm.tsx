@@ -46,7 +46,7 @@ export function NewsForm({ initial, onSave, onClose }: NewsFormProps) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
       <div className="grid gap-2">
-        <label className="text-[12px] font-medium text-slate-300">Image Cover</label>
+        <label className="text-[12px] font-medium text-gray-400">Image Cover</label>
         <ImageUpload
           value={image}
           onChange={setImage}
@@ -55,22 +55,22 @@ export function NewsForm({ initial, onSave, onClose }: NewsFormProps) {
       </div>
 
       <div className="grid gap-2">
-        <label className="text-[12px] font-medium text-slate-300">Headline *</label>
+        <label className="text-[12px] font-medium text-gray-400">Headline *</label>
         <Input {...register('title')} placeholder="Article headline" error={errors.title?.message} />
       </div>
 
       <div className="grid gap-2">
-        <label className="text-[12px] font-medium text-slate-300">Content</label>
+        <label className="text-[12px] font-medium text-gray-400">Content</label>
         <Textarea rows={4} {...register('content')} placeholder="Write the article content..." error={errors.content?.message} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <label className="text-[12px] font-medium text-slate-300">Author</label>
+          <label className="text-[12px] font-medium text-gray-400">Author</label>
           <Input {...register('author')} error={errors.author?.message} />
         </div>
         <div className="grid gap-2">
-          <label className="text-[12px] font-medium text-slate-300">Category</label>
+          <label className="text-[12px] font-medium text-gray-400">Category</label>
           <Select
             {...register('category')}
             options={NEWS_CATEGORIES.map(c => ({ label: c, value: c }))}
@@ -80,7 +80,7 @@ export function NewsForm({ initial, onSave, onClose }: NewsFormProps) {
       </div>
 
       <div className="grid gap-2">
-        <label className="text-[12px] font-medium text-slate-300">Date</label>
+        <label className="text-[12px] font-medium text-gray-400">Date</label>
         <Input type="date" {...register('date')} error={errors.date?.message} />
       </div>
 

@@ -113,7 +113,7 @@ export function Matches() {
                   {m.id.startsWith('bulk-') ? (
                     <button 
                       onClick={() => setModal({ type: 'info' })}
-                      className="text-[11px] text-indigo-400 font-medium px-2 py-0.5 bg-indigo-500/10 rounded border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors"
+                      className="text-[11px] text-gray-300 font-medium px-2 py-0.5 bg-gray-500/10 rounded border border-gray-500/20 hover:bg-gray-500/20 transition-colors"
                     >
                       Generated
                     </button>

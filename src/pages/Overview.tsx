@@ -23,9 +23,9 @@ export function Overview({ setTab }: OverviewProps) {
   }, [players, matchEntries]);
 
   const cards = [
-    { label: 'Players', value: players.length, tab: 'players', color: '#6366f1' },
-    { label: 'Match entries', value: matchEntries.length, tab: 'entries', color: '#8b5cf6' },
-    { label: 'Matches', value: matches.length, tab: 'matches', color: '#3b82f6' },
+    { label: 'Players', value: players.length, tab: 'players', color: '#1a1a1a' },
+    { label: 'Match entries', value: matchEntries.length, tab: 'entries', color: '#333333' },
+    { label: 'Matches', value: matches.length, tab: 'matches', color: '#111111' },
     { label: 'Total live goals', value: totalGoals, tab: 'entries', color: '#10b981' },
     { label: 'Live wins', value: totalWins, tab: 'entries', color: '#f59e0b' },
     { label: 'News articles', value: news.length, tab: 'news', color: '#ec4899' },
@@ -57,7 +57,7 @@ export function Overview({ setTab }: OverviewProps) {
                     <p className="text-[13px] font-semibold">{player.name}</p>
                     <p className="text-[11px] text-muted-foreground uppercase tracking-widest">{player.position}</p>
                   </div>
-                  <span className="font-black text-cyan-400 text-[18px] mr-2">{goals}</span>
+                  <span className="font-black text-gray-100 text-[18px] mr-2">{goals}</span>
                 </div>
               ))}
             </div>

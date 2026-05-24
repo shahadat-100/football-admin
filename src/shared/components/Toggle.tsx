@@ -11,7 +11,7 @@ interface ToggleProps {
 export function Toggle({ label, checked, onChange, disabled, className }: ToggleProps) {
   return (
     <div className={cn("flex items-center justify-between bg-muted border border-border rounded-lg px-3 py-2", className)}>
-      <span className="text-[12px] text-slate-300">{label}</span>
+      <span className="text-[12px] text-gray-400">{label}</span>
       <button
         type="button"
         disabled={disabled}

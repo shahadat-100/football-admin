@@ -75,7 +75,7 @@ export function News() {
             <div className="p-4 flex-1 flex flex-col">
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 {n.hot && <Badge bg="#7f1d1d" c="#fca5a5">Hot</Badge>}
-                <Badge bg="#1e3a5f" c="#93c5fd">{n.category}</Badge>
+                <Badge bg="#111111" c="#e5e5e5">{n.category}</Badge>
                 <span className="text-muted-foreground text-[11px] ml-auto">{n.date}</span>
               </div>
               <h3 className="font-bold text-[15px] mb-2 leading-tight">{n.title}</h3>

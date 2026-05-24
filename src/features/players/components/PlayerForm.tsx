@@ -71,28 +71,28 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
       <div className="grid gap-2">
-        <label className="text-[12px] font-medium text-slate-300">Name</label>
+        <label className="text-[12px] font-medium text-gray-400">Name</label>
         <Input {...register('name')} placeholder="Mohamed Salah" error={errors.name?.message} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <label className="text-[12px] font-medium text-slate-300">Email</label>
+          <label className="text-[12px] font-medium text-gray-400">Email</label>
           <Input {...register('email')} placeholder="player@team.com" error={errors.email?.message} />
         </div>
         <div className="grid gap-2">
-          <label className="text-[12px] font-medium text-slate-300">Password</label>
+          <label className="text-[12px] font-medium text-gray-400">Password</label>
           <Input type="password" {...register('password')} placeholder="****" error={errors.password?.message} />
         </div>
       </div>
 
       <div className="grid gap-2">
-        <label className="text-[12px] font-medium text-slate-300">Profile Image URL</label>
+        <label className="text-[12px] font-medium text-gray-400">Profile Image URL</label>
         <Input {...register('profileImageUrl')} placeholder="https://api.dicebear.com/7.x/avataaars/svg?seed=Salah" error={errors.profileImageUrl?.message} />
       </div>
 
       <div className="grid gap-2">
-        <label className="text-[12px] font-medium text-slate-300">Jersey Number</label>
+        <label className="text-[12px] font-medium text-gray-400">Jersey Number</label>
         <Input type="number" {...register('jerseyNumber')} error={errors.jerseyNumber?.message} />
       </div>
 
@@ -117,13 +117,13 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
       </div>
 
       <div className="grid gap-2">
-        <label className="text-[12px] font-medium text-slate-300">Custom Tags</label>
+        <label className="text-[12px] font-medium text-gray-400">Custom Tags</label>
         <Input {...register('customTags')} placeholder="pacey, clinical, season 3 champs" error={errors.customTags?.message} />
       </div>
 
       <div className="border-t border-border mt-2 pt-4">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[13px] font-semibold text-slate-300">Previous season stats</span>
+          <span className="text-[13px] font-semibold text-gray-400">Previous season stats</span>
           {!showAddSeason && (
             <Button size="sm" variant="secondary" onClick={() => setShowAddSeason(true)} type="button">
               + Add season

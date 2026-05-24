@@ -74,7 +74,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                 <p className="text-muted-foreground text-[13px] font-medium">#{player.jerseyNumber || '—'}</p>
                 <div className="flex gap-1.5 flex-wrap mt-2">
                   {(player.playerRoles ?? []).map(t => (
-                    <Badge key={t} bg="#2e1065" c="#c4b5fd">{t}</Badge>
+                    <Badge key={t} bg="#1a1a1a" c="#e5e5e5">{t}</Badge>
                   ))}
                   {(player.customTags ?? []).map(t => (
                     <Badge key={t} bg="#4b5563" c="#e5e7eb">{t}</Badge>
@@ -206,14 +206,14 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                   return (
                     <tr key={e.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">{e.date}</td>
-                      <td className="px-3 py-2.5 font-bold text-cyan-400">{e.goals}</td>
+                      <td className="px-3 py-2.5 font-bold text-gray-100">{e.goals}</td>
                       <td className="px-3 py-2.5 text-red-400 font-medium">{e.goalsConceded}</td>
                       <td className="px-3 py-2.5"><Badge bg={rb.bg} c={rb.c}>{e.result}</Badge></td>
                       <td className="px-3 py-2.5">
                         <div className="flex gap-1.5 flex-wrap">
-                          {e.hattricks > 0 && <Badge bg="#2e1065" c="#c4b5fd" className="border border-purple-500/30 text-[10px] px-1.5 py-0">HT×{e.hattricks}</Badge>}
+                          {e.hattricks > 0 && <Badge bg="#1a1a1a" c="#e5e5e5" className="border border-gray-500/30 text-[10px] px-1.5 py-0">HT×{e.hattricks}</Badge>}
                           {e.motm && <Badge bg="#78350f" c="#fcd34d" className="border border-amber-500/30 text-[10px] px-1.5 py-0">MOTM</Badge>}
-                          {e.cleanSheet && <Badge bg="#1e3a5f" c="#93c5fd" className="border border-blue-500/30 text-[10px] px-1.5 py-0">CS</Badge>}
+                          {e.cleanSheet && <Badge bg="#111111" c="#e5e5e5" className="border border-gray-500/30 text-[10px] px-1.5 py-0">CS</Badge>}
                         </div>
                       </td>
                       <td className="px-3 py-2.5 text-muted-foreground max-w-[160px] truncate">{e.notes || '—'}</td>

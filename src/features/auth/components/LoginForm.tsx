@@ -37,13 +37,13 @@ export function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-[#0a0a0b] relative overflow-hidden p-4">
       {/* Abstract Background Shapes */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[120px] animate-pulse"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[120px] animate-pulse"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-gray-800/40 rounded-full blur-[120px] animate-pulse"></div>
 
       <div className="w-full max-w-md z-10">
         <div className="bg-popover/40 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-500">
           <div className="p-8">
             <div className="flex flex-col items-center mb-10">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20 mb-4 rotate-3 group-hover:rotate-0 transition-transform duration-300">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-gray-800 flex items-center justify-center shadow-lg shadow-primary/20 mb-4 rotate-3 group-hover:rotate-0 transition-transform duration-300">
                 <span className="text-white text-3xl leading-none">⚽</span>
               </div>
               <h1 className="text-2xl font-bold text-white tracking-tight">Welcome Back</h1>
@@ -61,7 +61,7 @@ export function LoginForm() {
               )}
 
               <div className="space-y-2">
-                <label className="text-[13px] font-medium text-slate-300 ml-1">Email Address</label>
+                <label className="text-[13px] font-medium text-gray-400 ml-1">Email Address</label>
                 <div className="relative group">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                   <input
@@ -81,7 +81,7 @@ export function LoginForm() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[13px] font-medium text-slate-300 ml-1">Password</label>
+                <label className="text-[13px] font-medium text-gray-400 ml-1">Password</label>
                 <div className="relative group">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                   <input

@@ -118,14 +118,14 @@ export function MatchEntries() {
                       {m ? `${m.homeTeam} vs ${m.awayTeam}` : '—'}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{me.date}</td>
-                    <td className="px-4 py-3 font-black text-cyan-400 text-[15px]">{me.goals}</td>
+                    <td className="px-4 py-3 font-black text-gray-100 text-[15px]">{me.goals}</td>
                     <td className="px-4 py-3 font-semibold text-red-400">{me.goalsConceded}</td>
                     <td className="px-4 py-3"><Badge bg={rb.bg} c={rb.c}>{me.result}</Badge></td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1.5 flex-wrap">
-                        {me.hattricks > 0 && <Badge bg="#2e1065" c="#c4b5fd" className="border border-purple-500/30 text-[10px] px-1.5 py-0">HT×{me.hattricks}</Badge>}
+                        {me.hattricks > 0 && <Badge bg="#1a1a1a" c="#e5e5e5" className="border border-gray-500/30 text-[10px] px-1.5 py-0">HT×{me.hattricks}</Badge>}
                         {me.motm && <Badge bg="#78350f" c="#fcd34d" className="border border-amber-500/30 text-[10px] px-1.5 py-0">MOTM</Badge>}
-                        {me.cleanSheet && <Badge bg="#1e3a5f" c="#93c5fd" className="border border-blue-500/30 text-[10px] px-1.5 py-0">CS</Badge>}
+                        {me.cleanSheet && <Badge bg="#111111" c="#e5e5e5" className="border border-gray-500/30 text-[10px] px-1.5 py-0">CS</Badge>}
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -133,7 +133,7 @@ export function MatchEntries() {
                         {me.id.startsWith('bulk-') ? (
                           <button 
                             onClick={() => setModal({ type: 'info' })}
-                            className="text-[11px] text-indigo-400 font-medium px-2 py-0.5 bg-indigo-500/10 rounded border border-indigo-500/20 hover:bg-indigo-500/20 transition-colors"
+                            className="text-[11px] text-gray-300 font-medium px-2 py-0.5 bg-gray-500/10 rounded border border-gray-500/20 hover:bg-gray-500/20 transition-colors"
                           >
                             Generated
                           </button>

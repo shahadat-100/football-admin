@@ -2,7 +2,7 @@ export const uid = () => Math.random().toString(36).slice(2, 9);
 export const calcHattricks = (goals: number | string) => Math.floor((Number(goals) || 0) / 3);
 export const initials = (n = '') => n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
-const AVATAR_COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#14b8a6'];
+const AVATAR_COLORS = ['#1a1a1a', '#333333', '#ec4899', '#f59e0b', '#10b981', '#222222', '#ef4444', '#444444'];
 export const avatarColor = (n = '') => AVATAR_COLORS[n.charCodeAt(0) % AVATAR_COLORS.length];
 
 export const parseTags = (raw: string | string[]) => 

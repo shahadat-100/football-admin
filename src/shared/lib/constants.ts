@@ -11,9 +11,9 @@ export const RESULT_BADGE = {
 };
 
 export const STATUS_BADGE = {
-  upcoming: { bg: '#1e3a5f', c: '#93c5fd' },
+  upcoming: { bg: '#1a1a1a', c: '#e5e5e5' },
   live: { bg: '#064e3b', c: '#6ee7b7' },
-  finished: { bg: '#1f2937', c: '#94a3b8' }
+  finished: { bg: '#111111', c: '#9a9a9a' }
 };
 
 export const HOME_TEAM = "The Elits";

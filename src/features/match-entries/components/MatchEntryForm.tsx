@@ -68,7 +68,7 @@ export function MatchEntryForm({ initial, players, matches, onSave, onClose }: M
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <label className="text-[12px] font-medium text-slate-300">Player</label>
+          <label className="text-[12px] font-medium text-gray-400">Player</label>
           <Select
             {...register('playerId')}
             options={players.map(p => ({ label: p.name, value: p.id }))}
@@ -76,7 +76,7 @@ export function MatchEntryForm({ initial, players, matches, onSave, onClose }: M
           />
         </div>
         <div className="grid gap-2">
-          <label className="text-[12px] font-medium text-slate-300">Match</label>
+          <label className="text-[12px] font-medium text-gray-400">Match</label>
           <Select
             {...register('matchId')}
             options={[
@@ -90,15 +90,15 @@ export function MatchEntryForm({ initial, players, matches, onSave, onClose }: M
 
       <div className="grid grid-cols-3 gap-4">
         <div className="grid gap-2">
-          <label className="text-[12px] font-medium text-slate-300">Goals</label>
+          <label className="text-[12px] font-medium text-gray-400">Goals</label>
           <Input type="number" min={0} {...register('goals')} error={errors.goals?.message} />
         </div>
         <div className="grid gap-2">
-          <label className="text-[12px] font-medium text-slate-300">Goals Conceded</label>
+          <label className="text-[12px] font-medium text-gray-400">Goals Conceded</label>
           <Input type="number" min={0} {...register('goalsConceded')} error={errors.goalsConceded?.message} />
         </div>
         <div className="grid gap-2">
-          <label className="text-[12px] font-medium text-slate-300">Result (auto)</label>
+          <label className="text-[12px] font-medium text-gray-400">Result (auto)</label>
           <Select
             {...register('result')}
             disabled
@@ -109,14 +109,14 @@ export function MatchEntryForm({ initial, players, matches, onSave, onClose }: M
       </div>
 
       <div className="grid gap-2">
-        <label className="text-[12px] font-medium text-slate-300">Date</label>
+        <label className="text-[12px] font-medium text-gray-400">Date</label>
         <Input type="date" {...register('date')} error={errors.date?.message} />
       </div>
 
       <div className="bg-muted/50 border border-border p-3 rounded-lg mb-2">
-        <label className="text-[12px] font-semibold text-slate-300 mb-3 block">Flags</label>
+        <label className="text-[12px] font-semibold text-gray-400 mb-3 block">Flags</label>
         <div className="flex items-center justify-between bg-background border border-border rounded-lg px-3 py-2 mb-2">
-          <span className="text-[12px] text-slate-300">Hat-tricks (auto-calculated)</span>
+          <span className="text-[12px] text-gray-400">Hat-tricks (auto-calculated)</span>
           <span className={`text-[13px] font-bold py-0.5 px-3 rounded-md border ${hattricks > 0 ? 'bg-accent text-accent-foreground border-accent-foreground/50' : 'bg-muted text-muted-foreground border-border'}`}>
             {hattricks}
           </span>
@@ -126,7 +126,7 @@ export function MatchEntryForm({ initial, players, matches, onSave, onClose }: M
       </div>
 
       <div className="grid gap-2">
-        <label className="text-[12px] font-medium text-slate-300">Notes</label>
+        <label className="text-[12px] font-medium text-gray-400">Notes</label>
         <Textarea rows={2} {...register('notes')} error={errors.notes?.message} />
       </div>
 

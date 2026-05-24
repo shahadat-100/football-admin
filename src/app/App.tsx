@@ -29,7 +29,7 @@ export function AppShell() {
       {/* Topbar */}
       <header className="bg-popover border-b border-border h-14 flex items-center justify-between px-5 shrink-0 shadow-sm z-10 w-full">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-lg shadow-primary/20">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-gray-800 flex items-center justify-center shadow-lg shadow-primary/20">
             <span className="text-white text-lg leading-none">⚽</span>
           </div>
           <span className="font-bold text-[15px] tracking-wide text-white">Football Admin</span>

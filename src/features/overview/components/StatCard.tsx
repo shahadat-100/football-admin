@@ -7,7 +7,7 @@ interface StatCardProps {
   onClick?: () => void;
 }
 
-export function StatCard({ label, value, accent = '#6366f1', onClick }: StatCardProps) {
+export function StatCard({ label, value, accent = '#1a1a1a', onClick }: StatCardProps) {
   return (
     <div 
       onClick={onClick}
