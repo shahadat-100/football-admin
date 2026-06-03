@@ -52,15 +52,37 @@ export const useFootballStore = create<FootballStore>()(
       },
       setPlayers: (players) => set({ players }),
       addPlayer: async (p) => {
-        const { id, ...playerData } = p;
+        // Only send columns that exist in the DB - strip any extra form fields
+        const playerData = {
+          name: p.name,
+          profileImageUrl: p.profileImageUrl ?? '',
+          jerseyNumber: p.jerseyNumber ?? null,
+          playerRoles: p.playerRoles ?? [],
+          customTags: p.customTags ?? [],
+          seasons: (p as any).seasons ?? [],
+        };
         const { data, error } = await supabase.from('players').insert([playerData]).select().single();
         if (data) set((state) => ({ players: [...state.players, data as Player] }));
-        if (error) console.error('Error adding player:', error);
+        if (error) {
+          console.error('Error adding player:', error);
+          alert('Failed to save player: ' + error.message);
+        }
       },
       updatePlayer: async (p) => {
-        const { data, error } = await supabase.from('players').update(p).eq('id', p.id).select().single();
+        const playerData = {
+          name: p.name,
+          profileImageUrl: p.profileImageUrl ?? '',
+          jerseyNumber: p.jerseyNumber ?? null,
+          playerRoles: p.playerRoles ?? [],
+          customTags: p.customTags ?? [],
+          seasons: (p as any).seasons ?? [],
+        };
+        const { data, error } = await supabase.from('players').update(playerData).eq('id', p.id).select().single();
         if (data) set((state) => ({ players: state.players.map(x => x.id === p.id ? (data as Player) : x) }));
-        if (error) console.error('Error updating player:', error);
+        if (error) {
+          console.error('Error updating player:', error);
+          alert('Failed to update player: ' + error.message);
+        }
       },
       removePlayer: async (id) => {
         const { error } = await supabase.from('players').delete().eq('id', id);
@@ -72,6 +94,7 @@ export const useFootballStore = create<FootballStore>()(
           });
         } else {
           console.error('Error removing player:', error);
+          alert('Failed to delete player: ' + error.message);
         }
       },
       
