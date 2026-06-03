@@ -8,61 +8,54 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: '#f0e6c8',       // Aged Panini cream
-        foreground: '#1a1f3c',       // Deep navy
-        card: '#fdf6e3',             // Warm off-white
-        'card-foreground': '#1a1f3c',
-        popover: '#fdf6e3',
-        'popover-foreground': '#1a1f3c',
+        background: '#fafafa',
+        foreground: '#111111',
+        card: '#ffffff',
+        'card-foreground': '#111111',
+        popover: '#ffffff',
+        'popover-foreground': '#111111',
         primary: '#c8102e',          // Classic football red
         'primary-foreground': '#ffffff',
-        secondary: '#1a1f3c',        // Deep navy
-        'secondary-foreground': '#f0e6c8',
-        muted: '#d9cdb0',            // Worn tan
-        'muted-foreground': '#5a5340',
-        accent: '#d4a017',           // Vintage gold
-        'accent-foreground': '#1a1f3c',
-        destructive: '#8b0000',      // Dark red
+        secondary: '#f5f5f5',
+        'secondary-foreground': '#111111',
+        muted: '#f3f4f6',
+        'muted-foreground': '#6b7280',
+        accent: '#c8102e',
+        'accent-foreground': '#ffffff',
+        destructive: '#ef4444',
         'destructive-foreground': '#ffffff',
-        border: '#1a1f3c',           // Hard navy borders
-        input: '#fdf6e3',
+        border: '#e5e7eb',
+        input: '#ffffff',
         ring: '#c8102e',
       },
       fontFamily: {
-        sans: ['"Courier Prime"', 'monospace'],
-        heading: ['"Oswald"', '"Bebas Neue"', 'sans-serif'],
-        mono: ['"Courier Prime"', 'monospace'],
+        sans: ['"Inter"', 'sans-serif'],
+        heading: ['"Inter"', 'sans-serif'],
+        mono: ['monospace'],
       },
       boxShadow: {
-        'retro': '4px 4px 0px 0px #1a1f3c',
-        'retro-hover': '6px 6px 0px 0px #1a1f3c',
-        'retro-active': '2px 2px 0px 0px #1a1f3c',
-        DEFAULT: '4px 4px 0px 0px #1a1f3c',
-        sm: '2px 2px 0px 0px #1a1f3c',
-        md: '4px 4px 0px 0px #1a1f3c',
-        lg: '6px 6px 0px 0px #1a1f3c',
-        xl: '8px 8px 0px 0px #1a1f3c',
+        DEFAULT: '0 1px 3px rgba(0,0,0,0.08)',
+        sm: '0 1px 2px rgba(0,0,0,0.05)',
+        md: '0 4px 6px rgba(0,0,0,0.05)',
+        lg: '0 10px 15px rgba(0,0,0,0.05)',
+        xl: '0 20px 25px rgba(0,0,0,0.05)',
         none: 'none',
       },
       borderRadius: {
-        DEFAULT: '0px',
-        sm: '0px',
-        md: '0px',
-        lg: '2px',
-        xl: '2px',
-        '2xl': '2px',
-        '3xl': '2px',
+        DEFAULT: '8px',
+        sm: '4px',
+        md: '8px',
+        lg: '12px',
+        xl: '16px',
+        '2xl': '24px',
+        '3xl': '32px',
       },
       borderWidth: {
-        DEFAULT: '2px',
+        DEFAULT: '1px',
         '2': '2px',
-        '3': '3px',
-        '4': '4px',
       },
       letterSpacing: {
-        scoreboard: '0.15em',
-        stamp: '0.25em',
-        wide: '0.1em',
+        tight: '-0.02em',
       },
       screens: {
         'sidebar-sm': '640px',

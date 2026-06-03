@@ -27,24 +27,18 @@ export function AppShell() {
   return (
     <div className="flex flex-col h-screen min-h-[600px] max-h-screen bg-background text-foreground font-sans overflow-hidden">
       {/* Topbar */}
-      <header className="bg-popover border-b border-border h-14 flex items-center justify-between px-5 shrink-0 shadow-sm z-10 w-full">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-gray-800 flex items-center justify-center shadow-lg shadow-primary/20">
-            <span className="text-white text-lg leading-none">⚽</span>
+      <header className="bg-popover border-b border-border h-16 flex items-center justify-between px-6 shrink-0 shadow-sm z-10 w-full">
+        <div className="flex items-center gap-8">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-red-800 flex items-center justify-center shadow-sm">
+              <span className="text-white text-lg leading-none">⚽</span>
+            </div>
+            <span className="font-semibold text-[15px] tracking-tight text-foreground">Football Admin</span>
           </div>
-          <span className="font-bold text-[15px] tracking-wide text-white">Football Admin</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-          <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Live System</span>
-        </div>
-      </header>
 
-      {/* Body */}
-      <div className="flex flex-1 overflow-hidden h-full">
-        {/* Sidebar */}
-        <aside className="w-[60px] sm:w-[200px] lg:w-[220px] bg-popover border-r border-border flex flex-col pt-4 shrink-0 transition-all duration-300 h-full">
-          <nav className="flex-1 px-2 sm:px-3 flex flex-col gap-1 overflow-y-auto">
+          {/* Navigation */}
+          <nav className="hidden md:flex items-center gap-1">
             {NAV.map(t => {
               const Icon = t.icon;
               const isActive = location.pathname.includes('/' + t.id);
@@ -53,18 +47,16 @@ export function AppShell() {
                   key={t.id}
                   to={`/${t.id}`}
                   className={cn(
-                    "flex items-center justify-center sm:justify-between px-0 sm:px-3 py-3 sm:py-2.5 rounded-lg border-none cursor-pointer transition-all duration-200 group relative outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                    isActive ? "bg-muted text-foreground font-semibold shadow-sm" : "bg-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground font-medium"
+                    "flex items-center gap-2 px-3 py-2 rounded-md text-[13px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                    isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                   )}
                 >
-                  <div className="flex items-center gap-3">
-                    <Icon className={cn("w-[18px] h-[18px] transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary")} strokeWidth={isActive ? 2.5 : 2} />
-                    <span className="text-[13px] hidden sm:block">{t.label}</span>
-                  </div>
+                  <Icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} strokeWidth={2} />
+                  <span>{t.label}</span>
                   {counts[t.id] > 0 && (
                     <span className={cn(
-                      "hidden sm:flex h-5 items-center justify-center px-1.5 rounded-full text-[10px] font-bold transition-colors",
-                      isActive ? "bg-background text-foreground border border-border" : "bg-muted text-muted-foreground group-hover:text-foreground"
+                      "ml-1 flex h-4 items-center justify-center px-1.5 rounded-full text-[10px] font-semibold",
+                      isActive ? "bg-background border border-border" : "bg-muted-foreground/10"
                     )}>
                       {counts[t.id]}
                     </span>
@@ -73,40 +65,40 @@ export function AppShell() {
               );
             })}
           </nav>
+        </div>
 
-          <div className="border-t border-border mt-auto p-2 sm:p-3 bg-muted/20 shrink-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5 overflow-hidden">
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-[11px] font-bold text-white shrink-0 shadow-md">
-                  {user?.name?.charAt(0) || 'A'}
-                </div>
-                <div className="hidden sm:block overflow-hidden">
-                  <p className="text-[12px] font-semibold text-foreground leading-tight truncate">{user?.name || 'Admin User'}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{user?.email || 'Super admin'}</p>
-                </div>
+        {/* Right Section */}
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Live System</span>
+          </div>
+
+          <div className="flex items-center gap-3 pl-4 border-l border-border">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-[12px] font-semibold text-white shadow-sm">
+                {user?.name?.charAt(0) || 'A'}
               </div>
-              <button 
-                onClick={() => logout()}
-                className="hidden sm:flex p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors tooltip outline-none"
-                title="Logout"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
+              <div className="hidden lg:block">
+                <p className="text-[13px] font-medium text-foreground leading-none">{user?.name || 'Admin User'}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">{user?.email || 'Super admin'}</p>
+              </div>
             </div>
-            {/* Mobile Logout Button Icons only */}
             <button 
               onClick={() => logout()}
-              className="flex sm:hidden w-full items-center justify-center mt-3 p-2 text-muted-foreground hover:text-destructive transition-colors"
+              className="p-2 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors tooltip outline-none"
+              title="Logout"
             >
               <LogOut className="w-[18px] h-[18px]" />
             </button>
           </div>
-        </aside>
+        </div>
+      </header>
 
-
-        {/* Main Content */}
-        <main className="flex-1 bg-background overflow-y-auto p-4 sm:p-6 lg:p-8 relative w-full h-full">
-          <div className="max-w-[1400px] mx-auto pb-12 w-full">
+      {/* Main Content */}
+      <div className="flex flex-1 overflow-hidden h-full">
+        <main className="flex-1 bg-background overflow-y-auto p-6 sm:p-8 lg:p-10 relative w-full h-full">
+          <div className="max-w-[1200px] mx-auto pb-12 w-full">
             <Outlet />
           </div>
         </main>
