@@ -88,6 +88,7 @@ export const useFootballStore = create<FootballStore>()(
         removeNews: (id) => set((state) => ({ news: state.news.filter(x => x.id !== id) })),
       }),
       { name: 'football-store' }
-    )
+    ),
+    { enabled: process.env.NODE_ENV !== 'production' }
   )
 );

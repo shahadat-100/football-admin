@@ -1,10 +1,14 @@
 import { jwtVerify } from 'jose';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@football.com';
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret-for-local-dev-change-this-now');
+const JWT_SECRET_STRING = process.env.JWT_SECRET;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!JWT_SECRET_STRING) {
+    return res.status(500).json({ message: 'Internal server configuration error' });
+  }
+  
+  const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_STRING);
   const token = req.cookies?.auth_token;
 
   if (!token) {

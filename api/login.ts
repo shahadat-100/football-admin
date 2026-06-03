@@ -3,14 +3,21 @@ import bcrpyt from 'bcryptjs';
 import { serialize } from 'cookie';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@football.com';
-const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || '$2b$10$MInQ15ItItf6zBXXtPI3vO5/EwbWPV2OCxKU5PMFuR08SJbMOwD9a';
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback-secret-for-local-dev-change-this-now');
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
+const JWT_SECRET_STRING = process.env.JWT_SECRET;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
+
+  if (!ADMIN_EMAIL || !ADMIN_PASSWORD_HASH || !JWT_SECRET_STRING) {
+    console.error('Missing required environment variables for authentication.');
+    return res.status(500).json({ message: 'Internal server configuration error' });
+  }
+  
+  const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_STRING);
 
   const { email, password } = req.body;
 
@@ -30,14 +37,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = await new SignJWT({ email, role: 'admin' })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('7d')
+    .setExpirationTime('24h')
     .sign(JWT_SECRET);
 
   const cookie = serialize('auth_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60, // 7 days
+    maxAge: 24 * 60 * 60, // 24 hours
     path: '/',
   });
 

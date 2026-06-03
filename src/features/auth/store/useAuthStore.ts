@@ -61,7 +61,7 @@ export const useAuthStore = create<AuthState>()(
         logout: async () => {
           set({ isLoading: true });
           try {
-            await fetch('/api/logout');
+            await fetch('/api/logout', { method: 'POST' });
           } catch (err) {
             console.error('Logout error:', err);
           } finally {
@@ -88,8 +88,9 @@ export const useAuthStore = create<AuthState>()(
       }),
       {
         name: 'auth-storage',
-        partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+        partialize: (state) => ({ user: state.user }),
       }
-    )
+    ),
+    { enabled: process.env.NODE_ENV !== 'production' }
   )
 );
