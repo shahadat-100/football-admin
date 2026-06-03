@@ -108,17 +108,27 @@ export const useFootballStore = create<FootballStore>()(
         const { id, ...matchData } = m;
         const { data, error } = await supabase.from('matches').insert([matchData]).select().single();
         if (data) set((state) => ({ matches: [...state.matches, data as Match] }));
-        if (error) console.error('Error adding match:', error);
+        if (error) {
+          console.error('Error adding match:', error);
+          alert('Failed to save match: ' + error.message);
+        }
       },
       updateMatch: async (m) => {
-        const { data, error } = await supabase.from('matches').update(m).eq('id', m.id).select().single();
-        if (data) set((state) => ({ matches: state.matches.map(x => x.id === m.id ? (data as Match) : x) }));
-        if (error) console.error('Error updating match:', error);
+        const { id, ...matchData } = m;
+        const { data, error } = await supabase.from('matches').update(matchData).eq('id', id).select().single();
+        if (data) set((state) => ({ matches: state.matches.map(x => x.id === id ? (data as Match) : x) }));
+        if (error) {
+          console.error('Error updating match:', error);
+          alert('Failed to update match: ' + error.message);
+        }
       },
       removeMatch: async (id) => {
         const { error } = await supabase.from('matches').delete().eq('id', id);
         if (!error) set((state) => ({ matches: state.matches.filter(x => x.id !== id) }));
-        else console.error('Error removing match:', error);
+        else {
+          console.error('Error removing match:', error);
+          alert('Failed to delete match: ' + error.message);
+        }
       },
       
       fetchMatchEntries: async () => {
