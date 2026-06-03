@@ -122,24 +122,27 @@ export const useFootballStore = create<FootballStore>()(
       },
       
       fetchMatchEntries: async () => {
-        const { data, error } = await supabase.from('matchEntries').select('*');
+        const { data, error } = await supabase.from('match_entries').select('*');
         if (data) set({ matchEntries: data as MatchEntry[] });
         if (error) console.error('Error fetching match entries:', error);
       },
       setMatchEntries: (matchEntries) => set({ matchEntries }),
       addMatchEntry: async (e) => {
         const { id, ...entryData } = e;
-        const { data, error } = await supabase.from('matchEntries').insert([entryData]).select().single();
+        const { data, error } = await supabase.from('match_entries').insert([entryData]).select().single();
         if (data) set((state) => ({ matchEntries: [...state.matchEntries, data as MatchEntry] }));
-        if (error) console.error('Error adding match entry:', error);
+        if (error) {
+          console.error('Error adding match entry:', error);
+          alert('Failed to save entry: ' + error.message);
+        }
       },
       updateMatchEntry: async (e) => {
-        const { data, error } = await supabase.from('matchEntries').update(e).eq('id', e.id).select().single();
+        const { data, error } = await supabase.from('match_entries').update(e).eq('id', e.id).select().single();
         if (data) set((state) => ({ matchEntries: state.matchEntries.map(x => x.id === e.id ? (data as MatchEntry) : x) }));
         if (error) console.error('Error updating match entry:', error);
       },
       removeMatchEntry: async (id) => {
-        const { error } = await supabase.from('matchEntries').delete().eq('id', id);
+        const { error } = await supabase.from('match_entries').delete().eq('id', id);
         if (!error) set((state) => ({ matchEntries: state.matchEntries.filter(x => x.id !== id) }));
         else console.error('Error removing match entry:', error);
       },
