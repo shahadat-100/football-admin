@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useFootballStore } from '@/store/footballStore';
 import { useAuthStore } from '@/features/auth/store/useAuthStore';
@@ -16,6 +17,10 @@ export function AppShell() {
   const state = useFootballStore();
   const { user, logout } = useAuthStore();
   const location = useLocation();
+
+  useEffect(() => {
+    state.fetchPlayers();
+  }, []);
 
   const counts: Record<string, number> = {
     players: state.players.length,
