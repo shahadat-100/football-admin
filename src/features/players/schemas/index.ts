@@ -7,6 +7,7 @@ const PlayerRoleEnum = z.enum([ALL_TAGS[0], ...ALL_TAGS.slice(1)]);
 
 export const weeklyStatSchema = z.object({
   week: z.number().min(1).max(5),
+  matchDates: z.array(z.string()).default([]),
   matches: z.number().min(0).default(0),
   win: z.number().min(0).default(0),
   loss: z.number().min(0).default(0),
