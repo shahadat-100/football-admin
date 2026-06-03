@@ -4,9 +4,7 @@ import { Player } from '@/features/players/types';
 import { Match } from '@/features/matches/types';
 import { MatchEntry } from '@/features/match-entries/types';
 import { NewsArticle } from '@/features/news/types';
-import { HOME_TEAM } from '@/shared/lib/constants';
 import { supabase } from '@/lib/supabase';
-const CURRENT_YEAR = new Date().getFullYear();
 
 interface FootballStore {
   players: Player[];
@@ -20,38 +18,31 @@ interface FootballStore {
   updatePlayer: (p: Player) => Promise<void>;
   removePlayer: (id: string) => Promise<void>;
   
+  fetchMatches: () => Promise<void>;
   setMatches: (m: Match[]) => void;
-  addMatch: (m: Match) => void;
-  updateMatch: (m: Match) => void;
-  removeMatch: (id: string) => void;
+  addMatch: (m: Match) => Promise<void>;
+  updateMatch: (m: Match) => Promise<void>;
+  removeMatch: (id: string) => Promise<void>;
   
+  fetchMatchEntries: () => Promise<void>;
   setMatchEntries: (e: MatchEntry[]) => void;
-  addMatchEntry: (e: MatchEntry) => void;
-  updateMatchEntry: (e: MatchEntry) => void;
-  removeMatchEntry: (id: string) => void;
+  addMatchEntry: (e: MatchEntry) => Promise<void>;
+  updateMatchEntry: (e: MatchEntry) => Promise<void>;
+  removeMatchEntry: (id: string) => Promise<void>;
   
+  fetchNews: () => Promise<void>;
   setNews: (n: NewsArticle[]) => void;
-  addNews: (n: NewsArticle) => void;
-  updateNews: (n: NewsArticle) => void;
-  removeNews: (id: string) => void;
+  addNews: (n: NewsArticle) => Promise<void>;
+  updateNews: (n: NewsArticle) => Promise<void>;
+  removeNews: (id: string) => Promise<void>;
 }
-
-const initialPlayers: Player[] = [];
-
-const initialMatches: Match[] = [
-  {id:'m1',homeTeam:HOME_TEAM as "The Elits",awayTeam:'Man City',homeScore:2,awayScore:1,date:'2024-03-15',competition:'Premier League',status:'finished'},
-];
-
-const initialMatchEntries: MatchEntry[] = [
-  {id:'me1',playerId:'p1',matchId:'m1',goals:2,goalsConceded:1,result:'win',hattricks:0,cleanSheet:false,motm:true,date:'2024-03-15',notes:'Outstanding performance'},
-];
 
 export const useFootballStore = create<FootballStore>()(
   devtools(
     (set, get) => ({
-      players: initialPlayers,
-      matches: initialMatches,
-      matchEntries: initialMatchEntries,
+      players: [],
+      matches: [],
+      matchEntries: [],
       news: [],
       
       fetchPlayers: async () => {
@@ -84,20 +75,74 @@ export const useFootballStore = create<FootballStore>()(
         }
       },
       
+      fetchMatches: async () => {
+        const { data, error } = await supabase.from('matches').select('*');
+        if (data) set({ matches: data as Match[] });
+        if (error) console.error('Error fetching matches:', error);
+      },
       setMatches: (matches) => set({ matches }),
-      addMatch: (m) => set((state) => ({ matches: [...state.matches, m] })),
-      updateMatch: (m) => set((state) => ({ matches: state.matches.map(x => x.id === m.id ? m : x) })),
-      removeMatch: (id) => set((state) => ({ matches: state.matches.filter(x => x.id !== id) })),
+      addMatch: async (m) => {
+        const { id, ...matchData } = m;
+        const { data, error } = await supabase.from('matches').insert([matchData]).select().single();
+        if (data) set((state) => ({ matches: [...state.matches, data as Match] }));
+        if (error) console.error('Error adding match:', error);
+      },
+      updateMatch: async (m) => {
+        const { data, error } = await supabase.from('matches').update(m).eq('id', m.id).select().single();
+        if (data) set((state) => ({ matches: state.matches.map(x => x.id === m.id ? (data as Match) : x) }));
+        if (error) console.error('Error updating match:', error);
+      },
+      removeMatch: async (id) => {
+        const { error } = await supabase.from('matches').delete().eq('id', id);
+        if (!error) set((state) => ({ matches: state.matches.filter(x => x.id !== id) }));
+        else console.error('Error removing match:', error);
+      },
       
+      fetchMatchEntries: async () => {
+        const { data, error } = await supabase.from('matchEntries').select('*');
+        if (data) set({ matchEntries: data as MatchEntry[] });
+        if (error) console.error('Error fetching match entries:', error);
+      },
       setMatchEntries: (matchEntries) => set({ matchEntries }),
-      addMatchEntry: (e) => set((state) => ({ matchEntries: [...state.matchEntries, e] })),
-      updateMatchEntry: (e) => set((state) => ({ matchEntries: state.matchEntries.map(x => x.id === e.id ? e : x) })),
-      removeMatchEntry: (id) => set((state) => ({ matchEntries: state.matchEntries.filter(x => x.id !== id) })),
+      addMatchEntry: async (e) => {
+        const { id, ...entryData } = e;
+        const { data, error } = await supabase.from('matchEntries').insert([entryData]).select().single();
+        if (data) set((state) => ({ matchEntries: [...state.matchEntries, data as MatchEntry] }));
+        if (error) console.error('Error adding match entry:', error);
+      },
+      updateMatchEntry: async (e) => {
+        const { data, error } = await supabase.from('matchEntries').update(e).eq('id', e.id).select().single();
+        if (data) set((state) => ({ matchEntries: state.matchEntries.map(x => x.id === e.id ? (data as MatchEntry) : x) }));
+        if (error) console.error('Error updating match entry:', error);
+      },
+      removeMatchEntry: async (id) => {
+        const { error } = await supabase.from('matchEntries').delete().eq('id', id);
+        if (!error) set((state) => ({ matchEntries: state.matchEntries.filter(x => x.id !== id) }));
+        else console.error('Error removing match entry:', error);
+      },
       
+      fetchNews: async () => {
+        const { data, error } = await supabase.from('news').select('*');
+        if (data) set({ news: data as NewsArticle[] });
+        if (error) console.error('Error fetching news:', error);
+      },
       setNews: (news) => set({ news }),
-      addNews: (n) => set((state) => ({ news: [...state.news, n] })),
-      updateNews: (n) => set((state) => ({ news: state.news.map(x => x.id === n.id ? n : x) })),
-      removeNews: (id) => set((state) => ({ news: state.news.filter(x => x.id !== id) })),
+      addNews: async (n) => {
+        const { id, ...newsData } = n;
+        const { data, error } = await supabase.from('news').insert([newsData]).select().single();
+        if (data) set((state) => ({ news: [...state.news, data as NewsArticle] }));
+        if (error) console.error('Error adding news:', error);
+      },
+      updateNews: async (n) => {
+        const { data, error } = await supabase.from('news').update(n).eq('id', n.id).select().single();
+        if (data) set((state) => ({ news: state.news.map(x => x.id === n.id ? (data as NewsArticle) : x) }));
+        if (error) console.error('Error updating news:', error);
+      },
+      removeNews: async (id) => {
+        const { error } = await supabase.from('news').delete().eq('id', id);
+        if (!error) set((state) => ({ news: state.news.filter(x => x.id !== id) }));
+        else console.error('Error removing news:', error);
+      },
     }),
     { enabled: process.env.NODE_ENV !== 'production' }
   )

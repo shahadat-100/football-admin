@@ -20,6 +20,9 @@ export function AppShell() {
 
   useEffect(() => {
     state.fetchPlayers();
+    state.fetchMatches();
+    state.fetchMatchEntries();
+    state.fetchNews();
   }, []);
 
   const counts: Record<string, number> = {
