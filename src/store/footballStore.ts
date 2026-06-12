@@ -1,0 +1,815 @@
+import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
+import { Player, SeasonDb, PlayerSeasonStat } from '@/features/players/types';
+import { Match } from '@/features/matches/types';
+import { MatchEntry } from '@/features/match-entries/types';
+import { NewsArticle } from '@/features/news/types';
+import { supabase } from '@/lib/supabase';
+
+export interface HallOfFameEntry {
+  id: number;
+  createdAt: string;
+  playerId: string;
+  category: string;
+  seasonText: string;
+  subTitle: string;
+  descriptions: string;
+}
+
+export interface Competition {
+  id: number;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+// ── Database Mapping Helpers ─────────────────────────────────────────
+
+export const mapPlayerFromDb = (p: any): Player => ({
+  id: p.id,
+  name: p.name,
+  profileImageUrl: p.profileimageurl || '',
+  jerseyNumber: p.jerseynumber ?? undefined,
+  playerRoles: p.playerroles || [],
+  customTags: p.customtags || [],
+  createdAt: p.createdat || '',
+  seasons: [],
+});
+
+export const mapPlayerToDb = (p: any) => ({
+  name: p.name,
+  profileimageurl: p.profileImageUrl || '',
+  jerseynumber: p.jerseyNumber ?? null,
+  playerroles: p.playerRoles || [],
+  customtags: p.customTags || [],
+});
+
+export const mapMatchFromDb = (m: any): Match => ({
+  id: m.id,
+  seasonId: m.season_id,
+  homeTeam: m.hometeam,
+  awayTeam: m.awayteam,
+  homeScore: m.homescore,
+  awayScore: m.awayscore,
+  date: m.date,
+  status: m.status,
+  competitionId: m.competition_id,
+  competition: m.competitions?.name || 'Premier League',
+});
+
+export const mapMatchToDb = (m: any) => ({
+  season_id: m.seasonId,
+  hometeam: m.homeTeam,
+  awayteam: m.awayTeam,
+  homescore: m.homeScore,
+  awayscore: m.awayScore,
+  date: m.date,
+  status: m.status,
+  competition_id: m.competitionId,
+});
+
+export const mapMatchEntryFromDb = (e: any): MatchEntry => ({
+  id: e.id,
+  playerId: e.playerid,
+  matchId: e.matchid,
+  goals: e.goals || 0,
+  goalsConceded: e.goalsconceded || 0,
+  result: e.result,
+  hattricks: e.hattricks || 0,
+  cleanSheet: e.cleansheet || false,
+  motm: e.motm || false,
+  date: e.matches?.date || '',
+  notes: e.notes || '',
+  seasonId: e.season_id,
+});
+
+export const mapMatchEntryToDb = (e: any) => ({
+  playerid: e.playerId,
+  matchid: e.matchId,
+  goals: e.goals || 0,
+  goalsconceded: e.goalsConceded || 0,
+  result: e.result,
+  hattricks: e.hattricks || 0,
+  cleansheet: e.cleanSheet || false,
+  motm: e.motm || false,
+  notes: e.notes || '',
+  season_id: e.seasonId,
+});
+
+export const mapHallOfFameFromDb = (h: any): HallOfFameEntry => ({
+  id: h.id,
+  createdAt: h.created_at,
+  playerId: h.player_id,
+  category: h.category,
+  seasonText: h.season_text,
+  subTitle: h.sub_title,
+  descriptions: h.descriptions,
+});
+
+export const mapHallOfFameToDb = (h: any) => ({
+  player_id: h.playerId,
+  category: h.category,
+  season_text: h.seasonText,
+  sub_title: h.subTitle,
+  descriptions: h.descriptions,
+});
+
+interface FootballStore {
+  players: Player[];
+  matches: Match[];
+  matchEntries: MatchEntry[];
+  news: NewsArticle[];
+  seasons: SeasonDb[];
+  playerSeasonStats: PlayerSeasonStat[];
+  competitions: Competition[];
+  hallOfFame: HallOfFameEntry[];
+  
+  fetchPlayers: () => Promise<void>;
+  setPlayers: (p: Player[]) => void;
+  addPlayer: (p: Player) => Promise<void>;
+  updatePlayer: (p: Player) => Promise<void>;
+  removePlayer: (id: string) => Promise<void>;
+  
+  fetchMatches: () => Promise<void>;
+  setMatches: (m: Match[]) => void;
+  addMatch: (m: Match) => Promise<void>;
+  updateMatch: (m: Match) => Promise<void>;
+  removeMatch: (id: string) => Promise<void>;
+  
+  fetchMatchEntries: () => Promise<void>;
+  setMatchEntries: (e: MatchEntry[]) => void;
+  addMatchEntry: (e: MatchEntry) => Promise<void>;
+  updateMatchEntry: (e: MatchEntry) => Promise<void>;
+  removeMatchEntry: (id: string) => Promise<void>;
+  
+  fetchNews: () => Promise<void>;
+  setNews: (n: NewsArticle[]) => void;
+  addNews: (n: NewsArticle) => Promise<void>;
+  updateNews: (n: NewsArticle) => Promise<void>;
+  removeNews: (id: string) => Promise<void>;
+
+  fetchSeasons: () => Promise<void>;
+  addSeason: (name: string) => Promise<SeasonDb | undefined>;
+  setCurrentSeason: (id: number) => Promise<void>;
+
+  fetchPlayerSeasonStats: () => Promise<void>;
+  fetchCompetitions: () => Promise<void>;
+
+  fetchHallOfFame: () => Promise<void>;
+  addHallOfFameEntry: (entry: Omit<HallOfFameEntry, 'id' | 'createdAt'>) => Promise<void>;
+  updateHallOfFameEntry: (entry: HallOfFameEntry) => Promise<void>;
+  removeHallOfFameEntry: (id: number) => Promise<void>;
+}
+
+// ── Background Aggregation Sync Helper ───────────────────────────────
+
+const updatePlayerSeasonStats = async (playerId: string, seasonId: number) => {
+  const { data: entries, error } = await supabase
+    .from('match_entries')
+    .select('*, matches(status, date)')
+    .eq('playerid', playerId)
+    .eq('season_id', seasonId);
+
+  if (error || !entries) {
+    console.error('Error fetching entries for stats:', error);
+    return;
+  }
+
+  const appearances = entries.length;
+  const goals = entries.reduce((s, e) => s + (e.goals || 0), 0);
+  const cleansheets = entries.filter(e => e.cleansheet).length;
+  const hattricks = entries.reduce((s, e) => s + (e.hattricks || 0), 0);
+  const motmcount = entries.filter(e => e.motm).length;
+  const wins = entries.filter(e => e.result === 'win').length;
+  const draws = entries.filter(e => e.result === 'draw').length;
+  const losses = entries.filter(e => e.result === 'loss').length;
+  const goalsconceded = entries.reduce((s, e) => s + (e.goalsconceded || 0), 0);
+
+  const { data: existing } = await supabase
+    .from('player_season_stats')
+    .select('id')
+    .eq('player_id', playerId)
+    .eq('season_id', seasonId)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase
+      .from('player_season_stats')
+      .update({
+        appearances,
+        goals,
+        cleansheets,
+        hattricks,
+        motmcount,
+        wins,
+        draws,
+        losses,
+        goalsconceded,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existing.id);
+  } else {
+    await supabase
+      .from('player_season_stats')
+      .insert({
+        player_id: playerId,
+        season_id: seasonId,
+        appearances,
+        goals,
+        cleansheets,
+        hattricks,
+        motmcount,
+        wins,
+        draws,
+        losses,
+        goalsconceded,
+        updated_at: new Date().toISOString()
+      });
+  }
+};
+
+export const useFootballStore = create<FootballStore>()(
+  devtools(
+    (set, get) => ({
+      players: [],
+      matches: [],
+      matchEntries: [],
+      news: [],
+      seasons: [],
+      playerSeasonStats: [],
+      competitions: [],
+      hallOfFame: [],
+      
+      fetchPlayers: async () => {
+        const { data, error } = await supabase.from('players').select('*');
+        if (data) {
+          set({ players: data.map(mapPlayerFromDb) });
+        }
+        if (error) console.error('Error fetching players:', error);
+      },
+      setPlayers: (players) => set({ players }),
+      
+      addPlayer: async (p) => {
+        const { seasons, ...profileData } = p as any;
+        const playerData = mapPlayerToDb(profileData);
+        
+        const { data, error } = await supabase.from('players').insert([playerData]).select().single();
+        if (error) {
+          console.error('Error adding player:', error);
+          alert('Failed to save player: ' + error.message);
+          return;
+        }
+
+        if (data) {
+          const newPlayer = mapPlayerFromDb(data);
+          set((state) => ({ players: [...state.players, newPlayer] }));
+
+          // Save previous seasons data directly to player_season_stats
+          if (seasons && seasons.length > 0) {
+            for (const season of seasons) {
+              let dbSeason = get().seasons.find(s => s.name === `Season ${season.year}`);
+              let seasonId: number;
+              if (dbSeason) {
+                seasonId = dbSeason.id;
+              } else {
+                const { data: newSeason } = await supabase
+                  .from('season')
+                  .insert({
+                    name: `Season ${season.year}`,
+                    start_date: `${season.year}-01-01T00:00:00Z`,
+                    is_current: false
+                  })
+                  .select()
+                  .single();
+                if (newSeason) {
+                  seasonId = newSeason.id;
+                  set(state => ({ seasons: [...state.seasons, newSeason] }));
+                } else {
+                  continue;
+                }
+              }
+
+              let appearances = 0;
+              let goals = 0;
+              let cleansheets = 0;
+              let hattricks = 0;
+              let motmcount = 0;
+              let wins = 0;
+              let draws = 0;
+              let losses = 0;
+              let goalsconceded = 0;
+
+              for (const month of season.monthlyStats ?? []) {
+                for (const week of month.weeklyStats ?? []) {
+                  appearances += week.matches || 0;
+                  goals += week.goalsScored || 0;
+                  cleansheets += week.cleanSheet || 0;
+                  hattricks += week.hattricks || 0;
+                  motmcount += week.motm || 0;
+                  wins += week.win || 0;
+                  draws += week.draw || 0;
+                  losses += week.loss || 0;
+                  goalsconceded += week.goalsConceded || 0;
+                }
+              }
+
+              await supabase.from('player_season_stats').insert({
+                player_id: newPlayer.id,
+                season_id: seasonId,
+                appearances,
+                goals,
+                cleansheets,
+                hattricks,
+                motmcount,
+                wins,
+                draws,
+                losses,
+                goalsconceded,
+                updated_at: new Date().toISOString()
+              });
+            }
+            await get().fetchPlayerSeasonStats();
+          }
+        }
+      },
+      
+      updatePlayer: async (p) => {
+        const playerData = mapPlayerToDb(p);
+        const { data, error } = await supabase.from('players').update(playerData).eq('id', p.id).select().single();
+        if (data) {
+          set((state) => ({ players: state.players.map(x => x.id === p.id ? mapPlayerFromDb(data) : x) }));
+        }
+        if (error) {
+          console.error('Error updating player:', error);
+          alert('Failed to update player: ' + error.message);
+        }
+      },
+      
+      removePlayer: async (id) => {
+        const { error } = await supabase.from('players').delete().eq('id', id);
+        if (!error) {
+          const players = get().players.filter(x => x.id !== id);
+          set({ 
+            players, 
+            matchEntries: get().matchEntries.filter((m: MatchEntry) => m.playerId !== id) 
+          });
+        } else {
+          console.error('Error removing player:', error);
+          alert('Failed to delete player: ' + error.message);
+        }
+      },
+      
+      fetchMatches: async () => {
+        const { data, error } = await supabase.from('matches').select('*, competitions(name)');
+        if (data) {
+          set({ matches: data.map(mapMatchFromDb) });
+        }
+        if (error) console.error('Error fetching matches:', error);
+      },
+      setMatches: (matches) => set({ matches }),
+      
+      addMatch: async (m) => {
+        // Resolve competition name to competition ID
+        let competitionId: number | null = null;
+        if (m.competition) {
+          const existingComp = get().competitions.find(c => c.name.toLowerCase() === m.competition.toLowerCase());
+          if (existingComp) {
+            competitionId = existingComp.id;
+          } else {
+            const { data: newComp } = await supabase
+              .from('competitions')
+              .insert({ name: m.competition })
+              .select()
+              .single();
+            if (newComp) {
+              competitionId = newComp.id;
+              set(state => ({ competitions: [...state.competitions, newComp] }));
+            }
+          }
+        }
+
+        // Auto-create/resolve season based on match date
+        const year = m.date ? m.date.split('-')[0] : new Date().getFullYear().toString();
+        const seasonName = `Season ${year}`;
+        let seasonId: number;
+
+        const existingSeason = get().seasons.find(s => s.name === seasonName);
+        if (existingSeason) {
+          seasonId = existingSeason.id;
+        } else {
+          const { data: newSeason, error: seasonError } = await supabase
+            .from('season')
+            .insert({
+              name: seasonName,
+              start_date: `${year}-01-01T00:00:00Z`,
+              is_current: false
+            })
+            .select()
+            .single();
+
+          if (seasonError || !newSeason) {
+            console.error('Failed to auto-create season:', seasonError);
+            alert('Failed to save match: ' + (seasonError?.message || 'Season error'));
+            return;
+          }
+
+          seasonId = newSeason.id;
+          set(state => ({ seasons: [...state.seasons, newSeason] }));
+        }
+
+        const matchData = mapMatchToDb({
+          ...m,
+          seasonId,
+          competitionId,
+        });
+
+        const { data, error } = await supabase.from('matches').insert([matchData]).select('*, competitions(name)').single();
+        if (data) {
+          set((state) => ({ matches: [...state.matches, mapMatchFromDb(data)] }));
+        }
+        if (error) {
+          console.error('Error adding match:', error);
+          alert('Failed to save match: ' + error.message);
+        }
+      },
+      
+      updateMatch: async (m) => {
+        let competitionId: number | null = null;
+        if (m.competition) {
+          const existingComp = get().competitions.find(c => c.name.toLowerCase() === m.competition.toLowerCase());
+          if (existingComp) {
+            competitionId = existingComp.id;
+          } else {
+            const { data: newComp } = await supabase
+              .from('competitions')
+              .insert({ name: m.competition })
+              .select()
+              .single();
+            if (newComp) {
+              competitionId = newComp.id;
+              set(state => ({ competitions: [...state.competitions, newComp] }));
+            }
+          }
+        }
+
+        // Auto-create/resolve season based on match date
+        const year = m.date ? m.date.split('-')[0] : new Date().getFullYear().toString();
+        const seasonName = `Season ${year}`;
+        let seasonId: number;
+
+        const existingSeason = get().seasons.find(s => s.name === seasonName);
+        if (existingSeason) {
+          seasonId = existingSeason.id;
+        } else {
+          const { data: newSeason, error: seasonError } = await supabase
+            .from('season')
+            .insert({
+              name: seasonName,
+              start_date: `${year}-01-01T00:00:00Z`,
+              is_current: false
+            })
+            .select()
+            .single();
+
+          if (seasonError || !newSeason) {
+            console.error('Failed to auto-create season for update:', seasonError);
+            alert('Failed to update match: ' + (seasonError?.message || 'Season error'));
+            return;
+          }
+
+          seasonId = newSeason.id;
+          set(state => ({ seasons: [...state.seasons, newSeason] }));
+        }
+
+        const matchData = mapMatchToDb({
+          ...m,
+          seasonId,
+          competitionId,
+        });
+
+        const { data, error } = await supabase.from('matches').update(matchData).eq('id', m.id).select('*, competitions(name)').single();
+        if (data) {
+          set((state) => ({ matches: state.matches.map(x => x.id === m.id ? mapMatchFromDb(data) : x) }));
+        }
+        if (error) {
+          console.error('Error updating match:', error);
+          alert('Failed to update match: ' + error.message);
+        }
+      },
+      
+      removeMatch: async (id) => {
+        const { error } = await supabase.from('matches').delete().eq('id', id);
+        if (!error) set((state) => ({ matches: state.matches.filter(x => x.id !== id) }));
+        else {
+          console.error('Error removing match:', error);
+          alert('Failed to delete match: ' + error.message);
+        }
+      },
+      
+      fetchMatchEntries: async () => {
+        const { data, error } = await supabase.from('match_entries').select('*, matches(date)');
+        if (data) {
+          set({ matchEntries: data.map(mapMatchEntryFromDb) });
+        }
+        if (error) console.error('Error fetching match entries:', error);
+      },
+      setMatchEntries: (matchEntries) => set({ matchEntries }),
+      
+      addMatchEntry: async (e) => {
+        let matchId = e.matchId;
+        let seasonId: number;
+        
+        // If matchId is empty (custom entry with no official match), we create a placeholder match to preserve relational integrity and date
+        if (!matchId) {
+          const year = e.date ? e.date.split('-')[0] : new Date().getFullYear().toString();
+          const seasonName = `Season ${year}`;
+          let tempSeasonId: number;
+
+          const existingSeason = get().seasons.find(s => s.name === seasonName);
+          if (existingSeason) {
+            tempSeasonId = existingSeason.id;
+          } else {
+            const { data: newSeason, error: seasonError } = await supabase
+              .from('season')
+              .insert({
+                name: seasonName,
+                start_date: `${year}-01-01T00:00:00Z`,
+                is_current: false
+              })
+              .select()
+              .single();
+
+            if (seasonError || !newSeason) {
+              console.error('Failed to auto-create season for match entry:', seasonError);
+              alert('Failed to add entry: ' + (seasonError?.message || 'Season error'));
+              return;
+            }
+
+            tempSeasonId = newSeason.id;
+            set(state => ({ seasons: [...state.seasons, newSeason] }));
+          }
+
+          const { data: dummyMatch, error: dummyMatchError } = await supabase
+            .from('matches')
+            .insert({
+              season_id: tempSeasonId,
+              hometeam: 'The Elits',
+              awayteam: 'Custom Entry Match',
+              date: e.date || new Date().toISOString().split('T')[0],
+              status: 'finished',
+            })
+            .select()
+            .single();
+
+          if (dummyMatchError || !dummyMatch) {
+            console.error('Failed to create placeholder match:', dummyMatchError);
+            alert('Failed to create entry: ' + dummyMatchError?.message);
+            return;
+          }
+          matchId = dummyMatch.id;
+          seasonId = tempSeasonId;
+          // Refresh matches in state
+          await get().fetchMatches();
+        } else {
+          // Get the season ID associated with the match
+          const associatedMatch = get().matches.find(m => m.id === matchId);
+          if (associatedMatch && associatedMatch.seasonId) {
+            seasonId = associatedMatch.seasonId;
+          } else {
+            alert('Cannot save match entry: no season associated.');
+            return;
+          }
+        }
+
+        const entryData = mapMatchEntryToDb({
+          ...e,
+          matchId,
+          seasonId,
+        });
+
+        const { data, error } = await supabase.from('match_entries').insert([entryData]).select('*, matches(date)').single();
+        if (data) {
+          const newEntry = mapMatchEntryFromDb(data);
+          set((state) => ({ matchEntries: [...state.matchEntries, newEntry] }));
+          
+          // Background Sync Player Season Stats
+          await updatePlayerSeasonStats(newEntry.playerId, seasonId);
+          await get().fetchPlayerSeasonStats();
+        }
+        if (error) {
+          console.error('Error adding match entry:', error);
+          alert('Failed to save entry: ' + error.message);
+        }
+      },
+      
+      updateMatchEntry: async (e) => {
+        const seasonId = e.seasonId || (get().seasons.find(s => s.is_current)?.id || get().seasons[0]?.id);
+        const entryData = mapMatchEntryToDb({
+          ...e,
+          seasonId,
+        });
+        
+        const { data, error } = await supabase.from('match_entries').update(entryData).eq('id', e.id).select('*, matches(date)').single();
+        if (data) {
+          const updatedEntry = mapMatchEntryFromDb(data);
+          set((state) => ({ matchEntries: state.matchEntries.map(x => x.id === e.id ? updatedEntry : x) }));
+          
+          await updatePlayerSeasonStats(updatedEntry.playerId, seasonId);
+          await get().fetchPlayerSeasonStats();
+        }
+        if (error) console.error('Error updating match entry:', error);
+      },
+      
+      removeMatchEntry: async (id) => {
+        const entry = get().matchEntries.find(x => x.id === id);
+        const { error } = await supabase.from('match_entries').delete().eq('id', id);
+        if (!error) {
+          set((state) => ({ matchEntries: state.matchEntries.filter(x => x.id !== id) }));
+          if (entry && entry.seasonId) {
+            await updatePlayerSeasonStats(entry.playerId, entry.seasonId);
+            await get().fetchPlayerSeasonStats();
+          }
+        }
+        else console.error('Error removing match entry:', error);
+      },
+      
+      fetchNews: async () => {
+        const { data, error } = await supabase.from('news').select('*');
+        if (data) set({ news: data as NewsArticle[] });
+        if (error) console.error('Error fetching news:', error);
+      },
+      setNews: (news) => set({ news }),
+      addNews: async (n) => {
+        const { id, ...newsData } = n;
+        const { data, error } = await supabase.from('news').insert([newsData]).select().single();
+        if (data) {
+          set((state) => ({ news: [...state.news, data as NewsArticle] }));
+        }
+        if (error) {
+          console.error('Error adding news:', error);
+          alert('Failed to add news: ' + error.message);
+        }
+      },
+      updateNews: async (n) => {
+        const { id, ...newsData } = n;
+        const { data, error } = await supabase.from('news').update(newsData).eq('id', id).select().single();
+        if (data) {
+          set((state) => ({ news: state.news.map(x => x.id === id ? (data as NewsArticle) : x) }));
+        }
+        if (error) {
+          console.error('Error updating news:', error);
+          alert('Failed to update news: ' + error.message);
+        }
+      },
+      removeNews: async (id) => {
+        const { error } = await supabase.from('news').delete().eq('id', id);
+        if (!error) {
+          set((state) => ({ news: state.news.filter(x => x.id !== id) }));
+        } else {
+          console.error('Error removing news:', error);
+          alert('Failed to delete news: ' + error.message);
+        }
+      },
+
+      fetchSeasons: async () => {
+        const { data, error } = await supabase.from('season').select('*').order('name', { ascending: true });
+        if (data) {
+          set({ seasons: data as SeasonDb[] });
+
+          // Defensive initialization: If no seasons exist, create a default current season
+          if (data.length === 0) {
+            const defaultSeasonName = 'Season 1';
+            const { data: newSeason } = await supabase
+              .from('season')
+              .insert({
+                name: defaultSeasonName,
+                is_current: true,
+                start_date: new Date().toISOString()
+              })
+              .select()
+              .single();
+            if (newSeason) {
+              set({ seasons: [newSeason as SeasonDb] });
+            }
+          }
+        }
+        if (error) console.error('Error fetching seasons:', error);
+      },
+
+      addSeason: async (name: string) => {
+        const { data, error } = await supabase
+          .from('season')
+          .insert({
+            name,
+            start_date: new Date().toISOString(),
+            is_current: false
+          })
+          .select()
+          .single();
+
+        if (data) {
+          const newSeason = data as SeasonDb;
+          set((state) => ({ seasons: [...state.seasons, newSeason].sort((a, b) => a.name.localeCompare(b.name)) }));
+          return newSeason;
+        }
+        if (error) {
+          console.error('Error adding season:', error);
+          alert('Failed to create season: ' + error.message);
+        }
+      },
+
+      setCurrentSeason: async (id: number) => {
+        // Set all seasons is_current to false
+        const { error: resetError } = await supabase.from('season').update({ is_current: false }).neq('id', id);
+        if (resetError) {
+          console.error('Error resetting current seasons:', resetError);
+          return;
+        }
+
+        // Set specific season is_current to true
+        const { data, error } = await supabase.from('season').update({ is_current: true }).eq('id', id).select().single();
+        if (data) {
+          set((state) => ({
+            seasons: state.seasons.map(s => s.id === id ? { ...s, is_current: true } : { ...s, is_current: false })
+          }));
+        }
+        if (error) console.error('Error setting current season:', error);
+      },
+
+      fetchPlayerSeasonStats: async () => {
+        const { data, error } = await supabase.from('player_season_stats').select('*, season(name)');
+        if (data) {
+          set({
+            playerSeasonStats: data.map(item => ({
+              id: item.id,
+              playerId: item.player_id,
+              seasonId: item.season_id,
+              seasonName: item.season?.name || `Season ${item.season_id}`,
+              appearances: item.appearances || 0,
+              goals: item.goals || 0,
+              cleansheets: item.cleansheets || 0,
+              hattricks: item.hattricks || 0,
+              motmCount: item.motmcount || 0,
+              wins: item.wins || 0,
+              draws: item.draws || 0,
+              losses: item.losses || 0,
+              goalsConceded: item.goalsconceded || 0,
+            }))
+          });
+        }
+        if (error) console.error('Error fetching player season stats:', error);
+      },
+
+      fetchCompetitions: async () => {
+        const { data, error } = await supabase.from('competitions').select('*');
+        if (data) {
+          set({ competitions: data as Competition[] });
+        }
+        if (error) console.error('Error fetching competitions:', error);
+      },
+
+      fetchHallOfFame: async () => {
+        const { data, error } = await supabase.from('hall_of_frame').select('*');
+        if (data) {
+          set({ hallOfFame: data.map(mapHallOfFameFromDb) });
+        }
+        if (error) console.error('Error fetching Hall of Fame:', error);
+      },
+
+      addHallOfFameEntry: async (entry) => {
+        const dbData = mapHallOfFameToDb(entry);
+        const { data, error } = await supabase.from('hall_of_frame').insert([dbData]).select().single();
+        if (data) {
+          set((state) => ({ hallOfFame: [...state.hallOfFame, mapHallOfFameFromDb(data)] }));
+        }
+        if (error) {
+          console.error('Error adding Hall of Fame entry:', error);
+          alert('Failed to add entry: ' + error.message);
+        }
+      },
+
+      updateHallOfFameEntry: async (entry) => {
+        const dbData = mapHallOfFameToDb(entry);
+        const { data, error } = await supabase.from('hall_of_frame').update(dbData).eq('id', entry.id).select().single();
+        if (data) {
+          set((state) => ({ hallOfFame: state.hallOfFame.map(x => x.id === entry.id ? mapHallOfFameFromDb(data) : x) }));
+        }
+        if (error) {
+          console.error('Error updating Hall of Fame entry:', error);
+          alert('Failed to update entry: ' + error.message);
+        }
+      },
+
+      removeHallOfFameEntry: async (id) => {
+        const { error } = await supabase.from('hall_of_frame').delete().eq('id', id);
+        if (!error) {
+          set((state) => ({ hallOfFame: state.hallOfFame.filter(x => x.id !== id) }));
+        } else {
+          console.error('Error removing Hall of Fame entry:', error);
+          alert('Failed to delete entry: ' + error.message);
+        }
+      },
+    }),
+    { enabled: process.env.NODE_ENV !== 'production' }
+  )
+);
