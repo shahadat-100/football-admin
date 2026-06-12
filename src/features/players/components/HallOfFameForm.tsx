@@ -57,18 +57,18 @@ export function HallOfFameForm({ initial, players, onSave, onClose }: HallOfFame
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
           <label className="text-[12px] font-medium text-gray-400">Category *</label>
-          <Input 
-            {...register('category')} 
-            placeholder="e.g. Club Legend, Top Scorer" 
+          <Input
+            {...register('category')}
+            placeholder="Ballon d'or, Goldenboot, Solo/Bid turnamnet"
             error={errors.category?.message}
             className="text-[#1a1f3c] bg-[#fdf6e3]"
           />
         </div>
         <div className="grid gap-2">
           <label className="text-[12px] font-medium text-gray-400">Season / Year *</label>
-          <Input 
-            {...register('seasonText')} 
-            placeholder="e.g. Season 2024, 2023-24" 
+          <Input
+            {...register('seasonText')}
+            placeholder="season x"
             error={errors.seasonText?.message}
             className="text-[#1a1f3c] bg-[#fdf6e3]"
           />
@@ -77,9 +77,9 @@ export function HallOfFameForm({ initial, players, onSave, onClose }: HallOfFame
 
       <div className="grid gap-2">
         <label className="text-[12px] font-medium text-gray-400">Sub-title *</label>
-        <Input 
-          {...register('subTitle')} 
-          placeholder="e.g. 45 Goals in 30 Matches" 
+        <Input
+          {...register('subTitle')}
+          placeholder="e.g. 45 Goals in 30 Matches"
           error={errors.subTitle?.message}
           className="text-[#1a1f3c] bg-[#fdf6e3]"
         />
@@ -87,10 +87,10 @@ export function HallOfFameForm({ initial, players, onSave, onClose }: HallOfFame
 
       <div className="grid gap-2">
         <label className="text-[12px] font-medium text-gray-400">Description / Achievement *</label>
-        <Textarea 
-          rows={3} 
-          {...register('descriptions')} 
-          placeholder="Describe their outstanding performance or induction summary..." 
+        <Textarea
+          rows={3}
+          {...register('descriptions')}
+          placeholder="Describe their outstanding performance or induction summary..."
           error={errors.descriptions?.message}
           className="text-[#1a1f3c] bg-[#fdf6e3]"
         />
