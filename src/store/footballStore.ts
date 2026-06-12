@@ -23,6 +23,20 @@ export interface Competition {
   createdAt: string;
 }
 
+export interface PlayerRole {
+  id: number;
+  name: string;
+  status: boolean;
+  createdAt: string;
+}
+
+export interface CustomTag {
+  id: number;
+  name: string;
+  status: boolean;
+  createdAt: string;
+}
+
 // ── Database Mapping Helpers ─────────────────────────────────────────
 
 export const mapPlayerFromDb = (p: any): Player => ({
@@ -123,6 +137,8 @@ interface FootballStore {
   playerSeasonStats: PlayerSeasonStat[];
   competitions: Competition[];
   hallOfFame: HallOfFameEntry[];
+  availableRoles: PlayerRole[];
+  availableTags: CustomTag[];
   
   fetchPlayers: () => Promise<void>;
   setPlayers: (p: Player[]) => void;
@@ -154,6 +170,8 @@ interface FootballStore {
 
   fetchPlayerSeasonStats: () => Promise<void>;
   fetchCompetitions: () => Promise<void>;
+  fetchAvailableRoles: () => Promise<void>;
+  fetchAvailableTags: () => Promise<void>;
 
   fetchHallOfFame: () => Promise<void>;
   addHallOfFameEntry: (entry: Omit<HallOfFameEntry, 'id' | 'createdAt'>) => Promise<void>;
@@ -239,6 +257,8 @@ export const useFootballStore = create<FootballStore>()(
       playerSeasonStats: [],
       competitions: [],
       hallOfFame: [],
+      availableRoles: [],
+      availableTags: [],
       
       fetchPlayers: async () => {
         const { data, error } = await supabase.from('players').select('*');
@@ -767,6 +787,45 @@ export const useFootballStore = create<FootballStore>()(
         }
         if (error) console.error('Error fetching competitions:', error);
       },
+
+      fetchAvailableRoles: async () => {
+        const { data, error } = await supabase
+          .from('player_role')
+          .select('*')
+          .eq('status', true)
+          .order('name', { ascending: true });
+        if (data) {
+          set({
+            availableRoles: data.map(r => ({
+              id: r.id,
+              name: r.name,
+              status: r.status,
+              createdAt: r.created_at,
+            }))
+          });
+        }
+        if (error) console.error('Error fetching player roles:', error);
+      },
+
+      fetchAvailableTags: async () => {
+        const { data, error } = await supabase
+          .from('custom_tags')
+          .select('*')
+          .eq('status', true)
+          .order('name', { ascending: true });
+        if (data) {
+          set({
+            availableTags: data.map(t => ({
+              id: t.id,
+              name: t.name,
+              status: t.status,
+              createdAt: t.created_at,
+            }))
+          });
+        }
+        if (error) console.error('Error fetching custom tags:', error);
+      },
+
 
       fetchHallOfFame: async () => {
         const { data, error } = await supabase.from('hall_of_frame').select('*');

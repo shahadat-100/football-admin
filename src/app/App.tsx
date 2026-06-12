@@ -29,6 +29,8 @@ export function AppShell() {
     state.fetchMatchEntries();
     state.fetchNews();
     state.fetchHallOfFame();
+    state.fetchAvailableRoles();
+    state.fetchAvailableTags();
   }, []);
 
   const counts: Record<string, number> = {
