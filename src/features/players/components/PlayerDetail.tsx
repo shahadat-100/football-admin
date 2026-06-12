@@ -6,6 +6,8 @@ import { useFootballStore } from '@/store/footballStore';
 import { PlayerForm } from './PlayerForm';
 import { MatchEntryForm } from '@/features/match-entries/components/MatchEntryForm';
 import { RESULT_BADGE } from '@/shared/lib/constants';
+import { PlayerRadarChart } from './PlayerRadarChart';
+import { PlayerFormHistory } from './PlayerFormHistory';
 
 interface PlayerDetailProps {
   playerId: string;
@@ -60,28 +62,40 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       </div>
 
       <div className="bg-card border border-border rounded-xl p-5 mb-4 shadow-sm">
-        <div className="flex gap-4 items-start flex-wrap">
-          <Avatar name={player.name} size={64} src={player.profileImageUrl} />
-          <div className="flex-1">
-            <div className="flex justify-between flex-wrap gap-3">
-              <div>
-                <h2 className="font-bold text-[20px]">{player.name}</h2>
-                <p className="text-muted-foreground text-[13px] font-medium">#{player.jerseyNumber || '—'}</p>
-                <div className="flex gap-1.5 flex-wrap mt-2">
-                  {(player.playerRoles ?? []).map(t => (
-                    <Badge key={t} bg="#1a1a1a" c="#e5e5e5">{t}</Badge>
-                  ))}
-                  {(player.customTags ?? []).map(t => (
-                    <Badge key={t} bg="#4b5563" c="#e5e7eb">{t}</Badge>
-                  ))}
+        <div className="flex flex-col lg:flex-row gap-8 items-start justify-between">
+          <div className="flex gap-4 items-start flex-wrap flex-1">
+            <Avatar name={player.name} size={64} src={player.profileImageUrl} />
+            <div className="flex-1">
+              <div className="flex justify-between flex-wrap gap-3">
+                <div>
+                  <h2 className="font-bold text-[20px]">{player.name}</h2>
+                  <p className="text-muted-foreground text-[13px] font-medium">#{player.jerseyNumber || '—'}</p>
+                  <div className="flex gap-1.5 flex-wrap mt-2">
+                    {(player.playerRoles ?? []).map(t => (
+                      <Badge key={t} bg="#1a1a1a" c="#e5e5e5">{t}</Badge>
+                    ))}
+                    {(player.customTags ?? []).map(t => (
+                      <Badge key={t} bg="#4b5563" c="#e5e7eb">{t}</Badge>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-2 flex-wrap h-fit">
+                  <Button size="sm" variant="secondary" onClick={() => setModal('edit')}>✎ Edit</Button>
+                  <Button size="sm" variant="secondary" onClick={() => setModal('addEntry')}>+ Entry</Button>
+                  <Button size="sm" variant="danger" onClick={() => setModal('delete')}>Delete</Button>
                 </div>
               </div>
-              <div className="flex gap-2 flex-wrap">
-                <Button size="sm" variant="secondary" onClick={() => setModal('edit')}>✎ Edit</Button>
-                <Button size="sm" variant="secondary" onClick={() => setModal('addEntry')}>+ Entry</Button>
-                <Button size="sm" variant="danger" onClick={() => setModal('delete')}>Delete</Button>
-              </div>
             </div>
+          </div>
+          
+          <div className="w-full lg:w-auto lg:min-w-[250px] border-t lg:border-t-0 lg:border-l border-border pt-4 lg:pt-0 lg:pl-8 flex justify-center">
+             <PlayerRadarChart stats={{
+               goals: stats.totalGoals,
+               cleanSheets: stats.totalCleanSheets,
+               motm: stats.totalMOTM,
+               wins: stats.totalWins,
+               matches: stats.totalMatches
+             }} />
           </div>
         </div>
       </div>
@@ -107,6 +121,8 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
           ))}
         </div>
       </div>
+
+      <PlayerFormHistory entries={entries} />
 
       <div className="bg-card border border-border rounded-xl p-5 mb-4 shadow-sm">
         <h3 className="font-semibold text-[14px] mb-3">Season Breakdown</h3>

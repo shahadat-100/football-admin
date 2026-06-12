@@ -10,6 +10,7 @@ import { TopScorersBars } from '@/features/overview/components/TopScorersBars';
 import { GoalsBarChart } from '@/features/overview/components/GoalsBarChart';
 import { AwardsLeaderboard } from '@/features/overview/components/AwardsLeaderboard';
 import { ActivityTimeline } from '@/features/overview/components/ActivityTimeline';
+import { PointsLeaderboard } from '@/features/overview/components/PointsLeaderboard';
 
 interface OverviewProps {
   setTab: (tab: string) => void;
@@ -183,6 +184,11 @@ export function Overview({ setTab }: OverviewProps) {
         <div className="lg:col-span-1 h-full">
           <ActivityTimeline dates={matchDates} />
         </div>
+      </div>
+
+      {/* Points Leaderboards */}
+      <div className="mb-8">
+        <PointsLeaderboard players={players} matchEntries={matchEntries} />
       </div>
 
       {/* Recent Matches */}
