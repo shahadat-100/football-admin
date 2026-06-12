@@ -179,7 +179,29 @@ interface FootballStore {
   removeHallOfFameEntry: (id: number) => Promise<void>;
 }
 
+// ── Upsert Roles & Tags to Master Tables ────────────────────────────
+
+const upsertRolesToMaster = async (roles: string[]) => {
+  if (!roles || roles.length === 0) return;
+  for (const name of roles) {
+    await supabase
+      .from('player_role')
+      .upsert({ name, status: true }, { onConflict: 'name' });
+  }
+};
+
+const upsertTagsToMaster = async (tags: string[]) => {
+  if (!tags || tags.length === 0) return;
+  for (const name of tags) {
+    if (!name.trim()) continue;
+    await supabase
+      .from('custom_tags')
+      .upsert({ name: name.trim(), status: true }, { onConflict: 'name' });
+  }
+};
+
 // ── Background Aggregation Sync Helper ───────────────────────────────
+
 
 const updatePlayerSeasonStats = async (playerId: string, seasonId: number) => {
   const { data: entries, error } = await supabase
@@ -284,6 +306,10 @@ export const useFootballStore = create<FootballStore>()(
           const newPlayer = mapPlayerFromDb(data);
           set((state) => ({ players: [...state.players, newPlayer] }));
 
+          // Upsert roles & tags to master tables (background, non-blocking)
+          upsertRolesToMaster(newPlayer.playerRoles).catch(console.error);
+          upsertTagsToMaster(newPlayer.customTags).catch(console.error);
+
           // Save previous seasons data directly to player_season_stats
           if (seasons && seasons.length > 0) {
             for (const season of seasons) {
@@ -357,7 +383,12 @@ export const useFootballStore = create<FootballStore>()(
         const playerData = mapPlayerToDb(p);
         const { data, error } = await supabase.from('players').update(playerData).eq('id', p.id).select().single();
         if (data) {
-          set((state) => ({ players: state.players.map(x => x.id === p.id ? mapPlayerFromDb(data) : x) }));
+          const updated = mapPlayerFromDb(data);
+          set((state) => ({ players: state.players.map(x => x.id === p.id ? updated : x) }));
+
+          // Upsert roles & tags to master tables (background, non-blocking)
+          upsertRolesToMaster(updated.playerRoles).catch(console.error);
+          upsertTagsToMaster(updated.customTags).catch(console.error);
         }
         if (error) {
           console.error('Error updating player:', error);

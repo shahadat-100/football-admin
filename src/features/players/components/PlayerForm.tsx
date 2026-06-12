@@ -6,7 +6,6 @@ import { Player, PlayerFormValues, Season } from '../types';
 import { Button, Input, ImageUpload } from '@/shared/components';
 import { PlayerTagSelector } from './PlayerTagSelector';
 import { SeasonStatsEditor } from './SeasonStatsEditor';
-import { useFootballStore } from '@/store/footballStore';
 
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -41,11 +40,6 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
   const [showAddSeason, setShowAddSeason] = useState(false);
   const [newSeasonYear, setNewSeasonYear] = useState('');
 
-  // Selected custom tags (array of names)
-  const [selectedTags, setSelectedTags] = useState<string[]>(initial?.customTags ?? []);
-
-  const availableTags = useFootballStore(s => s.availableTags);
-
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<PlayerFormValues>({
     resolver: zodResolver(playerFormSchema),
     defaultValues: {
@@ -53,7 +47,7 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
       profileImageUrl: initial?.profileImageUrl ?? '',
       jerseyNumber: initial?.jerseyNumber ?? '',
       playerRoles: initial?.playerRoles ?? [],
-      customTags: initial?.customTags ?? [],
+      customTags: initial?.customTags?.join(', ') ?? '',
     } as any,
   });
 
@@ -72,16 +66,6 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
     setNewSeasonYear('');
   };
 
-  const toggleCustomTag = (tagName: string) => {
-    setSelectedTags(prev => {
-      const next = prev.includes(tagName)
-        ? prev.filter(t => t !== tagName)
-        : [...prev, tagName];
-      setValue('customTags', next);
-      return next;
-    });
-  };
-
   const onSubmit = (values: PlayerFormValues) => {
     for (const season of seasons) {
       for (const month of season.monthlyStats || []) {
@@ -94,7 +78,7 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
         }
       }
     }
-    onSave({ ...values, customTags: selectedTags, seasons } as any);
+    onSave({ ...values, seasons } as any);
   };
 
   return (
@@ -118,7 +102,7 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
         <Input type="number" {...register('jerseyNumber')} error={errors.jerseyNumber?.message} />
       </div>
 
-      {/* Player Roles — from player_role table */}
+      {/* Player Roles — hardcoded chips, also upserted to player_role table */}
       <div className="space-y-1">
         <label className="text-[10px] uppercase tracking-widest text-muted-foreground block mb-2">
           Player Roles
@@ -129,8 +113,8 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
               <>
                 <span>
                   {watch("playerRoles")?.length
-                    ? `${watch("playerRoles").length} role(s) selected`
-                    : "Select roles..."}
+                    ? `${watch("playerRoles").length} tag(s) selected`
+                    : "Select roles & status..."}
                 </span>
                 {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </>
@@ -145,59 +129,17 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
         </Collapsible>
       </div>
 
-      {/* Custom Tags — from custom_tags table */}
-      <div className="space-y-1">
-        <label className="text-[10px] uppercase tracking-widest text-muted-foreground block mb-2">
+      {/* Custom Tags — free text, also upserted to custom_tags table */}
+      <div className="grid gap-2">
+        <label className="text-[12px] font-medium text-gray-400">
           Custom Tags
+          <span className="ml-2 text-[10px] text-muted-foreground font-normal">(comma separated)</span>
         </label>
-        {availableTags.length === 0 ? (
-          <p className="text-[12px] text-muted-foreground py-2">
-            No tags found. Add tags in the <strong>custom_tags</strong> table in Supabase.
-          </p>
-        ) : (
-          <Collapsible>
-            <CollapsibleTrigger className="w-full flex justify-between items-center border-2 border-foreground px-3 py-2 font-mono text-xs uppercase tracking-widest shadow-retro bg-card">
-              {(open) => (
-                <>
-                  <span>
-                    {selectedTags.length > 0
-                      ? selectedTags.join(', ')
-                      : "Select tags..."}
-                  </span>
-                  {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </>
-              )}
-            </CollapsibleTrigger>
-            <CollapsibleContent className="border-2 border-t-0 border-foreground p-3 bg-card">
-              <div className="flex flex-wrap gap-3">
-                {availableTags.map((tag) => {
-                  const isSelected = selectedTags.includes(tag.name);
-                  return (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => toggleCustomTag(tag.name)}
-                      className={[
-                        'font-mono uppercase tracking-widest text-xs px-3 py-1.5 rounded-none transition-all active:translate-y-0.5 border-2',
-                        isSelected
-                          ? 'bg-accent text-foreground border-transparent shadow-retro-active translate-y-[2px]'
-                          : 'bg-card text-foreground border-foreground shadow-retro hover:shadow-retro-active',
-                      ].join(' ')}
-                    >
-                      {tag.name}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest border-t border-dashed border-muted-foreground/30 pt-3 mt-3 flex justify-between items-center">
-                <span>Selected</span>
-                <span className="bg-foreground text-background px-2 py-0.5 rounded-none">
-                  {selectedTags.length}
-                </span>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+        <Input
+          {...register('customTags')}
+          placeholder="pacey, clinical, season 3 champs"
+          error={errors.customTags?.message}
+        />
       </div>
 
       {!initial && (
