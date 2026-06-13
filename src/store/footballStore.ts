@@ -352,63 +352,78 @@ const checkAndFireMilestones = async (playerId: string): Promise<boolean> => {
 
     const { data: entries } = await supabase
       .from('match_entries')
-      .select('result, matches(date)')
+      .select('result, goals, cleansheet, hattricks, motm, matches(date)')
       .eq('playerid', playerId);
 
     const sorted = ((entries ?? []) as any[])
       .filter(e => e.matches?.date)
       .sort((a, b) => new Date(a.matches.date).getTime() - new Date(b.matches.date).getTime());
 
-    let winStreak = 0;
-    for (let i = sorted.length - 1; i >= 0; i--) {
-      if (sorted[i].result === 'win') winStreak++;
-      else break;
+    let rGoals = 0, rCleansheets = 0, rHattricks = 0, rApps = 0, rMotm = 0, rWins = 0;
+    let currentWinStreak = 0, currentUnbeatenStreak = 0;
+    const milestoneDates = new Map<string, string>();
+
+    const checkThresholds = (thresholds: number[], currentVal: number, stat: string, date: string, emoji: string) => {
+      for (const t of thresholds) {
+        if (currentVal >= t) {
+          const key = `${stat}_${t}`;
+          if (!milestoneDates.has(key)) milestoneDates.set(key, JSON.stringify({ date, emoji, t }));
+        }
+      }
+    };
+
+    for (const e of sorted) {
+      const d = e.matches.date;
+      rApps++;
+      rGoals += (e.goals || 0);
+      rHattricks += (e.hattricks || 0);
+      if (e.cleansheet) rCleansheets++;
+      if (e.motm) rMotm++;
+      
+      if (e.result === 'win') { rWins++; currentWinStreak++; currentUnbeatenStreak++; }
+      else if (e.result === 'draw') { currentWinStreak = 0; currentUnbeatenStreak++; }
+      else { currentWinStreak = 0; currentUnbeatenStreak = 0; }
+
+      checkThresholds(GOAL_MILESTONES,        rGoals,                'goals',       d, '⚽');
+      checkThresholds(MOTM_MILESTONES,        rMotm,                 'motm',        d, '🏅');
+      checkThresholds(CLEAN_SHEET_MILESTONES, rCleansheets,          'cleansheets', d, '🧤');
+      checkThresholds(HATTRICK_MILESTONES,    rHattricks,            'hattricks',   d, '🎩');
+      checkThresholds(APPEARANCE_MILESTONES,  rApps,                 'appearances', d, '📅');
+      checkThresholds(WIN_MILESTONES,         rWins,                 'wins',        d, '🏆');
+      checkThresholds(WIN_STREAK_MILESTONES,  currentWinStreak,      'win_streak',  d, '🔥');
+      checkThresholds(UNBEATEN_MILESTONES,    currentUnbeatenStreak, 'unbeaten',    d, '🛡️');
     }
-    let unbeatenStreak = 0;
-    for (let i = sorted.length - 1; i >= 0; i--) {
-      if (sorted[i].result !== 'loss') unbeatenStreak++;
-      else break;
-    }
 
-    type MCheck = { key: string; emoji: string };
-    const triggered: MCheck[] = [];
-    const chk = (thresholds: number[], current: number, stat: string, emoji: string) =>
-      thresholds.filter(t => current >= t).forEach(t => triggered.push({ key: `${stat}_${t}`, emoji }));
-
-    chk(GOAL_MILESTONES,        totals.goals,       'goals',       '⚽');
-    chk(MOTM_MILESTONES,        totals.motm,        'motm',        '🏅');
-    chk(CLEAN_SHEET_MILESTONES, totals.cleansheets, 'cleansheets', '🧤');
-    chk(HATTRICK_MILESTONES,    totals.hattricks,   'hattricks',   '🎩');
-    chk(APPEARANCE_MILESTONES,  totals.appearances, 'appearances', '📅');
-    chk(WIN_MILESTONES,         totals.wins,        'wins',        '🏆');
-    chk(WIN_STREAK_MILESTONES,  winStreak,          'win_streak',  '🔥');
-    chk(UNBEATEN_MILESTONES,    unbeatenStreak,     'unbeaten',    '🛡️');
-
-    if (triggered.length === 0) return false;
+    if (milestoneDates.size === 0) return false;
 
     const { data: logged } = await supabase
       .from('milestone_log').select('milestone_key').eq('player_id', playerId);
     const loggedKeys = new Set((logged ?? []).map((l: any) => l.milestone_key));
-    const newOnes = triggered.filter(m => !loggedKeys.has(m.key));
-    if (newOnes.length === 0) return false;
+    
+    let firedAny = false;
 
-    for (const m of newOnes) {
-      const threshold = parseInt(m.key.split('_').slice(-1)[0]);
+    for (const [key, valStr] of milestoneDates.entries()) {
+      if (loggedKeys.has(key)) continue;
+      
+      const { date, emoji, t } = JSON.parse(valStr);
+
       const { error: logErr } = await supabase.from('milestone_log').insert({
         player_id: playerId,
-        milestone_key: m.key,
+        milestone_key: key,
       });
       if (logErr) continue;
+
       await supabase.from('news').insert({
-        title:    _milestoneTitle(playerName, m.key, threshold, m.emoji),
-        content:  _milestoneContent(playerName, m.key, threshold),
+        title:    _milestoneTitle(playerName, key, t, emoji),
+        content:  _milestoneContent(playerName, key, t),
         author:   'Club Records',
         category: 'Player',
         hot:      true,
-        date:     new Date().toISOString().split('T')[0],
+        date:     date, // EXACT date it happened
       });
+      firedAny = true;
     }
-    return true;
+    return firedAny;
   } catch (err) {
     console.error('Milestone check error:', err);
     return false;
