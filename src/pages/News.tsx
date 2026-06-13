@@ -13,7 +13,8 @@ export function News() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
 
-  const filtered = fuzzyFilter(news, search, ['title', 'author', 'category']);
+  const sorted   = [...news].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const filtered = fuzzyFilter(sorted, search, ['title', 'author', 'category']);
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
