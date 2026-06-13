@@ -46,6 +46,7 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
       name: initial?.name ?? '',
       profileImageUrl: initial?.profileImageUrl ?? '',
       jerseyNumber: initial?.jerseyNumber ?? '',
+      email: initial?.email ?? '',
       playerRoles: initial?.playerRoles ?? [],
       customTags: initial?.customTags?.join(', ') ?? '',
     } as any,
@@ -100,6 +101,18 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
       <div className="grid gap-2">
         <label className="text-[12px] font-medium text-gray-400">Jersey Number</label>
         <Input type="number" {...register('jerseyNumber')} error={errors.jerseyNumber?.message} />
+      </div>
+
+      <div className="grid gap-2">
+        <label className="text-[12px] font-medium text-gray-400">
+          Email <span className="text-red-500">*</span>
+        </label>
+        <Input
+          type="email"
+          {...register('email')}
+          placeholder="player@example.com"
+          error={(errors as any).email?.message}
+        />
       </div>
 
       {/* Player Roles — hardcoded chips, also upserted to player_role table */}

@@ -44,18 +44,21 @@ export const mapPlayerFromDb = (p: any): Player => ({
   name: p.name,
   profileImageUrl: p.profileimageurl || '',
   jerseyNumber: p.jerseynumber ?? undefined,
-  playerRoles: p.playerroles || [],
-  customTags: p.customtags || [],
+  email: p.email || '',
+  // Extract role names from the joined junction table data
+  playerRoles: (p.player_player_roles ?? []).map((r: any) => r.player_role?.name).filter(Boolean),
+  // Extract tag names from the joined junction table data
+  customTags: (p.player_custom_tags ?? []).map((t: any) => t.custom_tags?.name).filter(Boolean),
   createdAt: p.createdat || '',
   seasons: [],
 });
 
+// Only send columns that actually exist on the players table
 export const mapPlayerToDb = (p: any) => ({
   name: p.name,
   profileimageurl: p.profileImageUrl || '',
   jerseynumber: p.jerseyNumber ?? null,
-  playerroles: p.playerRoles || [],
-  customtags: p.customTags || [],
+  email: p.email || null,
 });
 
 export const mapMatchFromDb = (m: any): Match => ({
@@ -179,24 +182,49 @@ interface FootballStore {
   removeHallOfFameEntry: (id: number) => Promise<void>;
 }
 
-// ── Upsert Roles & Tags to Master Tables ────────────────────────────
+// ── Upsert Roles & Tags to Junction Tables ───────────────────────────
 
-const upsertRolesToMaster = async (roles: string[]) => {
+// Upsert role names into player_role master table, then link to player via junction table
+const syncPlayerRoles = async (playerId: string, roles: string[]) => {
+  // Delete existing role links for this player
+  await supabase.from('player_player_roles').delete().eq('player_id', playerId);
   if (!roles || roles.length === 0) return;
   for (const name of roles) {
-    await supabase
+    if (!name.trim()) continue;
+    // Upsert role into master table
+    const { data: roleData } = await supabase
       .from('player_role')
-      .upsert({ name, status: true }, { onConflict: 'name' });
+      .upsert({ name: name.trim(), status: true }, { onConflict: 'name' })
+      .select('id')
+      .single();
+    if (roleData) {
+      // Link player to role via junction table
+      await supabase
+        .from('player_player_roles')
+        .upsert({ player_id: playerId, role_id: roleData.id }, { onConflict: 'player_id,role_id' });
+    }
   }
 };
 
-const upsertTagsToMaster = async (tags: string[]) => {
+// Upsert tag names into custom_tags master table, then link to player via junction table
+const syncPlayerTags = async (playerId: string, tags: string[]) => {
+  // Delete existing tag links for this player
+  await supabase.from('player_custom_tags').delete().eq('player_id', playerId);
   if (!tags || tags.length === 0) return;
   for (const name of tags) {
     if (!name.trim()) continue;
-    await supabase
+    // Upsert tag into master table
+    const { data: tagData } = await supabase
       .from('custom_tags')
-      .upsert({ name: name.trim(), status: true }, { onConflict: 'name' });
+      .upsert({ name: name.trim(), status: true }, { onConflict: 'name' })
+      .select('id')
+      .single();
+    if (tagData) {
+      // Link player to tag via junction table
+      await supabase
+        .from('player_custom_tags')
+        .upsert({ player_id: playerId, tag_id: tagData.id }, { onConflict: 'player_id,tag_id' });
+    }
   }
 };
 
@@ -283,7 +311,19 @@ export const useFootballStore = create<FootballStore>()(
       availableTags: [],
       
       fetchPlayers: async () => {
-        const { data, error } = await supabase.from('players').select('*');
+        const { data, error } = await supabase
+          .from('players')
+          .select(`
+            *,
+            player_player_roles(
+              role_id,
+              player_role(name)
+            ),
+            player_custom_tags(
+              tag_id,
+              custom_tags(name)
+            )
+          `);
         if (data) {
           set({ players: data.map(mapPlayerFromDb) });
         }
@@ -303,12 +343,27 @@ export const useFootballStore = create<FootballStore>()(
         }
 
         if (data) {
-          const newPlayer = mapPlayerFromDb(data);
-          set((state) => ({ players: [...state.players, newPlayer] }));
+          const newPlayerId = data.id;
+          const playerRoles: string[] = profileData.playerRoles || [];
+          const customTags: string[] = profileData.customTags || [];
 
-          // Upsert roles & tags to master tables (background, non-blocking)
-          upsertRolesToMaster(newPlayer.playerRoles).catch(console.error);
-          upsertTagsToMaster(newPlayer.customTags).catch(console.error);
+          // Sync roles & tags via junction tables
+          await syncPlayerRoles(newPlayerId, playerRoles).catch(console.error);
+          await syncPlayerTags(newPlayerId, customTags).catch(console.error);
+
+          // Re-fetch this player with joined roles & tags to build correct state
+          const { data: fullPlayer } = await supabase
+            .from('players')
+            .select(`
+              *,
+              player_player_roles(role_id, player_role(name)),
+              player_custom_tags(tag_id, custom_tags(name))
+            `)
+            .eq('id', newPlayerId)
+            .single();
+
+          const newPlayer = mapPlayerFromDb(fullPlayer ?? data);
+          set((state) => ({ players: [...state.players, newPlayer] }));
 
           // Save previous seasons data directly to player_season_stats
           if (seasons && seasons.length > 0) {
@@ -360,7 +415,7 @@ export const useFootballStore = create<FootballStore>()(
               }
 
               await supabase.from('player_season_stats').insert({
-                player_id: newPlayer.id,
+                player_id: newPlayerId,
                 season_id: seasonId,
                 appearances,
                 goals,
@@ -382,17 +437,29 @@ export const useFootballStore = create<FootballStore>()(
       updatePlayer: async (p) => {
         const playerData = mapPlayerToDb(p);
         const { data, error } = await supabase.from('players').update(playerData).eq('id', p.id).select().single();
-        if (data) {
-          const updated = mapPlayerFromDb(data);
-          set((state) => ({ players: state.players.map(x => x.id === p.id ? updated : x) }));
-
-          // Upsert roles & tags to master tables (background, non-blocking)
-          upsertRolesToMaster(updated.playerRoles).catch(console.error);
-          upsertTagsToMaster(updated.customTags).catch(console.error);
-        }
         if (error) {
           console.error('Error updating player:', error);
           alert('Failed to update player: ' + error.message);
+          return;
+        }
+        if (data) {
+          // Sync roles & tags via junction tables (replaces old ones)
+          await syncPlayerRoles(p.id, p.playerRoles || []).catch(console.error);
+          await syncPlayerTags(p.id, p.customTags || []).catch(console.error);
+
+          // Re-fetch this player with joined roles & tags
+          const { data: fullPlayer } = await supabase
+            .from('players')
+            .select(`
+              *,
+              player_player_roles(role_id, player_role(name)),
+              player_custom_tags(tag_id, custom_tags(name))
+            `)
+            .eq('id', p.id)
+            .single();
+
+          const updated = mapPlayerFromDb(fullPlayer ?? data);
+          set((state) => ({ players: state.players.map(x => x.id === p.id ? updated : x) }));
         }
       },
       

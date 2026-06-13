@@ -62,7 +62,7 @@ export const playerSchema = z.object({
   customTags: z.array(z.string()).default([]),
   createdAt: z.string(),
   seasons: z.array(seasonSchema).default([]),
-  email: z.string().email().optional().nullable(),
+  email: z.string().email('Valid email is required'),
 });
 
 export const playerFormSchema = playerSchema.omit({ id: true, createdAt: true, seasons: true }).extend({

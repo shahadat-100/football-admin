@@ -7,7 +7,6 @@ import { STATUS_BADGE } from '@/shared/lib/constants';
 // New visual components
 import { WinRateDonut } from '@/features/overview/components/WinRateDonut';
 import { TopScorersBars } from '@/features/overview/components/TopScorersBars';
-import { GoalsBarChart } from '@/features/overview/components/GoalsBarChart';
 import { AwardsLeaderboard } from '@/features/overview/components/AwardsLeaderboard';
 import { ActivityTimeline } from '@/features/overview/components/ActivityTimeline';
 import { PointsLeaderboard } from '@/features/overview/components/PointsLeaderboard';
@@ -86,7 +85,7 @@ export function Overview({ setTab }: OverviewProps) {
   }, [matchEntries]);
 
   // ── 3. Top Scorers & Goals Data ──
-  const { topScorers, goalsData, awardsData } = useMemo(() => {
+  const { topScorers, awardsData } = useMemo(() => {
     const pData = players.map(p => {
       // aggregate from playerSeasonStats
       const stats = playerSeasonStats.filter(s => s.playerId === p.id);
@@ -134,7 +133,6 @@ export function Overview({ setTab }: OverviewProps) {
 
     return {
       topScorers: [...pData].sort((a, b) => b.goals - a.goals).slice(0, 5),
-      goalsData: pData,
       awardsData: pData,
     };
   }, [players, playerSeasonStats]);
@@ -170,11 +168,6 @@ export function Overview({ setTab }: OverviewProps) {
         </div>
         <div className="lg:col-span-2 h-full">
           <TopScorersBars scorers={topScorers} />
-        </div>
-
-        {/* Row 2 - Full Width */}
-        <div className="lg:col-span-3">
-          <GoalsBarChart data={goalsData} onBarClick={() => setTab('players')} />
         </div>
 
         {/* Row 3 */}
