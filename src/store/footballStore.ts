@@ -296,6 +296,125 @@ const updatePlayerSeasonStats = async (playerId: string, seasonId: number) => {
   }
 };
 
+// ── Milestone System ──────────────────────────────────────────────────
+
+const GOAL_MILESTONES        = Array.from({ length: 50 }, (_, i) => (i + 1) * 100); // 100..5000
+const MOTM_MILESTONES        = [10, 25, 50, 100, 200, 500, 1000];
+const CLEAN_SHEET_MILESTONES = [100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+const HATTRICK_MILESTONES    = [100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+const APPEARANCE_MILESTONES  = [50, 100, 200, 300, 500, 1000, 1500, 2000, 3000];
+const WIN_MILESTONES         = [50, ...Array.from({ length: 49 }, (_, i) => (i + 1) * 100)]; // 50,100..5000
+const WIN_STREAK_MILESTONES  = [5, 10, 15, 20];
+const UNBEATEN_MILESTONES    = [10, 15, 20];
+
+const _milestoneTitle = (name: string, key: string, n: number, emoji: string): string => {
+  if (key.startsWith('goals'))       return `${emoji} ${name} Scores ${n} Career Goals!`;
+  if (key.startsWith('motm'))        return `${emoji} ${name} Wins ${n}th MOTM Award!`;
+  if (key.startsWith('cleansheets')) return `${emoji} ${name} Reaches ${n} Clean Sheets!`;
+  if (key.startsWith('hattricks'))   return `${emoji} ${name} Scores ${n} Hat-tricks!`;
+  if (key.startsWith('appearances')) return `${emoji} ${name} Makes ${n} Appearances!`;
+  if (key.startsWith('wins'))        return `${emoji} ${name} Celebrates ${n} Career Wins!`;
+  if (key.startsWith('win_streak'))  return `${emoji} ${name} On a ${n}-Game Winning Streak!`;
+  if (key.startsWith('unbeaten'))    return `${emoji} ${name} Goes ${n} Games Unbeaten!`;
+  return `${emoji} ${name} Reaches a New Milestone!`;
+};
+
+const _milestoneContent = (name: string, key: string, n: number): string => {
+  if (key.startsWith('goals'))       return `${name} has scored an incredible ${n} career goals for The Enigmatic Elite. A true goalscoring legend! ⚽🔥`;
+  if (key.startsWith('motm'))        return `${name} has won the Man of the Match award ${n} times. Consistently outstanding! 🏅`;
+  if (key.startsWith('cleansheets')) return `${name} has kept ${n} clean sheets — an absolute wall at the back! 🧤`;
+  if (key.startsWith('hattricks'))   return `${name} has scored ${n} hat-tricks for the club. A record-breaking feat! 🎩`;
+  if (key.startsWith('appearances')) return `${name} has made ${n} appearances for The Enigmatic Elite. A true club servant! 📅`;
+  if (key.startsWith('wins'))        return `${name} has been part of ${n} winning performances. A born winner! 🏆`;
+  if (key.startsWith('win_streak'))  return `${name} is on fire — currently on a ${n}-match winning streak! 🔥`;
+  if (key.startsWith('unbeaten'))    return `${name} has gone ${n} consecutive matches without defeat. An incredible run! 🛡️`;
+  return `${name} has reached an incredible milestone for the club! 🎉`;
+};
+
+const checkAndFireMilestones = async (playerId: string): Promise<boolean> => {
+  try {
+    const { data: player } = await supabase.from('players').select('name').eq('id', playerId).single();
+    if (!player) return false;
+    const playerName = player.name;
+
+    const { data: statsRows } = await supabase
+      .from('player_season_stats').select('*').eq('player_id', playerId);
+    if (!statsRows) return false;
+
+    const totals = {
+      goals:       statsRows.reduce((s, e) => s + (e.goals       || 0), 0),
+      cleansheets: statsRows.reduce((s, e) => s + (e.cleansheets || 0), 0),
+      hattricks:   statsRows.reduce((s, e) => s + (e.hattricks   || 0), 0),
+      appearances: statsRows.reduce((s, e) => s + (e.appearances || 0), 0),
+      motm:        statsRows.reduce((s, e) => s + (e.motmcount   || 0), 0),
+      wins:        statsRows.reduce((s, e) => s + (e.wins        || 0), 0),
+    };
+
+    const { data: entries } = await supabase
+      .from('match_entries')
+      .select('result, matches(date)')
+      .eq('playerid', playerId);
+
+    const sorted = ((entries ?? []) as any[])
+      .filter(e => e.matches?.date)
+      .sort((a, b) => new Date(a.matches.date).getTime() - new Date(b.matches.date).getTime());
+
+    let winStreak = 0;
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      if (sorted[i].result === 'win') winStreak++;
+      else break;
+    }
+    let unbeatenStreak = 0;
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      if (sorted[i].result !== 'loss') unbeatenStreak++;
+      else break;
+    }
+
+    type MCheck = { key: string; emoji: string };
+    const triggered: MCheck[] = [];
+    const chk = (thresholds: number[], current: number, stat: string, emoji: string) =>
+      thresholds.filter(t => current >= t).forEach(t => triggered.push({ key: `${stat}_${t}`, emoji }));
+
+    chk(GOAL_MILESTONES,        totals.goals,       'goals',       '⚽');
+    chk(MOTM_MILESTONES,        totals.motm,        'motm',        '🏅');
+    chk(CLEAN_SHEET_MILESTONES, totals.cleansheets, 'cleansheets', '🧤');
+    chk(HATTRICK_MILESTONES,    totals.hattricks,   'hattricks',   '🎩');
+    chk(APPEARANCE_MILESTONES,  totals.appearances, 'appearances', '📅');
+    chk(WIN_MILESTONES,         totals.wins,        'wins',        '🏆');
+    chk(WIN_STREAK_MILESTONES,  winStreak,          'win_streak',  '🔥');
+    chk(UNBEATEN_MILESTONES,    unbeatenStreak,     'unbeaten',    '🛡️');
+
+    if (triggered.length === 0) return false;
+
+    const { data: logged } = await supabase
+      .from('milestone_log').select('milestone_key').eq('player_id', playerId);
+    const loggedKeys = new Set((logged ?? []).map((l: any) => l.milestone_key));
+    const newOnes = triggered.filter(m => !loggedKeys.has(m.key));
+    if (newOnes.length === 0) return false;
+
+    for (const m of newOnes) {
+      const threshold = parseInt(m.key.split('_').slice(-1)[0]);
+      const { error: logErr } = await supabase.from('milestone_log').insert({
+        player_id: playerId,
+        milestone_key: m.key,
+      });
+      if (logErr) continue;
+      await supabase.from('news').insert({
+        title:    _milestoneTitle(playerName, m.key, threshold, m.emoji),
+        content:  _milestoneContent(playerName, m.key, threshold),
+        author:   'Club Records',
+        category: 'Player',
+        hot:      true,
+        date:     new Date().toISOString().split('T')[0],
+      });
+    }
+    return true;
+  } catch (err) {
+    console.error('Milestone check error:', err);
+    return false;
+  }
+};
+
 export const useFootballStore = create<FootballStore>()(
   devtools(
     (set, get) => ({
@@ -721,6 +840,9 @@ export const useFootballStore = create<FootballStore>()(
           // Background Sync Player Season Stats
           await updatePlayerSeasonStats(newEntry.playerId, seasonId);
           await get().fetchPlayerSeasonStats();
+          // Auto-milestone check
+          const fired = await checkAndFireMilestones(newEntry.playerId);
+          if (fired) await get().fetchNews();
         }
         if (error) {
           console.error('Error adding match entry:', error);
@@ -747,6 +869,9 @@ export const useFootballStore = create<FootballStore>()(
           
           await updatePlayerSeasonStats(updatedEntry.playerId, seasonId);
           await get().fetchPlayerSeasonStats();
+          // Auto-milestone check
+          const fired = await checkAndFireMilestones(updatedEntry.playerId);
+          if (fired) await get().fetchNews();
         }
         if (error) console.error('Error updating match entry:', error);
       },
@@ -759,6 +884,9 @@ export const useFootballStore = create<FootballStore>()(
           if (entry && entry.seasonId) {
             await updatePlayerSeasonStats(entry.playerId, entry.seasonId);
             await get().fetchPlayerSeasonStats();
+            // Auto-milestone check
+            const fired = await checkAndFireMilestones(entry.playerId);
+            if (fired) await get().fetchNews();
           }
         }
         else console.error('Error removing match entry:', error);
