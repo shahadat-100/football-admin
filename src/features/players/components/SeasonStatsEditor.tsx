@@ -84,8 +84,9 @@ export function SeasonStatsEditor({ season, onChange, onRemove }: SeasonStatsEdi
     const usedMonths = new Set(months.map(m => m.month));
     for (let m = 1; m <= 12; m++) {
       if (!usedMonths.has(m)) {
+        const newIndex = months.length; // capture index BEFORE setMonths to avoid off-by-one
         setMonths(ms => [...ms, emptyMonthRow(m)].sort((a,b) => a.month - b.month));
-        setExpandedMonth(months.length);
+        setExpandedMonth(newIndex);
         return;
       }
     }

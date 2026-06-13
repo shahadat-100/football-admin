@@ -368,15 +368,23 @@ export const useFootballStore = create<FootballStore>()(
           // Save previous seasons data directly to player_season_stats
           if (seasons && seasons.length > 0) {
             for (const season of seasons) {
-              let dbSeason = get().seasons.find(s => s.name === `Season ${season.year}`);
               let seasonId: number;
-              if (dbSeason) {
-                seasonId = dbSeason.id;
+              const seasonName = `Season ${season.year}`;
+
+              // Always query DB directly to avoid stale cache causing duplicate seasons
+              const { data: existingSeasons } = await supabase
+                .from('season')
+                .select('id')
+                .eq('name', seasonName)
+                .limit(1);
+
+              if (existingSeasons && existingSeasons.length > 0) {
+                seasonId = existingSeasons[0].id;
               } else {
                 const { data: newSeason } = await supabase
                   .from('season')
                   .insert({
-                    name: `Season ${season.year}`,
+                    name: seasonName,
                     start_date: `${season.year}-01-01T00:00:00Z`,
                     is_current: false
                   })
@@ -721,7 +729,12 @@ export const useFootballStore = create<FootballStore>()(
       },
       
       updateMatchEntry: async (e) => {
-        const seasonId = e.seasonId || (get().seasons.find(s => s.is_current)?.id || get().seasons[0]?.id);
+        // Use the entry's own seasonId — never fall back to an arbitrary season
+        const seasonId = e.seasonId;
+        if (!seasonId) {
+          console.error('updateMatchEntry: entry has no seasonId, aborting stats update', e);
+          return;
+        }
         const entryData = mapMatchEntryToDb({
           ...e,
           seasonId,

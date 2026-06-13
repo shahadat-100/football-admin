@@ -19,7 +19,7 @@ export function usePlayerStats(playerId: string) {
     const totalHattricks     = stats.reduce((s, e) => s + (e.hattricks || 0), 0);
 
     const seasonBreakdown = stats.map(s => {
-      const yearMatch = s.seasonName.match(/\d+/);
+      const yearMatch = (s.seasonName ?? '').match(/\d+/);
       const year = yearMatch ? Number(yearMatch[0]) : s.seasonId;
       return {
         year,
