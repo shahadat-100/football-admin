@@ -812,11 +812,13 @@ export const useFootballStore = create<FootballStore>()(
       addMatchEntry: async (e) => {
         let matchId = e.matchId || null;
         let seasonId: number;
+        let entryDate = e.date;
 
         if (matchId) {
           const associatedMatch = get().matches.find(m => m.id === matchId);
           if (associatedMatch && associatedMatch.seasonId) {
             seasonId = associatedMatch.seasonId;
+            entryDate = associatedMatch.date;
           } else {
             alert('Cannot save match entry: no season associated.');
             return;
@@ -853,7 +855,7 @@ export const useFootballStore = create<FootballStore>()(
           ...e,
           matchId,
           seasonId,
-          date: e.date || new Date().toISOString().split('T')[0]
+          date: entryDate || new Date().toISOString().split('T')[0]
         });
 
         const { data, error } = await supabase.from('match_entries').insert([entryData]).select('*').single();
