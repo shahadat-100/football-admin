@@ -81,7 +81,7 @@ export function Overview({ setTab }: OverviewProps) {
       if (res === 'draw') d++;
       if (res === 'loss') l++;
     });
-    return { wins: w, draws: d, losses: l };
+    return { wins: w, draws: d, losses: l, matchResultsMap };
   }, [matchEntries]);
 
   // ── 3. Awards Data (MOTM / Clean Sheets / Hat-tricks) ──
@@ -167,10 +167,23 @@ export function Overview({ setTab }: OverviewProps) {
           <div className="flex flex-col gap-2">
             {([...matches].reverse().slice(0, 5)).map(m => {
               const sb = STATUS_BADGE[m.status as keyof typeof STATUS_BADGE] ?? STATUS_BADGE.finished;
+              const result = uniqueMatchesResults.matchResultsMap.get(m.id);
+              
               return (
                 <div key={m.id} className="py-4 border-b border-border/50 last:border-0 group transition-colors">
                   <div className="flex justify-between items-center gap-4 mb-2">
-                    <span className="text-sm font-medium text-foreground">{m.homeTeam} vs {m.awayTeam}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium text-foreground">{m.homeTeam} vs {m.awayTeam}</span>
+                      {m.status === 'finished' && result && (
+                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
+                          result === 'win' ? 'bg-emerald-500/10 text-emerald-500' :
+                          result === 'draw' ? 'bg-amber-500/10 text-amber-500' :
+                          'bg-red-500/10 text-red-500'
+                        }`}>
+                          {result === 'loss' ? 'lost' : result}
+                        </span>
+                      )}
+                    </div>
                     <Badge bg={sb.bg} c={sb.c}>{m.status}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">{m.competition} · {m.date}</p>
