@@ -186,46 +186,46 @@ interface FootballStore {
 
 // ── Upsert Roles & Tags to Junction Tables ───────────────────────────
 
-// Upsert role names into player_role master table, then link to player via junction table
+// Sync player roles via junction table — roles are pre-defined, just look up by name
 const syncPlayerRoles = async (playerId: string, roles: string[]) => {
   // Delete existing role links for this player
   await supabase.from('player_player_roles').delete().eq('player_id', playerId);
   if (!roles || roles.length === 0) return;
+
   for (const name of roles) {
     if (!name.trim()) continue;
-    // Upsert role into master table
+    // Just SELECT the existing role by name (pre-defined, no insert needed)
     const { data: roleData } = await supabase
       .from('player_role')
-      .upsert({ name: name.trim(), status: true }, { onConflict: 'name' })
       .select('id')
+      .eq('name', name.trim())
       .single();
-    if (roleData) {
-      // Link player to role via junction table
+    if (roleData?.id) {
       await supabase
         .from('player_player_roles')
-        .upsert({ player_id: playerId, role_id: roleData.id }, { onConflict: 'player_id,role_id' });
+        .insert({ player_id: playerId, role_id: roleData.id });
     }
   }
 };
 
-// Upsert tag names into custom_tags master table, then link to player via junction table
+// Sync player tags via junction table — tags are pre-defined, just look up by name
 const syncPlayerTags = async (playerId: string, tags: string[]) => {
   // Delete existing tag links for this player
   await supabase.from('player_custom_tags').delete().eq('player_id', playerId);
   if (!tags || tags.length === 0) return;
+
   for (const name of tags) {
     if (!name.trim()) continue;
-    // Upsert tag into master table
+    // Just SELECT the existing tag by name (pre-defined, no insert needed)
     const { data: tagData } = await supabase
       .from('custom_tags')
-      .upsert({ name: name.trim(), status: true }, { onConflict: 'name' })
       .select('id')
+      .eq('name', name.trim())
       .single();
-    if (tagData) {
-      // Link player to tag via junction table
+    if (tagData?.id) {
       await supabase
         .from('player_custom_tags')
-        .upsert({ player_id: playerId, tag_id: tagData.id }, { onConflict: 'player_id,tag_id' });
+        .insert({ player_id: playerId, tag_id: tagData.id });
     }
   }
 };
