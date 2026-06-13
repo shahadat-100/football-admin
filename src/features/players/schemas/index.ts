@@ -68,13 +68,13 @@ export const playerSchema = z.object({
 export const playerFormSchema = playerSchema.omit({ id: true, createdAt: true, seasons: true }).extend({
   jerseyNumber: z.union([z.string(), z.number()]).optional().transform(v => v === '' ? undefined : Number(v)),
   customTags: z.union([z.string(), z.array(z.string())]).optional().transform(v => {
-    if (typeof v === 'string') {
-      return v.split(',').map(s => s.trim()).filter(Boolean);
-    }
-    return v || [];
+    if (Array.isArray(v)) return v.filter(Boolean);
+    if (typeof v === 'string') return v.split(',').map(s => s.trim()).filter(Boolean);
+    return [];
   }),
   previousSeasons: z.array(z.object({
     season: z.string(),
     goals: z.number(),
   })).default([]),
 });
+

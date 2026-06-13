@@ -1,33 +1,12 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { playerFormSchema } from '../schemas';
 import { Player, PlayerFormValues, Season } from '../types';
 import { Button, Input, ImageUpload } from '@/shared/components';
-import { PlayerTagSelector } from './PlayerTagSelector';
 import { SeasonStatsEditor } from './SeasonStatsEditor';
-
+import { useFootballStore } from '@/store/footballStore';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-
-const CollapsibleContext = createContext<{ open: boolean; setOpen: (open: boolean) => void }>({ open: false, setOpen: () => {} });
-
-function Collapsible({ children, className }: { children: React.ReactNode, className?: string }) {
-  const [open, setOpen] = useState(false);
-  return <CollapsibleContext.Provider value={{ open, setOpen }}><div className={className}>{children}</div></CollapsibleContext.Provider>;
-}
-
-function CollapsibleTrigger({ children, className }: { children: React.ReactNode | ((open: boolean) => React.ReactNode), className?: string }) {
-  const { open, setOpen } = useContext(CollapsibleContext);
-  return <button type="button" onClick={() => setOpen(!open)} className={className}>
-    {typeof children === 'function' ? children(open) : children}
-  </button>;
-}
-
-function CollapsibleContent({ children, className }: { children: React.ReactNode, className?: string }) {
-  const { open } = useContext(CollapsibleContext);
-  if (!open) return null;
-  return <div className={className}>{children}</div>;
-}
 
 interface PlayerFormProps {
   initial?: Partial<Player>;
@@ -36,9 +15,12 @@ interface PlayerFormProps {
 }
 
 export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
+  const { availableRoles, availableTags } = useFootballStore();
   const [seasons, setSeasons] = useState<Season[]>((initial as any)?.seasons ?? []);
   const [showAddSeason, setShowAddSeason] = useState(false);
   const [newSeasonYear, setNewSeasonYear] = useState('');
+  const [rolesOpen, setRolesOpen] = useState(false);
+  const [tagsOpen, setTagsOpen] = useState(false);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<PlayerFormValues>({
     resolver: zodResolver(playerFormSchema),
@@ -48,9 +30,28 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
       jerseyNumber: initial?.jerseyNumber ?? '',
       email: initial?.email ?? '',
       playerRoles: initial?.playerRoles ?? [],
-      customTags: initial?.customTags?.join(', ') ?? '',
+      customTags: initial?.customTags ?? [],
     } as any,
   });
+
+  const selectedRoles: string[] = watch('playerRoles') ?? [];
+  const selectedTags: string[] = Array.isArray(watch('customTags')) ? watch('customTags') as string[] : [];
+
+  const toggleRole = (name: string) => {
+    if (selectedRoles.includes(name)) {
+      setValue('playerRoles', selectedRoles.filter(r => r !== name));
+    } else {
+      setValue('playerRoles', [...selectedRoles, name]);
+    }
+  };
+
+  const toggleTag = (name: string) => {
+    if (selectedTags.includes(name)) {
+      setValue('customTags', selectedTags.filter(t => t !== name));
+    } else {
+      setValue('customTags', [...selectedTags, name]);
+    }
+  };
 
   const handleAddSeason = () => {
     const yr = Number(newSeasonYear);
@@ -115,44 +116,88 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
         />
       </div>
 
-      {/* Player Roles — hardcoded chips, also upserted to player_role table */}
+      {/* Player Roles — from DB */}
       <div className="space-y-1">
         <label className="text-[10px] uppercase tracking-widest text-muted-foreground block mb-2">
           Player Roles
+          {selectedRoles.length > 0 && (
+            <span className="ml-2 text-primary font-semibold">{selectedRoles.length} selected</span>
+          )}
         </label>
-        <Collapsible>
-          <CollapsibleTrigger className="w-full flex justify-between items-center border-2 border-foreground px-3 py-2 font-mono text-xs uppercase tracking-widest shadow-retro bg-card">
-            {(open) => (
-              <>
-                <span>
-                  {watch("playerRoles")?.length
-                    ? `${watch("playerRoles").length} tag(s) selected`
-                    : "Select roles & status..."}
-                </span>
-                {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </>
+        <button
+          type="button"
+          onClick={() => setRolesOpen(o => !o)}
+          className="w-full flex justify-between items-center border-2 border-foreground px-3 py-2 font-mono text-xs uppercase tracking-widest shadow-retro bg-card"
+        >
+          <span className="truncate">
+            {selectedRoles.length ? selectedRoles.join(', ') : 'Select roles...'}
+          </span>
+          {rolesOpen ? <ChevronUp size={16} className="ml-2 shrink-0" /> : <ChevronDown size={16} className="ml-2 shrink-0" />}
+        </button>
+        {rolesOpen && (
+          <div className="border-2 border-t-0 border-foreground p-3 bg-card flex flex-wrap gap-2">
+            {availableRoles.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">No roles found in database.</p>
+            ) : (
+              availableRoles.map(role => (
+                <button
+                  key={role.id}
+                  type="button"
+                  onClick={() => toggleRole(role.name)}
+                  className={`font-mono uppercase tracking-widest text-xs px-3 py-1.5 border-2 transition-all active:scale-95 ${
+                    selectedRoles.includes(role.name)
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card text-foreground border-foreground hover:bg-muted'
+                  }`}
+                >
+                  {role.name}
+                </button>
+              ))
             )}
-          </CollapsibleTrigger>
-          <CollapsibleContent className="border-2 border-t-0 border-foreground p-3 bg-card">
-            <PlayerTagSelector
-              value={watch("playerRoles") ?? []}
-              onChange={(val) => setValue("playerRoles", val)}
-            />
-          </CollapsibleContent>
-        </Collapsible>
+          </div>
+        )}
       </div>
 
-      {/* Custom Tags — free text, also upserted to custom_tags table */}
-      <div className="grid gap-2">
-        <label className="text-[12px] font-medium text-gray-400">
+      {/* Custom Tags — from DB */}
+      <div className="space-y-1">
+        <label className="text-[10px] uppercase tracking-widest text-muted-foreground block mb-2">
           Custom Tags
-          <span className="ml-2 text-[10px] text-muted-foreground font-normal">(comma separated)</span>
+          {selectedTags.length > 0 && (
+            <span className="ml-2 text-primary font-semibold">{selectedTags.length} selected</span>
+          )}
         </label>
-        <Input
-          {...register('customTags')}
-          placeholder="pacey, clinical, season 3 champs"
-          error={errors.customTags?.message}
-        />
+        <button
+          type="button"
+          onClick={() => setTagsOpen(o => !o)}
+          className="w-full flex justify-between items-center border-2 border-foreground px-3 py-2 font-mono text-xs uppercase tracking-widest shadow-retro bg-card"
+        >
+          <span className="truncate">
+            {selectedTags.length ? selectedTags.join(', ') : 'Select tags...'}
+          </span>
+          {tagsOpen ? <ChevronUp size={16} className="ml-2 shrink-0" /> : <ChevronDown size={16} className="ml-2 shrink-0" />}
+        </button>
+        {tagsOpen && (
+          <div className="border-2 border-t-0 border-foreground p-3 bg-card flex flex-wrap gap-2">
+            {availableTags.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">No tags found in database.</p>
+            ) : (
+              availableTags.map(tag => (
+                <button
+                  key={tag.id}
+                  type="button"
+                  onClick={() => toggleTag(tag.name)}
+                  className={`font-mono uppercase tracking-widest text-xs px-3 py-1.5 border-2 transition-all active:scale-95 ${
+                    selectedTags.includes(tag.name)
+                      ? 'bg-secondary text-secondary-foreground border-secondary'
+                      : 'bg-card text-foreground border-foreground hover:bg-muted'
+                  }`}
+                >
+                  {tag.name}
+                </button>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {!initial && (
