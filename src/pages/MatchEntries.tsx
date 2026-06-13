@@ -233,7 +233,7 @@ export function MatchEntries() {
                   {paginated.map(me => {
                     const p = getPlayer(me.playerId);
                     const rb = RESULT_BADGE[me.result as keyof typeof RESULT_BADGE] ?? RESULT_BADGE.draw;
-                    const isBulk = (me as any).source === 'bulk';
+                    const isBulk = (me as any).source === 'bulk' || me.notes?.startsWith('Generated from');
                     return (
                       <tr key={me.id} className="hover:bg-muted/30 transition-colors">
                         <td className="px-4 py-3">

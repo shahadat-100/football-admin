@@ -5,6 +5,7 @@ import { Match } from '@/features/matches/types';
 import { MatchEntry } from '@/features/match-entries/types';
 import { NewsArticle } from '@/features/news/types';
 import { supabase } from '@/lib/supabase';
+import { generateBulkMatchesForPlayer } from '@/shared/lib/bulkDataUtils';
 
 export interface HallOfFameEntry {
   id: number;
@@ -499,8 +500,25 @@ export const useFootballStore = create<FootballStore>()(
           const newPlayer = mapPlayerFromDb(fullPlayer ?? data);
           set((state) => ({ players: [...state.players, newPlayer] }));
 
-          // Save previous seasons data directly to player_season_stats
+          // Save previous seasons data by generating bulk matches and entries
           if (seasons && seasons.length > 0) {
+            // First resolve/create the 'Bulk Season' competition if it doesn't exist
+            let bulkCompetitionId: number | null = null;
+            const existingComp = get().competitions.find(c => c.name.toLowerCase() === 'bulk season');
+            if (existingComp) {
+              bulkCompetitionId = existingComp.id;
+            } else {
+              const { data: newComp } = await supabase
+                .from('competitions')
+                .insert({ name: 'Bulk Season' })
+                .select()
+                .single();
+              if (newComp) {
+                bulkCompetitionId = newComp.id;
+                set(state => ({ competitions: [...state.competitions, newComp] }));
+              }
+            }
+
             for (const season of seasons) {
               let seasonId: number;
               const seasonName = `Season ${season.year}`;
@@ -532,45 +550,57 @@ export const useFootballStore = create<FootballStore>()(
                 }
               }
 
-              let appearances = 0;
-              let goals = 0;
-              let cleansheets = 0;
-              let hattricks = 0;
-              let motmcount = 0;
-              let wins = 0;
-              let draws = 0;
-              let losses = 0;
-              let goalsconceded = 0;
+              // Generate matches and match entries using the utility function
+              const tempPlayer: Player = {
+                ...newPlayer,
+                seasons: [season]
+              };
+              const { matches: generatedMatches, entries: generatedEntries } = generateBulkMatchesForPlayer(tempPlayer);
 
-              for (const month of season.monthlyStats ?? []) {
-                for (const week of month.weeklyStats ?? []) {
-                  appearances += week.matches || 0;
-                  goals += week.goalsScored || 0;
-                  cleansheets += week.cleanSheet || 0;
-                  hattricks += week.hattricks || 0;
-                  motmcount += week.motm || 0;
-                  wins += week.win || 0;
-                  draws += week.draw || 0;
-                  losses += week.loss || 0;
-                  goalsconceded += week.goalsConceded || 0;
+              if (generatedMatches.length > 0) {
+                const matchesToInsert = generatedMatches.map(gm => mapMatchToDb({
+                  ...gm,
+                  seasonId,
+                  competitionId: bulkCompetitionId,
+                }));
+
+                const { data: insertedMatches, error: matchesErr } = await supabase
+                  .from('matches')
+                  .insert(matchesToInsert)
+                  .select();
+
+                if (matchesErr) {
+                  console.error('Failed to insert bulk matches:', matchesErr);
+                  continue;
+                }
+
+                if (insertedMatches && insertedMatches.length === matchesToInsert.length) {
+                  const entriesToInsert = generatedEntries.map((ge, idx) => {
+                    const insertedMatch = insertedMatches[idx];
+                    return mapMatchEntryToDb({
+                      ...ge,
+                      matchId: insertedMatch.id,
+                      seasonId,
+                    });
+                  });
+
+                  const { error: entriesErr } = await supabase
+                    .from('match_entries')
+                    .insert(entriesToInsert);
+
+                  if (entriesErr) {
+                    console.error('Failed to insert bulk match entries:', entriesErr);
+                  }
                 }
               }
 
-              await supabase.from('player_season_stats').insert({
-                player_id: newPlayerId,
-                season_id: seasonId,
-                appearances,
-                goals,
-                cleansheets,
-                hattricks,
-                motmcount,
-                wins,
-                draws,
-                losses,
-                goalsconceded,
-                updated_at: new Date().toISOString()
-              });
+              // Run the background aggregation sync helper to populate player_season_stats correctly
+              await updatePlayerSeasonStats(newPlayerId, seasonId);
             }
+
+            // Sync the store state with database
+            await get().fetchMatches();
+            await get().fetchMatchEntries();
             await get().fetchPlayerSeasonStats();
           }
         }
