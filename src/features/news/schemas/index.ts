@@ -10,5 +10,6 @@ export const newsSchema = z.object({
   date: z.string(),
   category: z.enum(NEWS_CATEGORIES as unknown as [string, ...string[]]),
   image: z.string().optional(),
+  created_at: z.string().optional(),
 });
-export const newsFormSchema = newsSchema.omit({ id: true });
+export const newsFormSchema = newsSchema.omit({ id: true, created_at: true });

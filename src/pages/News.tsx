@@ -13,7 +13,13 @@ export function News() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
 
-  const sorted   = [...news].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const sorted = [...news].sort((a, b) => {
+    const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+    if (dateDiff !== 0) return dateDiff;
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return timeB - timeA;
+  });
   const filtered = fuzzyFilter(sorted, search, ['title', 'author', 'category']);
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
