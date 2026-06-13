@@ -14,7 +14,8 @@ export function Matches() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
 
-  const filtered = fuzzyFilter(matches, search, ['homeTeam', 'awayTeam', 'competition'])
+  const visibleMatches = matches.filter(m => m.competition !== 'Bulk Season');
+  const filtered = fuzzyFilter(visibleMatches, search, ['homeTeam', 'awayTeam', 'competition'])
     .sort((a, b) => b.date.localeCompare(a.date));
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
@@ -65,7 +66,7 @@ export function Matches() {
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between mb-6 gap-4">
         <div>
           <h2 className="font-bold text-[22px] mb-1">Matches</h2>
-          <p className="text-muted-foreground text-[13px]">{matches.length} matches</p>
+          <p className="text-muted-foreground text-[13px]">{visibleMatches.length} matches</p>
         </div>
         <div className="flex gap-3 items-center">
           <div className="relative">
