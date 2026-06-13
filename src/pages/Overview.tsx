@@ -16,7 +16,7 @@ interface OverviewProps {
 }
 
 export function Overview({ setTab }: OverviewProps) {
-  const { players, matchEntries, matches, playerSeasonStats } = useFootballStore();
+  const { players, matchEntries, matches, playerSeasonStats, seasons } = useFootballStore();
 
   // ── 1. Stat Cards Data ──
   const liveGoals   = matchEntries.reduce((s, e) => s + e.goals, 0);
@@ -84,57 +84,21 @@ export function Overview({ setTab }: OverviewProps) {
     return { wins: w, draws: d, losses: l };
   }, [matchEntries]);
 
-  // ── 3. Top Scorers & Goals Data ──
-  const { topScorers, awardsData } = useMemo(() => {
-    const pData = players.map(p => {
-      // aggregate from playerSeasonStats
+  // ── 3. Awards Data (MOTM / Clean Sheets / Hat-tricks) ──
+  // topScorers is now computed inside TopScorersBars with season filter support
+  const awardsData = useMemo(() => {
+    return players.map(p => {
       const stats = playerSeasonStats.filter(s => s.playerId === p.id);
-      const totalG = stats.reduce((acc, s) => acc + (s.goals || 0), 0);
-      const totalC = stats.reduce((acc, s) => acc + (s.goalsConceded || 0), 0);
-      const totalMotm = stats.reduce((acc, s) => acc + (s.motmCount || 0), 0);
-      const totalCS = stats.reduce((acc, s) => acc + (s.cleansheets || 0), 0);
-      const totalHat = stats.reduce((acc, s) => acc + (s.hattricks || 0), 0);
-
-      // aggregate from historical seasons directly
-      const histG = (p.seasons ?? [])
-        .flatMap(s => s.monthlyStats.flatMap(m => m.weeklyStats))
-        .reduce((s, w) => s + w.goalsScored, 0);
-      const histC = (p.seasons ?? [])
-        .flatMap(s => s.monthlyStats.flatMap(m => m.weeklyStats))
-        .reduce((s, w) => s + w.goalsConceded, 0);
-      const histMotm = (p.seasons ?? [])
-        .flatMap(s => s.monthlyStats.flatMap(m => m.weeklyStats))
-        .reduce((s, w) => s + w.motm, 0);
-      const histCS = (p.seasons ?? [])
-        .flatMap(s => s.monthlyStats.flatMap(m => m.weeklyStats))
-        .reduce((s, w) => s + w.cleanSheet, 0);
-      const histHat = (p.seasons ?? [])
-        .flatMap(s => s.monthlyStats.flatMap(m => m.weeklyStats))
-        .reduce((s, w) => s + w.hattricks, 0);
-
-      // Calculate form (last 5 match results)
-      const form = matchEntries
-        .filter(e => e.playerId === p.id && e.result)
-        .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
-        .slice(0, 5)
-        .map(e => e.result!)
-        .reverse();
-        
       return {
         player: p,
-        goals: totalG + histG,
-        conceded: totalC + histC,
-        motm: totalMotm + histMotm,
-        cleanSheets: totalCS + histCS,
-        hattricks: totalHat + histHat,
-        form
+        goals: stats.reduce((acc, s) => acc + (s.goals || 0), 0),
+        conceded: stats.reduce((acc, s) => acc + (s.goalsConceded || 0), 0),
+        motm: stats.reduce((acc, s) => acc + (s.motmCount || 0), 0),
+        cleanSheets: stats.reduce((acc, s) => acc + (s.cleansheets || 0), 0),
+        hattricks: stats.reduce((acc, s) => acc + (s.hattricks || 0), 0),
+        form: [] as string[],
       };
     });
-
-    return {
-      topScorers: [...pData].sort((a, b) => b.goals - a.goals).slice(0, 5),
-      awardsData: pData,
-    };
   }, [players, playerSeasonStats]);
 
   // ── 4. Activity Timeline Data ──
@@ -167,7 +131,12 @@ export function Overview({ setTab }: OverviewProps) {
           />
         </div>
         <div className="lg:col-span-2 h-full">
-          <TopScorersBars scorers={topScorers} />
+          <TopScorersBars
+            players={players}
+            playerSeasonStats={playerSeasonStats}
+            seasons={seasons}
+            matchEntries={matchEntries}
+          />
         </div>
 
         {/* Row 3 */}
@@ -181,7 +150,12 @@ export function Overview({ setTab }: OverviewProps) {
 
       {/* Points Leaderboards */}
       <div className="mb-8">
-        <PointsLeaderboard players={players} matchEntries={matchEntries} />
+        <PointsLeaderboard
+          players={players}
+          matchEntries={matchEntries}
+          seasons={seasons}
+          playerSeasonStats={playerSeasonStats}
+        />
       </div>
 
       {/* Recent Matches */}
