@@ -80,7 +80,9 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
         }
       }
     }
-    onSave({ ...values, seasons } as any);
+    // Explicitly merge selectedRoles & selectedTags from local state
+    // (react-hook-form doesn't capture setValue-only fields without register())
+    onSave({ ...values, playerRoles: selectedRoles, customTags: selectedTags, seasons } as any);
   };
 
   return (
