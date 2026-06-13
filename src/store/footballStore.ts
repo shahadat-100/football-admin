@@ -89,21 +89,21 @@ export const mapMatchToDb = (m: any) => ({
 export const mapMatchEntryFromDb = (e: any): MatchEntry => ({
   id: e.id,
   playerId: e.playerid,
-  matchId: e.matchid,
+  matchId: e.matchid || '',
   goals: e.goals || 0,
   goalsConceded: e.goalsconceded || 0,
   result: e.result,
   hattricks: e.hattricks || 0,
   cleanSheet: e.cleansheet || false,
   motm: e.motm || false,
-  date: e.matches?.date || '',
+  date: e.date || e.matches?.date || '',
   notes: e.notes || '',
   seasonId: e.season_id,
 });
 
 export const mapMatchEntryToDb = (e: any) => ({
   playerid: e.playerId,
-  matchid: e.matchId,
+  matchid: e.matchId || null,
   goals: e.goals || 0,
   goalsconceded: e.goalsConceded || 0,
   result: e.result,
@@ -112,6 +112,7 @@ export const mapMatchEntryToDb = (e: any) => ({
   motm: e.motm || false,
   notes: e.notes || '',
   season_id: e.seasonId,
+  date: e.date || null,
 });
 
 export const mapHallOfFameFromDb = (h: any): HallOfFameEntry => ({
@@ -353,12 +354,13 @@ const checkAndFireMilestones = async (playerId: string): Promise<boolean> => {
 
     const { data: entries } = await supabase
       .from('match_entries')
-      .select('result, goals, cleansheet, hattricks, motm, matches(date)')
+      .select('result, goals, cleansheet, hattricks, motm, date, matches(date)')
       .eq('playerid', playerId);
 
     const sorted = ((entries ?? []) as any[])
-      .filter(e => e.matches?.date)
-      .sort((a, b) => new Date(a.matches.date).getTime() - new Date(b.matches.date).getTime());
+      .map(e => ({ ...e, date: e.date || e.matches?.date }))
+      .filter(e => e.date)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     let rGoals = 0, rCleansheets = 0, rHattricks = 0, rApps = 0, rMotm = 0, rWins = 0;
     let currentWinStreak = 0, currentUnbeatenStreak = 0;
@@ -374,7 +376,7 @@ const checkAndFireMilestones = async (playerId: string): Promise<boolean> => {
     };
 
     for (const e of sorted) {
-      const d = e.matches.date;
+      const d = e.date;
       rApps++;
       rGoals += (e.goals || 0);
       rHattricks += (e.hattricks || 0);
@@ -575,21 +577,24 @@ export const useFootballStore = create<FootballStore>()(
                 }
 
                 if (insertedMatches && insertedMatches.length === matchesToInsert.length) {
-                  const entriesToInsert = generatedEntries.map((ge, idx) => {
-                    const insertedMatch = insertedMatches[idx];
-                    return mapMatchEntryToDb({
-                      ...ge,
-                      matchId: insertedMatch.id,
-                      seasonId,
-                    });
-                  });
+                  if (generatedEntries.length > 0) {
+                    try {
+                      const entriesToInsert = generatedEntries.map((ge) => {
+                        return mapMatchEntryToDb({
+                          ...ge,
+                          matchId: null, // Null matchId means it's an independent historical entry
+                          seasonId,
+                        });
+                      });
 
-                  const { error: entriesErr } = await supabase
-                    .from('match_entries')
-                    .insert(entriesToInsert);
-
-                  if (entriesErr) {
-                    console.error('Failed to insert bulk match entries:', entriesErr);
+                      const { error: entriesErr } = await supabase
+                        .from('match_entries')
+                        .insert(entriesToInsert);
+                        
+                      if (entriesErr) console.error('Failed to insert bulk match entries:', entriesErr);
+                    } catch (err) {
+                      console.error('Error inserting bulk data:', err);
+                    }
                   }
                 }
               }
@@ -797,27 +802,33 @@ export const useFootballStore = create<FootballStore>()(
       },
       
       fetchMatchEntries: async () => {
-        const { data, error } = await supabase.from('match_entries').select('*, matches(date)');
+        const { data, error } = await supabase.from('match_entries').select('*');
         if (data) {
           set({ matchEntries: data.map(mapMatchEntryFromDb) });
         }
         if (error) console.error('Error fetching match entries:', error);
       },
       setMatchEntries: (matchEntries) => set({ matchEntries }),
-      
       addMatchEntry: async (e) => {
-        let matchId = e.matchId;
+        let matchId = e.matchId || null;
         let seasonId: number;
-        
-        // If matchId is empty (custom entry with no official match), we create a placeholder match to preserve relational integrity and date
-        if (!matchId) {
+
+        if (matchId) {
+          const associatedMatch = get().matches.find(m => m.id === matchId);
+          if (associatedMatch && associatedMatch.seasonId) {
+            seasonId = associatedMatch.seasonId;
+          } else {
+            alert('Cannot save match entry: no season associated.');
+            return;
+          }
+        } else {
+          // If no matchId (historical data directly into match_entries)
+          // Ensure season is created/exists for the year
           const year = e.date ? e.date.split('-')[0] : new Date().getFullYear().toString();
           const seasonName = `Season ${year}`;
-          let tempSeasonId: number;
-
           const existingSeason = get().seasons.find(s => s.name === seasonName);
           if (existingSeason) {
-            tempSeasonId = existingSeason.id;
+            seasonId = existingSeason.id;
           } else {
             const { data: newSeason, error: seasonError } = await supabase
               .from('season')
@@ -830,44 +841,11 @@ export const useFootballStore = create<FootballStore>()(
               .single();
 
             if (seasonError || !newSeason) {
-              console.error('Failed to auto-create season for match entry:', seasonError);
-              alert('Failed to add entry: ' + (seasonError?.message || 'Season error'));
+              alert('Failed to auto-create season for entry: ' + seasonError?.message);
               return;
             }
-
-            tempSeasonId = newSeason.id;
+            seasonId = newSeason.id;
             set(state => ({ seasons: [...state.seasons, newSeason] }));
-          }
-
-          const { data: dummyMatch, error: dummyMatchError } = await supabase
-            .from('matches')
-            .insert({
-              season_id: tempSeasonId,
-              hometeam: 'The Elits',
-              awayteam: 'Custom Entry Match',
-              date: e.date || new Date().toISOString().split('T')[0],
-              status: 'finished',
-            })
-            .select()
-            .single();
-
-          if (dummyMatchError || !dummyMatch) {
-            console.error('Failed to create placeholder match:', dummyMatchError);
-            alert('Failed to create entry: ' + dummyMatchError?.message);
-            return;
-          }
-          matchId = dummyMatch.id;
-          seasonId = tempSeasonId;
-          // Refresh matches in state
-          await get().fetchMatches();
-        } else {
-          // Get the season ID associated with the match
-          const associatedMatch = get().matches.find(m => m.id === matchId);
-          if (associatedMatch && associatedMatch.seasonId) {
-            seasonId = associatedMatch.seasonId;
-          } else {
-            alert('Cannot save match entry: no season associated.');
-            return;
           }
         }
 
@@ -875,9 +853,10 @@ export const useFootballStore = create<FootballStore>()(
           ...e,
           matchId,
           seasonId,
+          date: e.date || new Date().toISOString().split('T')[0]
         });
 
-        const { data, error } = await supabase.from('match_entries').insert([entryData]).select('*, matches(date)').single();
+        const { data, error } = await supabase.from('match_entries').insert([entryData]).select('*').single();
         if (data) {
           const newEntry = mapMatchEntryFromDb(data);
           set((state) => ({ matchEntries: [...state.matchEntries, newEntry] }));
@@ -907,7 +886,7 @@ export const useFootballStore = create<FootballStore>()(
           seasonId,
         });
         
-        const { data, error } = await supabase.from('match_entries').update(entryData).eq('id', e.id).select('*, matches(date)').single();
+        const { data, error } = await supabase.from('match_entries').update(entryData).eq('id', e.id).select('*').single();
         if (data) {
           const updatedEntry = mapMatchEntryFromDb(data);
           set((state) => ({ matchEntries: state.matchEntries.map(x => x.id === e.id ? updatedEntry : x) }));
