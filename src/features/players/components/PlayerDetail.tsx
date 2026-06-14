@@ -9,7 +9,7 @@ import { RESULT_BADGE } from '@/shared/lib/constants';
 import { PlayerRadarChart } from './PlayerRadarChart';
 import { PlayerFormHistory } from './PlayerFormHistory';
 import { SeasonPerformanceChart } from './SeasonPerformanceChart';
-import { TrendChart } from './TrendChart';
+import { RankTrendCard } from './RankTrendCard';
 import { SeasonTable } from './SeasonTable';
 
 interface PlayerDetailProps {
@@ -230,8 +230,6 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
         </div>
       </div>
 
-      <PlayerFormHistory entries={entries} />
-
       {/* New Visualizations Section */}
       {(() => {
         // Prepare Data for SeasonPerformanceChart & SeasonTable
@@ -279,43 +277,61 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
           motm: stats.totalMOTM
         };
 
-        // Prepare Data for Monthly Trend (Using last 6 months of entries)
-        const monthlyData: { label: string; value: number }[] = [];
-        const weeklyData: { label: string; value: number }[] = [];
-        if (historyEntries.length > 0) {
-          // Group by Month
-          const monthsMap = new Map<string, { points: number; count: number }>();
-          const weeksMap = new Map<string, { points: number; count: number }>();
-          
-          [...historyEntries].reverse().forEach(e => {
+        // ── Monthly & Weekly RANK calculation ──────────────────────────────
+        // For each period (month/week), tally points for EVERY player from ALL match entries,
+        // then find where this player sits in the ranking.
+        type PeriodStats = { wins: number; draws: number; losses: number; goals: number; matches: number; points: number };
+
+        const buildPeriodKey = (date: Date, mode: 'month' | 'week') => {
+          const monthKey = date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+          if (mode === 'month') return monthKey;
+          const weekNum = Math.ceil(date.getDate() / 7);
+          return `W${weekNum} ${monthKey}`;
+        };
+
+        // Collect all unique period keys from this player's entries
+        const myMonthKeys = new Set<string>();
+        const myWeekKeys = new Set<string>();
+        entries.forEach(e => {
+          if (!e.date) return;
+          const d = new Date(e.date);
+          if (isNaN(d.getTime())) return;
+          myMonthKeys.add(buildPeriodKey(d, 'month'));
+          myWeekKeys.add(buildPeriodKey(d, 'week'));
+        });
+
+        const getRankForPeriod = (periodKey: string, mode: 'month' | 'week'): { rank: number; wins: number; draws: number; losses: number; goals: number; matches: number; totalPlayers: number } => {
+          // Build a points map for all players in this period
+          const playerPoints = new Map<string, PeriodStats>();
+          matchEntries.forEach(e => {
             if (!e.date) return;
             const d = new Date(e.date);
             if (isNaN(d.getTime())) return;
-            
-            const monthKey = d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
-            if (!monthsMap.has(monthKey)) monthsMap.set(monthKey, { points: 0, count: 0 });
-            monthsMap.get(monthKey)!.points += (e.result === 'win' ? 1 : 0);
-            monthsMap.get(monthKey)!.count += 1;
-
-            // Week logic
-            const weekNum = Math.ceil(d.getDate() / 7);
-            const weekKey = `W${weekNum} ${monthKey}`;
-            if (!weeksMap.has(weekKey)) weeksMap.set(weekKey, { points: 0, count: 0 });
-            weeksMap.get(weekKey)!.points += (e.result === 'win' ? 1 : 0);
-            weeksMap.get(weekKey)!.count += 1;
+            if (buildPeriodKey(d, mode) !== periodKey) return;
+            if (!playerPoints.has(e.playerId)) {
+              playerPoints.set(e.playerId, { wins: 0, draws: 0, losses: 0, goals: 0, matches: 0, points: 0 });
+            }
+            const ps = playerPoints.get(e.playerId)!;
+            ps.matches += 1;
+            ps.goals += e.goals || 0;
+            if (e.result === 'win') { ps.wins += 1; ps.points += 3; }
+            else if (e.result === 'draw') { ps.draws += 1; ps.points += 1; }
+            else if (e.result === 'loss') { ps.losses += 1; }
+            if (e.motm) ps.points += 2;
           });
 
-          // Convert to true win rate %
-          Array.from(monthsMap.entries()).slice(-6).forEach(([label, data]) => {
-            const winR = (data.points / data.count) * 100;
-            monthlyData.push({ label, value: Math.round(winR) });
-          });
+          const sorted = Array.from(playerPoints.entries()).sort((a, b) => b[1].points - a[1].points || b[1].goals - a[1].goals);
+          const rankIdx = sorted.findIndex(([id]) => id === playerId);
+          const myStats = playerPoints.get(playerId) || { wins: 0, draws: 0, losses: 0, goals: 0, matches: 0, points: 0 };
+          return {
+            rank: rankIdx !== -1 ? rankIdx + 1 : sorted.length + 1,
+            ...myStats,
+            totalPlayers: sorted.length
+          };
+        };
 
-          Array.from(weeksMap.entries()).slice(-8).forEach(([label, data]) => {
-            const winR = (data.points / data.count) * 100;
-            weeklyData.push({ label, value: Math.round(winR) });
-          });
-        }
+        const monthlyRankData = Array.from(myMonthKeys).slice(-6).map(key => ({ label: key, ...getRankForPeriod(key, 'month') }));
+        const weeklyRankData = Array.from(myWeekKeys).slice(-8).map(key => ({ label: key, ...getRankForPeriod(key, 'week') }));
 
         return (
           <>
@@ -324,22 +340,10 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                 <SeasonPerformanceChart data={seasonData} />
               </div>
               <div className="lg:col-span-1 min-h-[300px]">
-                <TrendChart 
-                  title="Monthly Trend" 
-                  subtitle="Win rate % per month" 
-                  data={monthlyData} 
-                  bestRank={monthlyData.length ? Math.max(...monthlyData.map(d => d.value)) : undefined}
-                  yAxisLabel="Win Rate %"
-                />
+                <RankTrendCard title="Monthly Rank" subtitle="Leaderboard rank per month" data={monthlyRankData} />
               </div>
               <div className="lg:col-span-1 min-h-[300px]">
-                <TrendChart 
-                  title="Weekly Trend" 
-                  subtitle="Win rate % per week" 
-                  data={weeklyData} 
-                  bestRank={weeklyData.length ? Math.max(...weeklyData.map(d => d.value)) : undefined}
-                  yAxisLabel="Win Rate %"
-                />
+                <RankTrendCard title="Weekly Rank" subtitle="Leaderboard rank per week" data={weeklyRankData} />
               </div>
             </div>
 

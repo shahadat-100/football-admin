@@ -16,8 +16,7 @@ interface PlayerPoints {
   motm: number;
 }
 
-// 4-3-3 formation positions on a vertical half-pitch
-// x: 0-100 (left to right), y: 0-100 (top = center line, bottom = GK)
+// 4-3-1-2 formation positions
 const FORMATION_POSITIONS = [
   // GK
   { x: 50, y: 88, role: 'GK' },
@@ -27,13 +26,14 @@ const FORMATION_POSITIONS = [
   { x: 62, y: 70, role: 'CB' },
   { x: 85, y: 70, role: 'RB' },
   // MID (3)
-  { x: 25, y: 45, role: 'LM' },
-  { x: 50, y: 45, role: 'CM' },
-  { x: 75, y: 45, role: 'RM' },
-  // FWD (3)
-  { x: 22, y: 22, role: 'LW' },
-  { x: 50, y: 15, role: 'ST' },
-  { x: 78, y: 22, role: 'RW' },
+  { x: 25, y: 50, role: 'LCM' },
+  { x: 50, y: 55, role: 'CDM' },
+  { x: 75, y: 50, role: 'RCM' },
+  // CAM (1)
+  { x: 50, y: 35, role: 'CAM' },
+  // ST (2)
+  { x: 35, y: 15, role: 'LS' },
+  { x: 65, y: 15, role: 'RS' },
 ];
 
 export function MonthlyTopXI({ players, matchEntries }: MonthlyTopXIProps) {
@@ -102,22 +102,8 @@ export function MonthlyTopXI({ players, matchEntries }: MonthlyTopXIProps) {
         </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-0 flex-1">
-          {/* Light Pitch Visualization */}
-          <div className="relative flex-1 min-h-[500px] lg:min-h-[600px] bg-[#f4f5f7] overflow-hidden">
-            {/* Pitch markings SVG (Grey Lines) */}
-            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <polyline points="4,0 4,96 96,96 96,0" fill="none" stroke="#d1d5db" strokeWidth="0.5"/>
-              <line x1="4" y1="0" x2="96" y2="0" stroke="#d1d5db" strokeWidth="0.5"/>
-              <path d="M 35 0 A 15 15 0 0 0 65 0" fill="none" stroke="#d1d5db" strokeWidth="0.5"/>
-              <circle cx="50" cy="0" r="0.6" fill="#9ca3af"/>
-              <rect x="20" y="80" width="60" height="16" fill="none" stroke="#d1d5db" strokeWidth="0.5"/>
-              <rect x="35" y="92" width="30" height="4" fill="none" stroke="#d1d5db" strokeWidth="0.5"/>
-              <path d="M 38 80 A 12 12 0 0 1 62 80" fill="none" stroke="#d1d5db" strokeWidth="0.5"/>
-              <circle cx="50" cy="88" r="0.6" fill="#9ca3af"/>
-              <path d="M 4 92 A 4 4 0 0 0 8 96" fill="none" stroke="#d1d5db" strokeWidth="0.5"/>
-              <path d="M 96 92 A 4 4 0 0 1 92 96" fill="none" stroke="#d1d5db" strokeWidth="0.5"/>
-            </svg>
-
+          {/* White Background Visualization */}
+          <div className="relative flex-1 min-h-[500px] lg:min-h-[600px] bg-white overflow-hidden">
             {/* Player dots */}
             {FORMATION_POSITIONS.map((pos, idx) => {
               const pd = topXI[idx];
@@ -166,7 +152,7 @@ export function MonthlyTopXI({ players, matchEntries }: MonthlyTopXIProps) {
                   </div>
 
                   {/* Player Name */}
-                  <div className="text-foreground text-[11px] lg:text-[12px] font-bold whitespace-nowrap max-w-[80px] truncate text-center mt-3 drop-shadow-sm">
+                  <div className="text-foreground text-[11px] lg:text-[12px] font-bold line-clamp-2 text-balance leading-tight max-w-[80px] text-center mt-3 drop-shadow-sm">
                     {pd.player.name}
                   </div>
                 </div>
