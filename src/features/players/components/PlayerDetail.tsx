@@ -17,7 +17,7 @@ interface PlayerDetailProps {
   onBack: () => void;
 }
 export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
-  const { players, matchEntries, matches, updatePlayer, removePlayer, addMatchEntry } = useFootballStore();
+  const { players, matchEntries, matches, playerSeasonStats, updatePlayer, removePlayer, addMatchEntry } = useFootballStore();
   const player = players.find(p => p.id === playerId);
   const stats = usePlayerStats(playerId);
   
@@ -42,6 +42,16 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       return String(b.id).localeCompare(String(a.id));
     })
     .slice(0, 50);
+
+  // Compute Leaderboard Rank based on total points
+  const playerRanks = players.map(p => {
+    const pStats = playerSeasonStats.filter(s => s.playerId === p.id);
+    const totalPoints = pStats.reduce((acc, s) => acc + (s.points || 0), 0);
+    return { id: p.id, points: totalPoints };
+  }).sort((a, b) => b.points - a.points);
+  
+  const rankIndex = playerRanks.findIndex(r => r.id === player.id);
+  const currentRank = rankIndex !== -1 ? rankIndex + 1 : undefined;
 
   return (
     <div>
@@ -255,7 +265,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                   title="Monthly Trend" 
                   subtitle="Win rate % per month" 
                   data={monthlyData} 
-                  bestRank={monthlyData.length ? Math.max(...monthlyData.map(d => d.value)) : undefined}
+                  currentRank={currentRank}
                   yAxisLabel="Win Rate %"
                 />
               </div>
@@ -264,7 +274,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                   title="Weekly Trend" 
                   subtitle="Win rate % per week" 
                   data={weeklyData} 
-                  bestRank={weeklyData.length ? Math.max(...weeklyData.map(d => d.value)) : undefined}
+                  currentRank={currentRank}
                   yAxisLabel="Win Rate %"
                 />
               </div>

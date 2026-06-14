@@ -159,45 +159,51 @@ export function Overview({ setTab }: OverviewProps) {
         />
       </div>
 
-      {/* Monthly Top XI */}
-      <div className="mb-8">
-        <MonthlyTopXI players={players} matchEntries={matchEntries} />
-      </div>
-
-      {/* Recent Matches */}
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex flex-col w-full max-w-3xl">
-        <p className="font-semibold text-base mb-6 text-foreground">Recent Matches</p>
-        {matches.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No matches yet</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {([...matches].reverse().slice(0, 5)).map(m => {
-              const sb = STATUS_BADGE[m.status as keyof typeof STATUS_BADGE] ?? STATUS_BADGE.finished;
-              const result = uniqueMatchesResults.matchResultsMap.get(m.id);
-              
-              return (
-                <div key={m.id} className="py-4 border-b border-border/50 last:border-0 group transition-colors">
-                  <div className="flex justify-between items-center gap-4 mb-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-foreground">{m.homeTeam} vs {m.awayTeam}</span>
-                      {m.status === 'finished' && result && (
-                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
-                          result === 'win' ? 'bg-emerald-500/10 text-emerald-500' :
-                          result === 'draw' ? 'bg-amber-500/10 text-amber-500' :
-                          'bg-red-500/10 text-red-500'
-                        }`}>
-                          {result === 'loss' ? 'lost' : result}
-                        </span>
-                      )}
+      {/* Monthly Top XI & Recent Matches Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+        <div className="xl:col-span-2 flex">
+          <MonthlyTopXI players={players} matchEntries={matchEntries} />
+        </div>
+        
+        <div className="xl:col-span-1 flex">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm flex flex-col w-full h-full max-h-[700px] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <p className="font-semibold text-base text-foreground tracking-tight">Recent Matches</p>
+              <Badge bg="#1a1a1a" c="#e5e5e5">Live</Badge>
+            </div>
+            {matches.length === 0 ? (
+              <p className="text-muted-foreground text-sm text-center my-auto">No matches yet</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {([...matches].reverse().slice(0, 8)).map(m => {
+                  const sb = STATUS_BADGE[m.status as keyof typeof STATUS_BADGE] ?? STATUS_BADGE.finished;
+                  const result = uniqueMatchesResults.matchResultsMap.get(m.id);
+                  
+                  return (
+                    <div key={m.id} className="py-4 border-b border-border/50 last:border-0 group transition-colors">
+                      <div className="flex justify-between items-center gap-4 mb-2">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="text-[13px] font-bold text-foreground leading-tight">{m.homeTeam} <span className="text-muted-foreground font-normal mx-1">vs</span> {m.awayTeam}</span>
+                          {m.status === 'finished' && result && (
+                            <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded-sm tracking-wider ${
+                              result === 'win' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' :
+                              result === 'draw' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
+                              'bg-red-500/10 text-red-500 border border-red-500/20'
+                            }`}>
+                              {result === 'loss' ? 'lost' : result}
+                            </span>
+                          )}
+                        </div>
+                        <Badge bg={sb.bg} c={sb.c}>{m.status}</Badge>
+                      </div>
+                      <p className="text-[11px] font-medium text-muted-foreground">{m.competition} · {m.date}</p>
                     </div>
-                    <Badge bg={sb.bg} c={sb.c}>{m.status}</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{m.competition} · {m.date}</p>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
     </div>

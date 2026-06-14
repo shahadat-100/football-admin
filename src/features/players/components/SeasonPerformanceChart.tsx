@@ -69,13 +69,26 @@ export function SeasonPerformanceChart({ data }: SeasonPerformanceChartProps) {
 
       <div className="flex-1 w-full relative mt-2">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+          <defs>
+            <linearGradient id="gfGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#3b82f6" stopOpacity="1" />
+              <stop offset="100%" stopColor="#2563eb" stopOpacity="0.8" />
+            </linearGradient>
+            <linearGradient id="gcGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ef4444" stopOpacity="1" />
+              <stop offset="100%" stopColor="#dc2626" stopOpacity="0.8" />
+            </linearGradient>
+            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#000" floodOpacity="0.1" />
+            </filter>
+          </defs>
           
           {/* Grid lines (using goals axis) */}
           {gridLinesGoals.map((val, i) => {
             const y = getGoalY(val);
             return (
               <g key={`grid-${i}`}>
-                <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="currentColor" className="text-border" strokeDasharray="4 4" strokeWidth="1" />
+                <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="currentColor" className="text-border" strokeDasharray="3 3" strokeWidth="1" />
               </g>
             );
           })}
@@ -84,23 +97,23 @@ export function SeasonPerformanceChart({ data }: SeasonPerformanceChartProps) {
           {gridLinesGoals.map((val, i) => {
             const y = getGoalY(val);
             return (
-              <text key={`l-axis-${i}`} x={padding.left - 10} y={y} textAnchor="end" dominantBaseline="middle" className="text-[10px] fill-muted-foreground">
+              <text key={`l-axis-${i}`} x={padding.left - 10} y={y} textAnchor="end" dominantBaseline="middle" className="text-[10px] font-medium fill-muted-foreground">
                 {val}
               </text>
             );
           })}
-          <text x={10} y={height / 2} transform={`rotate(-90 10 ${height / 2})`} textAnchor="middle" className="text-[10px] fill-muted-foreground">Goals</text>
+          <text x={12} y={height / 2} transform={`rotate(-90 12 ${height / 2})`} textAnchor="middle" className="text-[10px] font-bold fill-muted-foreground uppercase tracking-widest">Goals</text>
 
           {/* Right Axis Labels (Win Rate %) */}
           {gridLinesWinRate.map((val, i) => {
             const y = getWinRateY(val);
             return (
-              <text key={`r-axis-${i}`} x={width - padding.right + 10} y={y} textAnchor="start" dominantBaseline="middle" className="text-[10px] fill-muted-foreground">
+              <text key={`r-axis-${i}`} x={width - padding.right + 10} y={y} textAnchor="start" dominantBaseline="middle" className="text-[10px] font-medium fill-muted-foreground">
                 {val}%
               </text>
             );
           })}
-          <text x={width - 10} y={height / 2} transform={`rotate(90 ${width - 10} ${height / 2})`} textAnchor="middle" className="text-[10px] fill-muted-foreground">Win Rate</text>
+          <text x={width - 12} y={height / 2} transform={`rotate(90 ${width - 12} ${height / 2})`} textAnchor="middle" className="text-[10px] font-bold fill-muted-foreground uppercase tracking-widest">Win Rate</text>
 
           {/* Bars */}
           {data.map((d, i) => {
@@ -113,10 +126,14 @@ export function SeasonPerformanceChart({ data }: SeasonPerformanceChartProps) {
 
             return (
               <g key={`bars-${i}`}>
+                {/* Background track for bars */}
+                <rect x={cx - barWidth - barGap/2} y={getGoalY(yGoalMax)} width={barWidth} height={getGoalHeight(yGoalMax)} fill="currentColor" className="text-muted/10" rx={4} />
+                <rect x={cx + barGap/2} y={getGoalY(yGoalMax)} width={barWidth} height={getGoalHeight(yGoalMax)} fill="currentColor" className="text-muted/10" rx={4} />
+
                 {/* Goals For */}
-                <rect x={cx - barWidth - barGap/2} y={gfY} width={barWidth} height={gfH} fill="#3b82f6" rx={2} opacity={0.9} />
+                <rect x={cx - barWidth - barGap/2} y={gfY} width={barWidth} height={gfH} fill="url(#gfGradient)" rx={4} filter="url(#shadow)" />
                 {/* Goals Conceded */}
-                <rect x={cx + barGap/2} y={gcY} width={barWidth} height={gcH} fill="#ef4444" rx={2} opacity={0.7} />
+                <rect x={cx + barGap/2} y={gcY} width={barWidth} height={gcH} fill="url(#gcGradient)" rx={4} filter="url(#shadow)" />
               </g>
             );
           })}
@@ -129,6 +146,7 @@ export function SeasonPerformanceChart({ data }: SeasonPerformanceChartProps) {
             strokeWidth="3"
             strokeLinejoin="round"
             strokeLinecap="round"
+            filter="url(#shadow)"
           />
 
           {/* Line Dots */}
