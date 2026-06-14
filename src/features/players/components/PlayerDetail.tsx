@@ -17,7 +17,7 @@ interface PlayerDetailProps {
   onBack: () => void;
 }
 export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
-  const { players, matchEntries, matches, playerSeasonStats, updatePlayer, removePlayer, addMatchEntry } = useFootballStore();
+  const { players, matchEntries, matches, playerSeasonStats, seasons, updatePlayer, removePlayer, addMatchEntry } = useFootballStore();
   const player = players.find(p => p.id === playerId);
   const stats = usePlayerStats(playerId);
   
@@ -52,6 +52,18 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
   
   const rankIndex = playerRanks.findIndex(r => r.id === player.id);
   const currentRank = rankIndex !== -1 ? rankIndex + 1 : undefined;
+
+  // Compute Current Season Rank
+  const currentSeason = seasons.find(s => s.is_current) || seasons[seasons.length - 1];
+  let currentSeasonRank: number | undefined = undefined;
+  if (currentSeason) {
+    const seasonRanks = players.map(p => {
+      const pStats = playerSeasonStats.find(s => s.playerId === p.id && s.seasonId === currentSeason.id);
+      return { id: p.id, points: pStats?.points || 0 };
+    }).sort((a, b) => b.points - a.points);
+    const sRankIndex = seasonRanks.findIndex(r => r.id === player.id);
+    if (sRankIndex !== -1) currentSeasonRank = sRankIndex + 1;
+  }
 
   return (
     <div>
@@ -104,22 +116,75 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                       <Badge key={t} bg="#4b5563" c="#e5e7eb">{t}</Badge>
                     ))}
                   </div>
-                  <div className="mt-4 flex items-center gap-4 text-[12px] bg-muted/30 p-2.5 rounded-lg border border-border/50 w-max flex-wrap">
-                     {player.email && (
-                       <>
-                         <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Email</span>
-                            <span className="text-foreground font-semibold">{player.email}</span>
-                         </div>
-                         <div className="w-px h-4 bg-border hidden sm:block"></div>
-                       </>
-                     )}
-                     <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Win Rate</span>
-                        <span className="text-foreground font-semibold text-[#10b981]">
-                          {stats.totalMatches > 0 ? Math.round((stats.totalWins / stats.totalMatches) * 100) : 0}%
-                        </span>
-                     </div>
+                  <div className="mt-4 flex flex-col gap-4">
+                    <div className="flex items-center gap-4 text-[12px] bg-muted/30 p-2.5 rounded-lg border border-border/50 w-max flex-wrap">
+                      {player.email && (
+                        <>
+                          <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Email</span>
+                              <span className="text-foreground font-semibold">{player.email}</span>
+                          </div>
+                          <div className="w-px h-4 bg-border hidden sm:block"></div>
+                        </>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground uppercase font-bold tracking-wider text-[10px]">Win Rate</span>
+                        <span className="font-bold">{allTime.winRate.toFixed(0)}%</span>
+                      </div>
+                    </div>
+
+                    {/* New: Recent Form & Ranks block */}
+                    <div className="flex flex-wrap gap-10 items-start">
+                      {/* Recent Form */}
+                      <div>
+                        <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-2">Recent Form (Last 10)</h4>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {(() => {
+                            const recent10 = historyEntries.slice(0, 10).reverse();
+                            if (recent10.length === 0) return <span className="text-[11px] text-muted-foreground">No matches yet</span>;
+                            return recent10.map((entry, i) => {
+                              const result = entry.result || 'draw';
+                              const isWin  = result === 'win';
+                              const isDraw = result === 'draw';
+                              const bg = isWin ? '#14532d' : isDraw ? '#78350f' : '#7f1d1d';
+                              const c  = isWin ? '#4ade80' : isDraw ? '#fcd34d' : '#f87171';
+                              return (
+                                <div
+                                  key={entry.id || i}
+                                  className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-[11px] shadow-sm cursor-default"
+                                  style={{ backgroundColor: bg, color: c }}
+                                  title={`${entry.date}: ${entry.goals ?? 0} goals • ${result.toUpperCase()}`}
+                                >
+                                  {result.charAt(0).toUpperCase()}
+                                </div>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* Overall Rank */}
+                      <div>
+                        <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-2">Overall Rank</h4>
+                        <div className="flex items-center gap-2">
+                          <span className="bg-amber-400 text-amber-950 font-black text-[13px] px-2.5 py-0.5 rounded shadow-sm">
+                            #{currentRank || '-'}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground font-medium">All Time</span>
+                        </div>
+                      </div>
+
+                      {/* Current Season Rank */}
+                      <div>
+                        <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-2">Season Rank</h4>
+                        <div className="flex items-center gap-2">
+                          <span className="bg-blue-500 text-white font-black text-[13px] px-2.5 py-0.5 rounded shadow-sm">
+                            #{currentSeasonRank || '-'}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground font-medium">{currentSeason?.name?.replace('Season ', '') || 'Current'}</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-2 flex-wrap h-fit">
@@ -171,8 +236,6 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       {(() => {
         // Prepare Data for SeasonPerformanceChart & SeasonTable
         const seasonData = stats.seasonBreakdown.map((sb, i) => {
-          // Since we don't have exact season wins/draws stored in breakdown, we approximate from overall winrate or history
-          // Or we can just calculate from historyEntries if they match the year
           const seasonEntries = entries.filter(e => e.date?.startsWith(sb.year.toString()));
           const sWins = seasonEntries.filter(e => e.result === 'win').length;
           const sDraws = seasonEntries.filter(e => e.result === 'draw').length;
@@ -285,63 +348,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
         );
       })()}
 
-      <div className="bg-card border border-border rounded-xl p-5 mb-4 shadow-sm">
-        <h3 className="font-semibold text-[14px] mb-4">Last 10 Matches Form</h3>
-        {(() => {
-          const recent10 = historyEntries.slice(0, 10).reverse();
-          if (recent10.length === 0) return <p className="text-muted-foreground text-[12px]">Not enough data yet.</p>;
 
-          const wins   = recent10.filter(e => e.result === 'win').length;
-          const draws  = recent10.filter(e => e.result === 'draw').length;
-          const losses = recent10.filter(e => e.result === 'loss').length;
-          const goals  = recent10.reduce((s, e) => s + (e.goals || 0), 0);
-          const motm   = recent10.filter(e => e.motm).length;
-
-          return (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              {/* W/D/L pill badges */}
-              <div className="flex gap-2 flex-wrap">
-                {recent10.map((entry, i) => {
-                  const result = entry.result || 'draw';
-                  const isWin  = result === 'win';
-                  const isDraw = result === 'draw';
-                  const bg = isWin ? '#14532d' : isDraw ? '#78350f' : '#7f1d1d';
-                  const c  = isWin ? '#4ade80' : isDraw ? '#fcd34d' : '#f87171';
-                  return (
-                    <div
-                      key={entry.id || i}
-                      className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-[13px] shadow-sm transition-transform hover:scale-110 cursor-default"
-                      style={{ backgroundColor: bg, color: c }}
-                      title={`${entry.date}: ${entry.goals ?? 0} goals • ${result.toUpperCase()}`}
-                    >
-                      {result.charAt(0).toUpperCase()}
-                    </div>
-                  );
-                })}
-                {Array.from({ length: Math.max(0, 10 - recent10.length) }).map((_, i) => (
-                  <div key={`empty-${i}`} className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center text-muted-foreground/30 text-[12px]">–</div>
-                ))}
-              </div>
-
-              {/* Right stats block */}
-              <div className="flex items-stretch gap-px bg-border rounded-xl overflow-hidden border border-border shadow-sm shrink-0">
-                <div className="flex flex-col items-center justify-center px-5 py-3 bg-card min-w-[90px]">
-                  <span className="font-bold text-[15px]">{wins}W – {draws}D – {losses}L</span>
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Record</span>
-                </div>
-                <div className="flex flex-col items-center justify-center px-5 py-3 bg-card min-w-[60px] border-l border-border">
-                  <span className="font-bold text-[20px] text-primary">{goals}</span>
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Goals</span>
-                </div>
-                <div className="flex flex-col items-center justify-center px-5 py-3 bg-card min-w-[60px] border-l border-border">
-                  <span className="font-bold text-[20px] text-amber-500">{motm}</span>
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">MOTM</span>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-      </div>
 
       <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
         <p className="font-semibold mb-3 text-[13px]">Match Entries & History (Recent 50)</p>
