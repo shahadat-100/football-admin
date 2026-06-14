@@ -10,6 +10,7 @@ import { TopScorersBars } from '@/features/overview/components/TopScorersBars';
 import { AwardsLeaderboard } from '@/features/overview/components/AwardsLeaderboard';
 import { ActivityTimeline } from '@/features/overview/components/ActivityTimeline';
 import { PointsLeaderboard } from '@/features/overview/components/PointsLeaderboard';
+import { MonthlyTopXI } from '@/features/overview/components/MonthlyTopXI';
 
 interface OverviewProps {
   setTab: (tab: string) => void;
@@ -156,6 +157,11 @@ export function Overview({ setTab }: OverviewProps) {
           seasons={seasons}
           playerSeasonStats={playerSeasonStats}
         />
+      </div>
+
+      {/* Monthly Top XI */}
+      <div className="mb-8">
+        <MonthlyTopXI players={players} matchEntries={matchEntries} />
       </div>
 
       {/* Recent Matches */}

@@ -157,8 +157,6 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
 
       <PlayerFormHistory entries={entries} />
 
-      <PlayerFormHistory entries={entries} />
-
       {/* New Visualizations Section */}
       {(() => {
         // Prepare Data for SeasonPerformanceChart & SeasonTable
@@ -279,54 +277,57 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       })()}
 
       <div className="bg-card border border-border rounded-xl p-5 mb-4 shadow-sm">
-        <h3 className="font-semibold text-[14px] mb-3">Last 10 Matches Form</h3>
+        <h3 className="font-semibold text-[14px] mb-4">Last 10 Matches Form</h3>
         {(() => {
-          const recent10 = historyEntries.slice(0, 10).reverse(); // oldest to newest for the chart
-          if (recent10.length === 0) return <p className="text-muted-foreground text-[12px]">Not enough data</p>;
+          const recent10 = historyEntries.slice(0, 10).reverse();
+          if (recent10.length === 0) return <p className="text-muted-foreground text-[12px]">Not enough data yet.</p>;
 
-          const points = recent10.reduce((acc, entry) => {
-            if (entry.result === 'win') return acc + 3;
-            if (entry.result === 'draw') return acc + 1;
-            return acc;
-          }, 0);
-          
-          const maxPoints = recent10.length * 3;
-          const percentage = (points / maxPoints) * 100;
-          let formText = 'Low';
-          let formColor = 'text-red-500';
-          if (percentage >= 65) {
-            formText = 'High';
-            formColor = 'text-green-500';
-          } else if (percentage >= 35) {
-            formText = 'Average';
-            formColor = 'text-amber-500';
-          }
+          const wins   = recent10.filter(e => e.result === 'win').length;
+          const draws  = recent10.filter(e => e.result === 'draw').length;
+          const losses = recent10.filter(e => e.result === 'loss').length;
+          const goals  = recent10.reduce((s, e) => s + (e.goals || 0), 0);
+          const motm   = recent10.filter(e => e.motm).length;
 
           return (
-            <div className="flex flex-col gap-4">
-              <div className="flex items-end gap-2 h-[60px]">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              {/* W/D/L pill badges */}
+              <div className="flex gap-2 flex-wrap">
                 {recent10.map((entry, i) => {
-                  const isWin = entry.result === 'win';
-                  const isDraw = entry.result === 'draw';
-                  const height = isWin ? '100%' : (isDraw ? '50%' : '20%');
-                  const bgColor = isWin ? 'bg-[#10b981]' : (isDraw ? 'bg-amber-500' : 'bg-red-500');
-                  
+                  const result = entry.result || 'draw';
+                  const isWin  = result === 'win';
+                  const isDraw = result === 'draw';
+                  const bg = isWin ? '#14532d' : isDraw ? '#78350f' : '#7f1d1d';
+                  const c  = isWin ? '#4ade80' : isDraw ? '#fcd34d' : '#f87171';
                   return (
-                    <div key={entry.id || i} className="group relative flex-1 flex flex-col justify-end items-center h-full">
-                      <div 
-                        className={`w-full max-w-[24px] rounded-t-sm ${bgColor} transition-all duration-300 hover:opacity-80 cursor-pointer`}
-                        style={{ height }}
-                      />
-                      <div className="opacity-0 group-hover:opacity-100 absolute -top-8 bg-popover border border-border text-[10px] px-2 py-1 rounded shadow-md whitespace-nowrap z-10 transition-opacity">
-                        {entry.date}: {entry.result.toUpperCase()}
-                      </div>
+                    <div
+                      key={entry.id || i}
+                      className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-[13px] shadow-sm transition-transform hover:scale-110 cursor-default"
+                      style={{ backgroundColor: bg, color: c }}
+                      title={`${entry.date}: ${entry.goals ?? 0} goals • ${result.toUpperCase()}`}
+                    >
+                      {result.charAt(0).toUpperCase()}
                     </div>
                   );
                 })}
+                {Array.from({ length: Math.max(0, 10 - recent10.length) }).map((_, i) => (
+                  <div key={`empty-${i}`} className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center text-muted-foreground/30 text-[12px]">–</div>
+                ))}
               </div>
-              <div className="flex justify-between items-center text-[13px] border-t border-border pt-3 mt-1">
-                <span className="text-muted-foreground">Recent Form:</span>
-                <span className={`font-bold ${formColor}`}>{formText}</span>
+
+              {/* Right stats block */}
+              <div className="flex items-stretch gap-px bg-border rounded-xl overflow-hidden border border-border shadow-sm shrink-0">
+                <div className="flex flex-col items-center justify-center px-5 py-3 bg-card min-w-[90px]">
+                  <span className="font-bold text-[15px]">{wins}W – {draws}D – {losses}L</span>
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Record</span>
+                </div>
+                <div className="flex flex-col items-center justify-center px-5 py-3 bg-card min-w-[60px] border-l border-border">
+                  <span className="font-bold text-[20px] text-primary">{goals}</span>
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Goals</span>
+                </div>
+                <div className="flex flex-col items-center justify-center px-5 py-3 bg-card min-w-[60px] border-l border-border">
+                  <span className="font-bold text-[20px] text-amber-500">{motm}</span>
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">MOTM</span>
+                </div>
               </div>
             </div>
           );
