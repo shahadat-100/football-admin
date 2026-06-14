@@ -91,6 +91,30 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                       <Badge key={t} bg="#4b5563" c="#e5e7eb">{t}</Badge>
                     ))}
                   </div>
+                  <div className="mt-4 flex items-center gap-4 text-[12px] bg-muted/30 p-2.5 rounded-lg border border-border/50 w-max flex-wrap">
+                     {player.email && (
+                       <>
+                         <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Email</span>
+                            <span className="text-foreground font-semibold">{player.email}</span>
+                         </div>
+                         <div className="w-px h-4 bg-border hidden sm:block"></div>
+                       </>
+                     )}
+                     <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Win Rate</span>
+                        <span className="text-foreground font-semibold text-[#10b981]">
+                          {stats.totalMatches > 0 ? Math.round((stats.totalWins / stats.totalMatches) * 100) : 0}%
+                        </span>
+                     </div>
+                     <div className="w-px h-4 bg-border"></div>
+                     <div className="flex items-center gap-2 text-muted-foreground">
+                        <span className="font-medium uppercase tracking-wider text-[10px]">Joined</span>
+                        <span className="text-foreground font-semibold">
+                          {player.createdAt ? new Date(player.createdAt).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : 'Unknown'}
+                        </span>
+                     </div>
+                  </div>
                 </div>
                 <div className="flex gap-2 flex-wrap h-fit">
                   <Button size="sm" variant="secondary" onClick={() => setModal('edit')}>✎ Edit</Button>
