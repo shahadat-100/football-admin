@@ -174,37 +174,7 @@ export function MonthlyTopXI({ players, matchEntries }: MonthlyTopXIProps) {
             })}
           </div>
 
-          {/* Leaderboard sidebar */}
-          <div className="lg:w-[260px] border-t lg:border-t-0 lg:border-l border-border flex flex-col bg-card">
-            <div className="px-5 py-3 bg-muted/40 border-b border-border">
-              <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-bold">Top Ratings</p>
-            </div>
-            <div className="flex-1 overflow-y-auto divide-y divide-border/50">
-              {topXI.map((pd, i) => (
-                <div key={pd.player.id} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/30 transition-colors">
-                  <span className={`text-[12px] font-black w-4 text-center shrink-0 ${i === 0 ? 'text-amber-500' : i === 1 ? 'text-gray-500' : i === 2 ? 'text-orange-600' : 'text-muted-foreground/60'}`}>
-                    {i + 1}
-                  </span>
-                  <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-border">
-                    {pd.player.profileImageUrl ? (
-                      <img src={pd.player.profileImageUrl} alt={pd.player.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">
-                        {pd.player.name.charAt(0)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className="text-[13px] font-semibold text-foreground truncate leading-tight">{pd.player.name}</span>
-                    <span className="text-[10px] text-muted-foreground truncate">{pd.matches} M • {pd.points} Pts</span>
-                  </div>
-                  <span className="text-[14px] font-black text-foreground shrink-0 bg-muted px-2 py-0.5 rounded-md">
-                    {(pd.points / Math.max(1, pd.matches)).toFixed(1)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+
         </div>
       )}
     </div>

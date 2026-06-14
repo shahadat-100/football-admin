@@ -129,7 +129,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                       )}
                       <div className="flex items-center gap-2">
                         <span className="text-muted-foreground uppercase font-bold tracking-wider text-[10px]">Win Rate</span>
-                        <span className="font-bold">{allTime.winRate.toFixed(0)}%</span>
+                        <span className="font-bold">{(stats.totalMatches > 0 ? (stats.totalWins / stats.totalMatches) * 100 : 0).toFixed(0)}%</span>
                       </div>
                     </div>
 
