@@ -32,8 +32,8 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
 
   const historyEntries = [...entries]
     .sort((a, b) => {
-      const dateTimeA = a.time ? `${a.date}T${a.time}` : (a.date ? `${a.date}T00:00:00` : 0);
-      const dateTimeB = b.time ? `${b.date}T${b.time}` : (b.date ? `${b.date}T00:00:00` : 0);
+      const dateTimeA = a.time ? `${a.date}T${a.time}` : (a.date ? `${a.date}T00:00:00` : '');
+      const dateTimeB = b.time ? `${b.date}T${b.time}` : (b.date ? `${b.date}T00:00:00` : '');
       const dateA = new Date(dateTimeA).getTime();
       const dateB = new Date(dateTimeB).getTime();
       const validA = isNaN(dateA) ? 0 : dateA;
@@ -169,49 +169,50 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
           const sLosses = seasonEntries.filter(e => e.result === 'loss').length;
           const sGoalsConc = seasonEntries.reduce((sum, e) => sum + e.goalsConceded, 0);
           const sCS = seasonEntries.filter(e => e.cleanSheet).length;
+          const sMOTM = seasonEntries.filter(e => e.motm).length;
           const winRate = sb.matches > 0 ? (sWins / sb.matches) * 100 : 0;
-          
-          // Pseudo rank calculation for UI purposes (higher goals + wins = better rank)
-          const rank = Math.max(1, 5000 - (sb.goals * 50 + sWins * 100));
+          const drawRate = sb.matches > 0 ? (sDraws / sb.matches) * 100 : 0;
+          const lossRate = sb.matches > 0 ? (sLosses / sb.matches) * 100 : 0;
 
           return {
             season: `eFootball ${sb.year}`,
-            rank: rank,
+            matches: sb.matches,
             appearances: sb.matches,
             wins: sWins || Math.floor(sb.matches * (stats.totalWins/Math.max(1, stats.totalMatches))),
             draws: sDraws,
             losses: sLosses,
             winRate: winRate || (stats.totalMatches > 0 ? (stats.totalWins/stats.totalMatches)*100 : 0),
+            drawRate: drawRate || (stats.totalMatches > 0 ? (stats.totalDraws/stats.totalMatches)*100 : 0),
+            lossRate: lossRate || (stats.totalMatches > 0 ? (stats.totalLosses/stats.totalMatches)*100 : 0),
             goals: sb.goals,
             goalsConceded: sGoalsConc || Math.floor(sb.matches * 0.8),
             cleanSheets: sCS,
-            yellowCards: 0,
-            rating: Math.round(500 + (winRate * 2) + sb.goals)
+            motm: sMOTM
           };
         }).reverse(); // Order older to newer for chart
 
         const allTime = {
           season: 'All-time',
-          rank: Math.max(1, 5000 - (stats.totalGoals * 50 + stats.totalWins * 100)),
           matches: stats.totalMatches,
           wins: stats.totalWins,
           draws: stats.totalDraws,
           losses: stats.totalLosses,
           winRate: stats.totalMatches > 0 ? (stats.totalWins / stats.totalMatches) * 100 : 0,
+          drawRate: stats.totalMatches > 0 ? (stats.totalDraws / stats.totalMatches) * 100 : 0,
+          lossRate: stats.totalMatches > 0 ? (stats.totalLosses / stats.totalMatches) * 100 : 0,
           goals: stats.totalGoals,
           goalsConceded: stats.totalGoalsConceded,
           cleanSheets: stats.totalCleanSheets,
-          yellowCards: 0,
-          rating: Math.round(500 + ((stats.totalMatches > 0 ? (stats.totalWins / stats.totalMatches) * 100 : 0) * 2) + stats.totalGoals)
+          motm: stats.totalMOTM
         };
 
         // Prepare Data for Monthly Trend (Using last 6 months of entries)
-        const monthlyData = [];
-        const weeklyData = [];
+        const monthlyData: { label: string; value: number }[] = [];
+        const weeklyData: { label: string; value: number }[] = [];
         if (historyEntries.length > 0) {
           // Group by Month
-          const monthsMap = new Map();
-          const weeksMap = new Map();
+          const monthsMap = new Map<string, { points: number; count: number }>();
+          const weeksMap = new Map<string, { points: number; count: number }>();
           
           [...historyEntries].reverse().forEach(e => {
             if (!e.date) return;
@@ -220,30 +221,26 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
             
             const monthKey = d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
             if (!monthsMap.has(monthKey)) monthsMap.set(monthKey, { points: 0, count: 0 });
-            monthsMap.get(monthKey).points += (e.result === 'win' ? 3 : e.result === 'draw' ? 1 : 0);
-            monthsMap.get(monthKey).count += 1;
+            monthsMap.get(monthKey)!.points += (e.result === 'win' ? 1 : 0);
+            monthsMap.get(monthKey)!.count += 1;
 
             // Week logic
             const weekNum = Math.ceil(d.getDate() / 7);
             const weekKey = `W${weekNum} ${monthKey}`;
             if (!weeksMap.has(weekKey)) weeksMap.set(weekKey, { points: 0, count: 0 });
-            weeksMap.get(weekKey).points += (e.result === 'win' ? 3 : e.result === 'draw' ? 1 : 0);
-            weeksMap.get(weekKey).count += 1;
+            weeksMap.get(weekKey)!.points += (e.result === 'win' ? 1 : 0);
+            weeksMap.get(weekKey)!.count += 1;
           });
 
-          // Convert points to pseudo-rank
-          let currentRank = allTime.rank + 500;
+          // Convert to true win rate %
           Array.from(monthsMap.entries()).slice(-6).forEach(([label, data]) => {
-            const avgPts = data.points / data.count;
-            currentRank = Math.max(1, currentRank - (avgPts * 100));
-            monthlyData.push({ label, value: Math.round(currentRank) });
+            const winR = (data.points / data.count) * 100;
+            monthlyData.push({ label, value: Math.round(winR) });
           });
 
-          currentRank = allTime.rank + 500;
           Array.from(weeksMap.entries()).slice(-8).forEach(([label, data]) => {
-            const avgPts = data.points / data.count;
-            currentRank = Math.max(1, currentRank - (avgPts * 100));
-            weeklyData.push({ label, value: Math.round(currentRank) });
+            const winR = (data.points / data.count) * 100;
+            weeklyData.push({ label, value: Math.round(winR) });
           });
         }
 
@@ -256,17 +253,19 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
               <div className="lg:col-span-1 min-h-[300px]">
                 <TrendChart 
                   title="Monthly Trend" 
-                  subtitle="Lower rank number is better" 
+                  subtitle="Win rate % per month" 
                   data={monthlyData} 
-                  bestRank={monthlyData.length ? Math.min(...monthlyData.map(d => d.value)) : undefined}
+                  bestRank={monthlyData.length ? Math.max(...monthlyData.map(d => d.value)) : undefined}
+                  yAxisLabel="Win Rate %"
                 />
               </div>
               <div className="lg:col-span-1 min-h-[300px]">
                 <TrendChart 
                   title="Weekly Trend" 
-                  subtitle="Lower rank number is better" 
+                  subtitle="Win rate % per week" 
                   data={weeklyData} 
-                  bestRank={weeklyData.length ? Math.min(...weeklyData.map(d => d.value)) : undefined}
+                  bestRank={weeklyData.length ? Math.max(...weeklyData.map(d => d.value)) : undefined}
+                  yAxisLabel="Win Rate %"
                 />
               </div>
             </div>

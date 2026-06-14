@@ -34,21 +34,13 @@ export function TrendChart({ title, subtitle, data, bestRank, yAxisLabel = 'Rank
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
 
-  // We are plotting Rank. Lower is better. 1 should be near the top.
-  // Find min and max rank to set the scale.
-  const ranks = data.map(d => d.value);
-  const minRank = 1; 
-  // Make maxRank a nice round number if possible
-  const rawMaxRank = Math.max(...ranks, 50); 
-  const maxRank = Math.ceil(rawMaxRank / 500) * 500; // round up to nearest 500 or adjust logic
-  // Let's make it simpler, just use rawMaxRank + some buffer
-  const yMax = Math.max(Math.ceil(rawMaxRank * 1.2), 10); 
+  // We are plotting Win Rate %. Higher is better.
+  const yMax = 100;
+  const yMin = 0;
   
   const getY = (val: number) => {
-    // Inverted: 1 is top (0 in coordinates), yMax is bottom (innerHeight in coordinates)
-    // Actually, y = 0 is top. So lower rank -> smaller Y.
-    // If rank is 1, it should be at y=0.
-    return padding.top + ((val - 1) / (yMax - 1)) * innerHeight;
+    // Normal: 100 is top (0 in coordinates), 0 is bottom (innerHeight in coordinates)
+    return padding.top + innerHeight - ((val - yMin) / (yMax - yMin)) * innerHeight;
   };
 
   const getX = (index: number) => {
@@ -63,8 +55,8 @@ export function TrendChart({ title, subtitle, data, bestRank, yAxisLabel = 'Rank
     data.map((d, i) => `L ${getX(i)},${getY(d.value)}`).join(' ') +
     ` L ${getX(data.length - 1)},${height - padding.bottom} Z`;
 
-  // Y-axis grid lines
-  const gridLines = [1, yMax * 0.25, yMax * 0.5, yMax * 0.75, yMax].map(Math.floor);
+  // Y-axis grid lines (0, 25, 50, 75, 100)
+  const gridLines = [100, 75, 50, 25, 0];
 
   return (
     <div className="bg-card border border-border rounded-xl p-5 shadow-sm h-full flex flex-col relative overflow-hidden">
@@ -75,7 +67,7 @@ export function TrendChart({ title, subtitle, data, bestRank, yAxisLabel = 'Rank
         </div>
         {bestRank !== undefined && (
           <Badge bg="#e0e7ff" c="#4338ca" className="font-bold px-3 py-1 text-[11px] border border-[#c7d2fe]">
-            Top Rank #{bestRank}
+            Top: {bestRank}%
           </Badge>
         )}
       </div>
@@ -161,7 +153,7 @@ export function TrendChart({ title, subtitle, data, bestRank, yAxisLabel = 'Rank
       {/* Legend below the chart */}
       <div className="flex justify-center items-center gap-2 mt-2">
         <div className="w-3 h-3 rounded-full bg-[#4f46e5]"></div>
-        <span className="text-[11px] text-muted-foreground">{title.replace(' Trend', ' Rank')}</span>
+        <span className="text-[11px] text-muted-foreground">{yAxisLabel}</span>
       </div>
     </div>
   );
