@@ -76,13 +76,13 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
 
       <div className="bg-card border border-border rounded-xl p-5 mb-4 shadow-sm">
         <div className="flex flex-col lg:flex-row gap-8 items-start justify-between">
-          <div className="flex gap-4 items-start flex-wrap flex-1">
-            <Avatar name={player.name} size={64} src={player.profileImageUrl} />
+          <div className="flex gap-5 items-center flex-wrap flex-1">
+            <Avatar name={player.name} size={100} src={player.profileImageUrl} />
             <div className="flex-1">
               <div className="flex justify-between flex-wrap gap-3">
                 <div>
-                  <h2 className="font-bold text-[20px]">{player.name}</h2>
-                  <p className="text-muted-foreground text-[13px] font-medium">#{player.jerseyNumber || '—'}</p>
+                  <h2 className="font-bold text-[26px]">{player.name}</h2>
+                  <p className="text-muted-foreground text-[14px] font-medium">#{player.jerseyNumber || '—'}</p>
                   <div className="flex gap-1.5 flex-wrap mt-2">
                     {(player.playerRoles ?? []).map(t => (
                       <Badge key={t} bg="#1a1a1a" c="#e5e5e5">{t}</Badge>
@@ -105,13 +105,6 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                         <span className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Win Rate</span>
                         <span className="text-foreground font-semibold text-[#10b981]">
                           {stats.totalMatches > 0 ? Math.round((stats.totalWins / stats.totalMatches) * 100) : 0}%
-                        </span>
-                     </div>
-                     <div className="w-px h-4 bg-border"></div>
-                     <div className="flex items-center gap-2 text-muted-foreground">
-                        <span className="font-medium uppercase tracking-wider text-[10px]">Joined</span>
-                        <span className="text-foreground font-semibold">
-                          {player.createdAt ? new Date(player.createdAt).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : 'Unknown'}
                         </span>
                      </div>
                   </div>
@@ -176,6 +169,61 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
              <p className="text-muted-foreground text-[12px]">No data available yet.</p>
           )}
         </div>
+      </div>
+
+      <div className="bg-card border border-border rounded-xl p-5 mb-4 shadow-sm">
+        <h3 className="font-semibold text-[14px] mb-3">Last 10 Matches Form</h3>
+        {(() => {
+          const recent10 = historyEntries.slice(0, 10).reverse(); // oldest to newest for the chart
+          if (recent10.length === 0) return <p className="text-muted-foreground text-[12px]">Not enough data</p>;
+
+          const points = recent10.reduce((acc, entry) => {
+            if (entry.result === 'win') return acc + 3;
+            if (entry.result === 'draw') return acc + 1;
+            return acc;
+          }, 0);
+          
+          const maxPoints = recent10.length * 3;
+          const percentage = (points / maxPoints) * 100;
+          let formText = 'Low';
+          let formColor = 'text-red-500';
+          if (percentage >= 65) {
+            formText = 'High';
+            formColor = 'text-green-500';
+          } else if (percentage >= 35) {
+            formText = 'Average';
+            formColor = 'text-amber-500';
+          }
+
+          return (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-end gap-2 h-[60px]">
+                {recent10.map((entry, i) => {
+                  const isWin = entry.result === 'win';
+                  const isDraw = entry.result === 'draw';
+                  const height = isWin ? '100%' : (isDraw ? '50%' : '20%');
+                  const bgColor = isWin ? 'bg-[#10b981]' : (isDraw ? 'bg-amber-500' : 'bg-red-500');
+                  
+                  return (
+                    <div key={entry.id || i} className="group relative flex-1 flex flex-col justify-end items-center h-full">
+                      <div 
+                        className={`w-full max-w-[24px] rounded-t-sm ${bgColor} transition-all duration-300 hover:opacity-80 cursor-pointer`}
+                        style={{ height }}
+                      />
+                      <div className="opacity-0 group-hover:opacity-100 absolute -top-8 bg-popover border border-border text-[10px] px-2 py-1 rounded shadow-md whitespace-nowrap z-10 transition-opacity">
+                        {entry.date}: {entry.result.toUpperCase()}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex justify-between items-center text-[13px] border-t border-border pt-3 mt-1">
+                <span className="text-muted-foreground">Recent Form:</span>
+                <span className={`font-bold ${formColor}`}>{formText}</span>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       <div className="bg-card border border-border rounded-xl p-5 shadow-sm">

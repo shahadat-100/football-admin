@@ -25,11 +25,11 @@ export function PlayerCard({ player, onView, onEdit, onDelete }: PlayerCardProps
       )}
     >
       <div className="flex items-start justify-between mb-3">
-        <div className="flex gap-3 items-center">
-          <Avatar name={player.name} size={44} src={player.profileImageUrl} />
+        <div className="flex gap-4 items-center">
+          <Avatar name={player.name} size={80} src={player.profileImageUrl} />
           <div>
-            <p className="font-semibold text-[14px]">{player.name}</p>
-            <p className="text-muted-foreground text-[11px]">#{player.jerseyNumber || '—'}</p>
+            <p className="font-semibold text-[16px]">{player.name}</p>
+            <p className="text-muted-foreground text-[12px]">#{player.jerseyNumber || '—'}</p>
           </div>
         </div>
       </div>
