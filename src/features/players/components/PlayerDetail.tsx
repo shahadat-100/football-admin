@@ -328,7 +328,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                   title="Monthly Trend" 
                   subtitle="Win rate % per month" 
                   data={monthlyData} 
-                  currentRank={currentRank}
+                  bestRank={monthlyData.length ? Math.max(...monthlyData.map(d => d.value)) : undefined}
                   yAxisLabel="Win Rate %"
                 />
               </div>
@@ -337,7 +337,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                   title="Weekly Trend" 
                   subtitle="Win rate % per week" 
                   data={weeklyData} 
-                  currentRank={currentRank}
+                  bestRank={weeklyData.length ? Math.max(...weeklyData.map(d => d.value)) : undefined}
                   yAxisLabel="Win Rate %"
                 />
               </div>

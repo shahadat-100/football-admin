@@ -10,11 +10,11 @@ interface TrendChartProps {
   title: string;
   subtitle: string;
   data: DataPoint[];
-  currentRank?: number;
+  bestRank?: number;
   yAxisLabel?: string;
 }
 
-export function TrendChart({ title, subtitle, data, currentRank, yAxisLabel = 'Rank' }: TrendChartProps) {
+export function TrendChart({ title, subtitle, data, bestRank, yAxisLabel = 'Rank' }: TrendChartProps) {
   if (data.length === 0) {
     return (
       <div className="bg-card border border-border rounded-xl p-5 shadow-sm h-full flex flex-col">
@@ -65,9 +65,9 @@ export function TrendChart({ title, subtitle, data, currentRank, yAxisLabel = 'R
           <h3 className="font-bold text-[16px]">{title}</h3>
           <p className="text-muted-foreground text-[12px]">{subtitle}</p>
         </div>
-        {currentRank !== undefined && (
+        {bestRank !== undefined && (
           <Badge bg="#e0e7ff" c="#4338ca" className="font-bold px-3 py-1 text-[11px] border border-[#c7d2fe]">
-            Rank #{currentRank}
+            Top: {bestRank.toFixed(0)}%
           </Badge>
         )}
       </div>

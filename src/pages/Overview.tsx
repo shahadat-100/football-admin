@@ -161,7 +161,7 @@ export function Overview({ setTab }: OverviewProps) {
 
       {/* Monthly Top XI & Recent Matches Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
-        <div className="xl:col-span-2 flex">
+        <div className="xl:col-span-2 flex w-full min-w-0">
           <MonthlyTopXI players={players} matchEntries={matchEntries} />
         </div>
         
