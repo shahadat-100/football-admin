@@ -6,9 +6,18 @@ interface PlayerFormHistoryProps {
 }
 
 export function PlayerFormHistory({ entries }: PlayerFormHistoryProps) {
-  // Sort entries by date descending to get the most recent, then take top 10 and reverse back for chronological display
   const recentEntries = [...entries]
-    .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime())
+    .sort((a, b) => {
+      const dateTimeA = a.time ? `${a.date}T${a.time}` : (a.date ? `${a.date}T00:00:00` : 0);
+      const dateTimeB = b.time ? `${b.date}T${b.time}` : (b.date ? `${b.date}T00:00:00` : 0);
+      const dateA = new Date(dateTimeA).getTime();
+      const dateB = new Date(dateTimeB).getTime();
+      const validA = isNaN(dateA) ? 0 : dateA;
+      const validB = isNaN(dateB) ? 0 : dateB;
+      if (validA !== validB) return validB - validA;
+      // Fallback to string comparison of ID to keep sort stable if dates are identical
+      return String(b.id).localeCompare(String(a.id));
+    })
     .slice(0, 10)
     .reverse();
 

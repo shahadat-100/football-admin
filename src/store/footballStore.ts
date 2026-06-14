@@ -70,6 +70,7 @@ export const mapMatchFromDb = (m: any): Match => ({
   homeScore: m.homescore,
   awayScore: m.awayscore,
   date: m.date,
+  time: m.time || null,
   status: m.status,
   competitionId: m.competition_id,
   competition: m.competitions?.name || 'Premier League',
@@ -82,6 +83,7 @@ export const mapMatchToDb = (m: any) => ({
   homescore: m.homeScore,
   awayscore: m.awayScore,
   date: m.date,
+  time: m.time || null,
   status: m.status,
   competition_id: m.competitionId,
 });
@@ -97,6 +99,7 @@ export const mapMatchEntryFromDb = (e: any): MatchEntry => ({
   cleanSheet: e.cleansheet || false,
   motm: e.motm || false,
   date: e.date || e.matches?.date || '',
+  time: e.time || null,
   notes: e.notes || '',
   seasonId: e.season_id,
 });
@@ -113,6 +116,7 @@ export const mapMatchEntryToDb = (e: any) => ({
   notes: e.notes || '',
   season_id: e.seasonId,
   date: e.date || null,
+  time: e.time || null,
 });
 
 export const mapHallOfFameFromDb = (h: any): HallOfFameEntry => ({
@@ -541,7 +545,7 @@ export const useFootballStore = create<FootballStore>()(
                 for (const weeklyStat of monthlyStat.weeklyStats || []) {
                   const dates = weeklyStat.matchDates && weeklyStat.matchDates.length > 0
                     ? weeklyStat.matchDates
-                    : [`${season.year}-${String(monthlyStat.month).padStart(2, '0')}-01`];
+                    : [`${season.year}-${String(monthlyStat.month || 1).padStart(2, '0')}-01`];
 
                   const totalMatches = weeklyStat.matches || 0;
                   if (totalMatches === 0) continue;
@@ -791,7 +795,7 @@ export const useFootballStore = create<FootballStore>()(
       },
       
       fetchMatchEntries: async () => {
-        const { data, error } = await supabase.from('match_entries').select('*');
+        const { data, error } = await supabase.from('match_entries').select('*, matches(date)');
         if (data) {
           set({ matchEntries: data.map(mapMatchEntryFromDb) });
         }
@@ -847,14 +851,14 @@ export const useFootballStore = create<FootballStore>()(
           date: entryDate || new Date().toISOString().split('T')[0]
         });
 
-        const { data, error } = await supabase.from('match_entries').insert([entryData]).select('*').single();
+        const { data, error } = await supabase.from('match_entries').insert([entryData]).select('*, matches(date)').single();
         if (data) {
           const newEntry = mapMatchEntryFromDb(data);
           set((state) => ({ matchEntries: [...state.matchEntries, newEntry] }));
           
-          // Background Sync Player Season Stats
-          await updatePlayerSeasonStats(newEntry.playerId, seasonId);
+          // Database trigger handles stats sync, just fetch the updated stats
           await get().fetchPlayerSeasonStats();
+          await get().fetchMatchEntries(); // Refresh match entries completely to ensure everything is in sync
           // Auto-milestone check
           const fired = await checkAndFireMilestones(newEntry.playerId);
           if (fired) await get().fetchNews();
@@ -877,13 +881,13 @@ export const useFootballStore = create<FootballStore>()(
           seasonId,
         });
         
-        const { data, error } = await supabase.from('match_entries').update(entryData).eq('id', e.id).select('*').single();
+        const { data, error } = await supabase.from('match_entries').update(entryData).eq('id', e.id).select('*, matches(date)').single();
         if (data) {
           const updatedEntry = mapMatchEntryFromDb(data);
           set((state) => ({ matchEntries: state.matchEntries.map(x => x.id === e.id ? updatedEntry : x) }));
-          
-          await updatePlayerSeasonStats(updatedEntry.playerId, seasonId);
+          // Database trigger handles stats sync, just fetch the updated stats
           await get().fetchPlayerSeasonStats();
+          await get().fetchMatchEntries(); // Refresh match entries completely to ensure everything is in sync
           // Auto-milestone check
           const fired = await checkAndFireMilestones(updatedEntry.playerId);
           if (fired) await get().fetchNews();
@@ -897,7 +901,7 @@ export const useFootballStore = create<FootballStore>()(
         if (!error) {
           set((state) => ({ matchEntries: state.matchEntries.filter(x => x.id !== id) }));
           if (entry && entry.seasonId) {
-            await updatePlayerSeasonStats(entry.playerId, entry.seasonId);
+            // Database trigger handles stats sync, just fetch the updated stats
             await get().fetchPlayerSeasonStats();
             // Auto-milestone check
             const fired = await checkAndFireMilestones(entry.playerId);

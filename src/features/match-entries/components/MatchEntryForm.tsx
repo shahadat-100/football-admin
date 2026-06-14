@@ -36,6 +36,7 @@ export function MatchEntryForm({ initial, players, matches, onSave, onClose }: M
       cleanSheet: initial?.cleanSheet ?? false,
       motm: initial?.motm ?? false,
       date: initial?.date ?? format(new Date(), 'yyyy-MM-dd'),
+      time: initial?.time ?? '',
       notes: initial?.notes ?? '',
     },
   });
@@ -108,9 +109,15 @@ export function MatchEntryForm({ initial, players, matches, onSave, onClose }: M
         </div>
       </div>
 
-      <div className="grid gap-2">
-        <label className="text-[12px] font-medium text-gray-400">Date</label>
-        <Input type="date" {...register('date')} error={errors.date?.message} />
+      <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-2">
+          <label className="text-[12px] font-medium text-gray-400">Date</label>
+          <Input type="date" {...register('date')} error={errors.date?.message} />
+        </div>
+        <div className="grid gap-2">
+          <label className="text-[12px] font-medium text-gray-400">Time (Optional)</label>
+          <Input type="time" {...register('time')} error={errors.time?.message} />
+        </div>
       </div>
 
       <div className="bg-muted/50 border border-border p-3 rounded-lg mb-2">

@@ -8,6 +8,7 @@ export const matchSchema = z.object({
   homeScore: z.number().optional().nullable(),
   awayScore: z.number().optional().nullable(),
   date: z.string().min(1),
+  time: z.string().optional().nullable(),
   competition: z.string().min(1, "Competition required"),
   status: z.enum(MATCH_STATUSES as unknown as [string, ...string[]]),
   seasonId: z.number().optional().nullable(),

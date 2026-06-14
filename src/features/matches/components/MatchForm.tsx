@@ -26,6 +26,7 @@ export function MatchForm({ initial, onSave, onClose }: MatchFormProps) {
       homeScore: initial?.homeScore ?? undefined,
       awayScore: initial?.awayScore ?? undefined,
       date: initial?.date ?? format(new Date(), 'yyyy-MM-dd'),
+      time: initial?.time ?? '',
       competition: initial?.competition ?? 'Premier League',
       status: initial?.status ?? 'upcoming',
     },
@@ -69,10 +70,14 @@ export function MatchForm({ initial, onSave, onClose }: MatchFormProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="grid gap-2">
           <label className="text-[12px] font-medium text-gray-400">Date</label>
           <Input type="date" {...register('date')} error={errors.date?.message} className="text-[#1a1f3c] bg-[#fdf6e3]" />
+        </div>
+        <div className="grid gap-2">
+          <label className="text-[12px] font-medium text-gray-400">Time</label>
+          <Input type="time" {...register('time')} error={errors.time?.message} className="text-[#1a1f3c] bg-[#fdf6e3]" />
         </div>
         <div className="grid gap-2">
           <label className="text-[12px] font-medium text-gray-400">Status</label>

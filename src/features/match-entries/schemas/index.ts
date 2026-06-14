@@ -12,6 +12,7 @@ export const matchEntrySchema = z.object({
   cleanSheet: z.boolean().default(false),
   motm: z.boolean().default(false),
   date: z.string(),
+  time: z.string().optional().nullable(),
   notes: z.string().optional(),
   seasonId: z.number().optional().nullable(),
 });

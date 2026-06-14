@@ -27,6 +27,19 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
 
   const entries = matchEntries.filter(me => me.playerId === playerId);
 
+  const historyEntries = [...entries]
+    .sort((a, b) => {
+      const dateTimeA = a.time ? `${a.date}T${a.time}` : (a.date ? `${a.date}T00:00:00` : 0);
+      const dateTimeB = b.time ? `${b.date}T${b.time}` : (b.date ? `${b.date}T00:00:00` : 0);
+      const dateA = new Date(dateTimeA).getTime();
+      const dateB = new Date(dateTimeB).getTime();
+      const validA = isNaN(dateA) ? 0 : dateA;
+      const validB = isNaN(dateB) ? 0 : dateB;
+      if (validA !== validB) return validB - validA;
+      return String(b.id).localeCompare(String(a.id));
+    })
+    .slice(0, 50);
+
   return (
     <div>
       {modal === 'edit' && (
@@ -142,8 +155,8 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       </div>
 
       <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
-        <p className="font-semibold mb-3 text-[13px]">Match Entries & History</p>
-        {entries.length === 0 ? (
+        <p className="font-semibold mb-3 text-[13px]">Match Entries & History (Recent 50)</p>
+        {historyEntries.length === 0 ? (
           <p className="text-muted-foreground text-[12px] bg-muted/30 p-4 rounded-lg border border-border/50 text-center">No entries yet. Click "+ Entry" above.</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-border">
@@ -156,7 +169,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border bg-popover">
-                {entries.map(e => {
+                {historyEntries.map(e => {
                   const rb = RESULT_BADGE[e.result as keyof typeof RESULT_BADGE] ?? RESULT_BADGE.draw;
                   return (
                     <tr key={e.id} className="hover:bg-muted/30 transition-colors">
