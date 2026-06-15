@@ -467,9 +467,9 @@ export const useFootballStore = create<FootballStore>()(
           store.fetchSeasons(),
           store.fetchPlayers(),
           store.fetchMatches(),
-          store.fetchMatchEntries()
+          store.fetchMatchEntries(),
+          store.fetchPlayerSeasonStats()
         ]);
-        await store.fetchPlayerSeasonStats();
         set({ isInitialized: true });
       },
 
