@@ -63,10 +63,14 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
     { label: 'Losses', value: monthlyEntries.filter(e => e.result === 'loss').length, color: '#ef4444' }
   ];
 
+  // Points calculation helper (matching PointsLeaderboard)
+  const calcSeasonPoints = (s: any) => 
+    (s.wins * 3) + s.draws - s.losses + s.goals - s.goalsConceded + (s.motmCount * 2) + s.hattricks;
+
   // Compute Leaderboard Rank based on total points
   const playerRanks = players.map(p => {
     const pStats = playerSeasonStats.filter(s => s.playerId === p.id);
-    const totalPoints = pStats.reduce((acc, s) => acc + (s.points || 0), 0);
+    const totalPoints = pStats.reduce((acc, s) => acc + calcSeasonPoints(s), 0);
     return { id: p.id, points: totalPoints };
   }).sort((a, b) => b.points - a.points);
   
@@ -79,7 +83,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
   if (currentSeason) {
     const seasonRanks = players.map(p => {
       const pStats = playerSeasonStats.find(s => s.playerId === p.id && s.seasonId === currentSeason.id);
-      return { id: p.id, points: pStats?.points || 0 };
+      return { id: p.id, points: pStats ? calcSeasonPoints(pStats) : 0 };
     }).sort((a, b) => b.points - a.points);
     const sRankIndex = seasonRanks.findIndex(r => r.id === player.id);
     if (sRankIndex !== -1) currentSeasonRank = sRankIndex + 1;
@@ -365,20 +369,22 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
 
         return (
           <>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-              <div className="lg:col-span-1 min-h-[300px]">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              <div className="lg:col-span-1 min-h-[320px]">
                 <SeasonPerformanceChart data={seasonData} />
               </div>
-              <div className="lg:col-span-1 min-h-[300px] bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col">
-                <h3 className="font-semibold text-[14px] w-full text-left mb-4">Monthly Performance</h3>
-                <div className="flex-1 flex items-center">
-                  <PieChart data={monthChartData} size={120} />
+              <div className="lg:col-span-1 min-h-[320px] bg-gradient-to-br from-card to-card/50 border border-border/50 rounded-2xl p-6 shadow-xl shadow-black/5 flex flex-col relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl -z-10 pointer-events-none translate-x-1/3 -translate-y-1/3" />
+                <h3 className="font-bold text-[18px] tracking-tight w-full text-left mb-6">Monthly Performance</h3>
+                <div className="flex-1 flex items-center justify-center">
+                  <PieChart data={monthChartData} size={140} />
                 </div>
               </div>
-              <div className="lg:col-span-1 min-h-[300px] bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col">
-                <h3 className="font-semibold text-[14px] w-full text-left mb-4">Recent Week Performance</h3>
-                <div className="flex-1 flex items-center">
-                  <PieChart data={weekChartData} size={120} />
+              <div className="lg:col-span-1 min-h-[320px] bg-gradient-to-br from-card to-card/50 border border-border/50 rounded-2xl p-6 shadow-xl shadow-black/5 flex flex-col relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl -z-10 pointer-events-none translate-x-1/3 -translate-y-1/3" />
+                <h3 className="font-bold text-[18px] tracking-tight w-full text-left mb-6">Recent Week</h3>
+                <div className="flex-1 flex items-center justify-center">
+                  <PieChart data={weekChartData} size={140} />
                 </div>
               </div>
             </div>

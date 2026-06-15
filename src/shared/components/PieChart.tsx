@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 
 interface PieChartProps {
   data: { label: string; value: number; color: string }[];
@@ -5,121 +6,128 @@ interface PieChartProps {
 }
 
 export function PieChart({ data, size = 130 }: PieChartProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const total = data.reduce((s, d) => s + d.value, 0);
   const cx = size / 2;
   const cy = size / 2;
-  const outerR = size / 2 - 4;
-  const innerR = outerR * 0.52; // donut hole
+  const strokeWidth = Math.max(12, size * 0.1);
+  const r = (size - strokeWidth) / 2 - 4; // radius
+  
+  // Calculate circumference
+  const circumference = 2 * Math.PI * r;
 
   if (total === 0) {
     return (
       <div className="flex flex-col items-center gap-5 w-full">
-        <div className="relative" style={{ width: size, height: size }}>
-          <svg width={size} height={size}>
-            <circle cx={cx} cy={cy} r={outerR} fill="none" stroke="var(--border)" strokeWidth={outerR - innerR} />
+        <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+          <svg width={size} height={size} className="transform -rotate-90">
+            <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border)" strokeWidth={strokeWidth} strokeDasharray={`${circumference} ${circumference}`} />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-[10px] text-muted-foreground">No Data</span>
+            <span className="text-[11px] text-muted-foreground font-medium">No Data</span>
           </div>
         </div>
       </div>
     );
   }
 
-  // Build SVG arc slices
-  const slices: { path: string; color: string; label: string; value: number; pct: number }[] = [];
-  let startAngle = -90; // start from top
-
-  data.forEach(d => {
-    if (d.value === 0) return;
+  let currentOffset = 0;
+  const segments = data.map((d) => {
     const pct = d.value / total;
-    const sweep = pct * 360;
-    const endAngle = startAngle + sweep;
-
-    const toRad = (a: number) => (a * Math.PI) / 180;
-    const x1 = cx + outerR * Math.cos(toRad(startAngle));
-    const y1 = cy + outerR * Math.sin(toRad(startAngle));
-    const x2 = cx + outerR * Math.cos(toRad(endAngle));
-    const y2 = cy + outerR * Math.sin(toRad(endAngle));
-    const xi1 = cx + innerR * Math.cos(toRad(startAngle));
-    const yi1 = cy + innerR * Math.sin(toRad(startAngle));
-    const xi2 = cx + innerR * Math.cos(toRad(endAngle));
-    const yi2 = cy + innerR * Math.sin(toRad(endAngle));
-    const largeArc = sweep > 180 ? 1 : 0;
-
-    const path = [
-      `M ${x1} ${y1}`,
-      `A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2}`,
-      `L ${xi2} ${yi2}`,
-      `A ${innerR} ${innerR} 0 ${largeArc} 0 ${xi1} ${yi1}`,
-      'Z'
-    ].join(' ');
-
-    slices.push({ path, color: d.color, label: d.label, value: d.value, pct: Math.round(pct * 100) });
-    startAngle = endAngle;
+    const strokeDasharray = `${pct * circumference} ${circumference}`;
+    const strokeDashoffset = -currentOffset;
+    currentOffset += pct * circumference;
+    // Add small gap for visual separation if there are multiple segments
+    const gap = data.filter(x => x.value > 0).length > 1 && d.value > 0 ? 3 : 0;
+    
+    return {
+      ...d,
+      pct,
+      strokeDasharray: d.value > 0 ? `${(pct * circumference) - gap} ${circumference}` : `0 ${circumference}`,
+      strokeDashoffset
+    };
   });
 
   const topItem = [...data].sort((a, b) => b.value - a.value)[0];
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-5 w-full">
-      {/* Donut SVG */}
-      <div className="relative shrink-0" style={{ width: size, height: size }}>
-        <svg width={size} height={size} style={{ filter: 'drop-shadow(0 2px 12px rgba(0,0,0,0.25))' }}>
-          <defs>
-            {slices.map((s, i) => (
-              <radialGradient key={i} id={`grad-${i}`} cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor={s.color} stopOpacity="1" />
-                <stop offset="100%" stopColor={s.color} stopOpacity="0.7" />
-              </radialGradient>
-            ))}
-          </defs>
-          {/* Background ring */}
-          <circle cx={cx} cy={cy} r={(outerR + innerR) / 2} fill="none" stroke="var(--muted)" strokeWidth={outerR - innerR + 2} />
-          {slices.map((s, i) => (
-            <path
-              key={i}
-              d={s.path}
-              fill={`url(#grad-${i})`}
-              stroke="var(--card)"
-              strokeWidth={2}
-              style={{ transition: 'opacity 0.2s' }}
-            />
+    <div className="flex flex-col sm:flex-row items-center gap-6 w-full">
+      {/* SVG Donut */}
+      <div className="relative shrink-0 flex items-center justify-center" style={{ width: size, height: size }}>
+        <div className="absolute inset-0 rounded-full" style={{ boxShadow: 'inset 0 0 20px rgba(0,0,0,0.05)' }}></div>
+        <svg width={size} height={size} className="transform -rotate-90 overflow-visible" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' }}>
+          {/* Track */}
+          <circle 
+            cx={cx} cy={cy} r={r} 
+            fill="none" 
+            stroke="var(--muted)" 
+            strokeWidth={strokeWidth} 
+            opacity={0.3}
+          />
+          {segments.map((s, i) => (
+             <circle
+               key={i}
+               cx={cx} cy={cy} r={r}
+               fill="none"
+               stroke={s.color}
+               strokeWidth={strokeWidth}
+               strokeLinecap="round"
+               strokeDasharray={s.strokeDasharray}
+               strokeDashoffset={s.strokeDashoffset}
+               className="transition-all duration-1000 ease-out"
+               style={{
+                 strokeDasharray: mounted ? s.strokeDasharray : `0 ${circumference}`,
+                 opacity: s.value > 0 ? 1 : 0
+               }}
+             />
           ))}
         </svg>
         {/* Center label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-[18px] font-black text-foreground leading-none">{total}</span>
-          <span className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">Total</span>
+          <span className="text-[24px] font-black text-foreground leading-none tracking-tight">{total}</span>
+          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-1">Total</span>
         </div>
       </div>
 
       {/* Legend */}
-      <div className="flex flex-col gap-2.5 flex-1 min-w-0">
+      <div className="flex flex-col gap-3 flex-1 w-full min-w-0 py-2">
         {data.map((d) => {
           const pct = total > 0 ? Math.round((d.value / total) * 100) : 0;
           const isTop = d.label === topItem?.label && d.value > 0;
           return (
-            <div key={d.label} className="flex items-center gap-2.5">
-              <div
-                className="shrink-0 w-2.5 h-2.5 rounded-full shadow-sm"
-                style={{ backgroundColor: d.color, boxShadow: `0 0 6px ${d.color}88` }}
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-center mb-1">
-                  <span className={`text-[11px] font-semibold truncate ${isTop ? 'text-foreground' : 'text-muted-foreground'}`}>
+            <div key={d.label} className="group relative">
+              <div className="flex justify-between items-end mb-1.5">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-2.5 h-2.5 rounded-full transition-transform duration-300 group-hover:scale-125"
+                    style={{ backgroundColor: d.color, boxShadow: `0 0 8px ${d.color}99` }}
+                  />
+                  <span className={`text-[12px] font-semibold tracking-wide ${isTop ? 'text-foreground' : 'text-muted-foreground'}`}>
                     {d.label}
                   </span>
-                  <span className="text-[11px] font-black ml-2 shrink-0" style={{ color: d.color }}>
-                    {d.value} <span className="text-[9px] font-normal text-muted-foreground">({pct}%)</span>
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-[14px] font-black leading-none" style={{ color: d.color }}>
+                    {d.value}
+                  </span>
+                  <span className="text-[10px] font-medium text-muted-foreground/70 w-8 text-right">
+                    {pct}%
                   </span>
                 </div>
-                {/* Progress bar */}
-                <div className="h-1 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${pct}%`, backgroundColor: d.color, boxShadow: `0 0 4px ${d.color}` }}
-                  />
+              </div>
+              {/* Progress bar line */}
+              <div className="h-1.5 w-full bg-muted/50 rounded-full overflow-hidden backdrop-blur-sm">
+                <div
+                  className="h-full rounded-full transition-all duration-1000 ease-out relative"
+                  style={{ 
+                    width: mounted ? `${pct}%` : '0%', 
+                    backgroundColor: d.color,
+                    boxShadow: `0 0 10px ${d.color}66`
+                  }}
+                >
+                  <div className="absolute inset-0 bg-white/20 w-full h-full" />
                 </div>
               </div>
             </div>
