@@ -36,13 +36,17 @@ export function PlayerCard({ player, onView, onEdit, onDelete }: PlayerCardProps
 
       <div className="grid grid-cols-3 gap-2 mb-3">
         {[
-          ['MP', stats.totalMatches],
-          ['Goals', stats.totalGoals],
-          ['MOTM', stats.totalMOTM]
-        ].map(([l, v]) => (
-          <div key={l as string} className="bg-popover rounded-md p-2 text-center border border-border/50">
-            <p className="text-[10px] text-muted-foreground">{l}</p>
-            <p className="text-[17px] font-bold text-foreground">{v}</p>
+          { label: 'MP',   value: stats.totalMatches, color: '#6366f1', bg: 'rgba(99,102,241,0.10)' },
+          { label: 'Goals',value: stats.totalGoals,   color: '#10b981', bg: 'rgba(16,185,129,0.10)' },
+          { label: 'MOTM', value: stats.totalMOTM,    color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+        ].map(({ label, value, color, bg }) => (
+          <div
+            key={label}
+            className="rounded-lg p-2 text-center"
+            style={{ background: bg, border: `1.5px solid ${color}33` }}
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color }}>{label}</p>
+            <p className="text-[17px] font-black" style={{ color }}>{value}</p>
           </div>
         ))}
       </div>

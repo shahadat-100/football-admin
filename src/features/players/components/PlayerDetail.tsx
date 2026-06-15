@@ -229,22 +229,29 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       </div>
 
       <div className="bg-card border border-border rounded-xl p-5 mb-4 shadow-sm">
-        <h3 className="font-semibold text-[14px] mb-3 border-b border-border pb-2">Career Stats</h3>
+        <h3 className="font-semibold text-[14px] mb-4 border-b border-border pb-2">Career Stats</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
           {[
-            ['Matches', stats.totalMatches],
-            ['Goals', stats.totalGoals],
-            ['Goals Conceded', stats.totalGoalsConceded],
-            ['Wins', stats.totalWins],
-            ['Draws', stats.totalDraws],
-            ['Losses', stats.totalLosses],
-            ['MOTM', stats.totalMOTM],
-            ['Clean Sheets', stats.totalCleanSheets],
-            ['Hat-tricks', stats.totalHattricks]
-          ].map(([l, v]) => (
-            <div key={l as string} className="bg-popover border border-border rounded-lg p-3 shadow-inner">
-              <p className="text-muted-foreground text-[11px] mb-1">{l}</p>
-              <p className="text-[20px] font-bold text-foreground">{v}</p>
+            { label: 'Matches',       value: stats.totalMatches,      color: '#6366f1', bg: 'rgba(99,102,241,0.10)',  icon: '🎮' },
+            { label: 'Goals',         value: stats.totalGoals,        color: '#10b981', bg: 'rgba(16,185,129,0.10)', icon: '⚽' },
+            { label: 'Goals Conceded',value: stats.totalGoalsConceded,color: '#ef4444', bg: 'rgba(239,68,68,0.10)',  icon: '🥅' },
+            { label: 'Wins',          value: stats.totalWins,         color: '#22c55e', bg: 'rgba(34,197,94,0.10)',  icon: '🏆' },
+            { label: 'Draws',         value: stats.totalDraws,        color: '#f59e0b', bg: 'rgba(245,158,11,0.10)', icon: '🤝' },
+            { label: 'Losses',        value: stats.totalLosses,       color: '#f87171', bg: 'rgba(248,113,113,0.10)',icon: '❌' },
+            { label: 'MOTM',          value: stats.totalMOTM,         color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', icon: '🏅' },
+            { label: 'Clean Sheets',  value: stats.totalCleanSheets,  color: '#38bdf8', bg: 'rgba(56,189,248,0.10)', icon: '🧤' },
+            { label: 'Hat-tricks',    value: stats.totalHattricks,    color: '#a855f7', bg: 'rgba(168,85,247,0.10)', icon: '🎩' },
+          ].map(({ label, value, color, bg, icon }) => (
+            <div
+              key={label}
+              className="rounded-xl p-3 flex flex-col gap-1 shadow-sm transition-transform hover:scale-[1.02]"
+              style={{ background: bg, border: `1.5px solid ${color}33` }}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="text-[13px]">{icon}</span>
+                <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color }}>{label}</p>
+              </div>
+              <p className="text-[22px] font-black" style={{ color }}>{value}</p>
             </div>
           ))}
         </div>
