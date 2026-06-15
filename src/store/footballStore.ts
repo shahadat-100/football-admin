@@ -524,9 +524,9 @@ export const useFootballStore = create<FootballStore>()(
       fetchPlayers: async () => {
         try {
           // Fetch all related tables in parallel to avoid sequential waterfall.
-          // We avoid Supabase nested join (PostgREST) which causes 10s+ cold-join penalties.
+          // We select specific columns to avoid downloading massive base64 profileimageurl payloads
           const [playersRes, junctionRolesRes, rolesRes, junctionTagsRes, tagsRes] = await Promise.all([
-            supabase.from('players').select('*'),
+            supabase.from('players').select('id, name, jerseynumber, email, custom_string_tags, createdat'),
             supabase.from('player_player_roles').select('*'),
             supabase.from('player_role').select('*'),
             supabase.from('player_custom_tags').select('*'),
@@ -568,7 +568,7 @@ export const useFootballStore = create<FootballStore>()(
           const mappedPlayers = players.map(p => ({
             id: p.id,
             name: p.name,
-            profileImageUrl: p.profileimageurl || '',
+            profileImageUrl: (p as any).profileimageurl || '',
             jerseyNumber: p.jerseynumber ?? undefined,
             email: p.email || '',
             playerRoles: playerRolesMap.get(p.id) || [],
