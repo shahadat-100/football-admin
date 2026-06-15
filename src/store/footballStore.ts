@@ -520,22 +520,48 @@ export const useFootballStore = create<FootballStore>()(
       
       fetchPlayers: async () => {
         try {
-          // Fetch all related tables separately to avoid massive Supabase nested-join performance penalty
-          const [playersRes, junctionRolesRes, rolesRes, junctionTagsRes, tagsRes] = await Promise.all([
-            supabase.from('players').select('*'),
-            supabase.from('player_player_roles').select('*'),
-            supabase.from('player_role').select('*'),
-            supabase.from('player_custom_tags').select('*'),
-            supabase.from('custom_tags').select('*')
-          ]);
+          // We split this into separate calls with timers and error catching
+          // to find exactly which table throws the 404 API key error.
+          
+          let playersRes, junctionRolesRes, rolesRes, junctionTagsRes, tagsRes;
 
-          if (playersRes.error) throw playersRes.error;
+          try {
+            console.time('players');
+            playersRes = await supabase.from('players').select('*');
+            console.timeEnd('players');
+          } catch(e) { console.error('players failed', e); }
 
-          const players = playersRes.data || [];
-          const junctionRoles = junctionRolesRes.data || [];
-          const roles = rolesRes.data || [];
-          const junctionTags = junctionTagsRes.data || [];
-          const tags = tagsRes.data || [];
+          try {
+            console.time('player_player_roles');
+            junctionRolesRes = await supabase.from('player_player_roles').select('*');
+            console.timeEnd('player_player_roles');
+          } catch(e) { console.error('player_player_roles failed', e); }
+
+          try {
+            console.time('player_role');
+            rolesRes = await supabase.from('player_role').select('*');
+            console.timeEnd('player_role');
+          } catch(e) { console.error('player_role failed', e); }
+
+          try {
+            console.time('player_custom_tags');
+            junctionTagsRes = await supabase.from('player_custom_tags').select('*');
+            console.timeEnd('player_custom_tags');
+          } catch(e) { console.error('player_custom_tags failed', e); }
+
+          try {
+            console.time('custom_tags');
+            tagsRes = await supabase.from('custom_tags').select('*');
+            console.timeEnd('custom_tags');
+          } catch(e) { console.error('custom_tags failed', e); }
+
+          if (playersRes?.error) throw playersRes.error;
+
+          const players = playersRes?.data || [];
+          const junctionRoles = junctionRolesRes?.data || [];
+          const roles = rolesRes?.data || [];
+          const junctionTags = junctionTagsRes?.data || [];
+          const tags = tagsRes?.data || [];
 
           // Create lookup maps
           const roleMap = new Map(roles.map(r => [r.id, r.name]));
