@@ -8,3 +8,4 @@ export * from './Modal';
 export * from './Select';
 export * from './Textarea';
 export * from './Toggle';
+export * from './PieChart';
