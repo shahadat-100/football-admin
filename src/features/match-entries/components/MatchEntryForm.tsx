@@ -18,7 +18,7 @@ interface MatchEntryFormProps {
   onClose: () => void;
 }
 
-export function MatchEntryForm({ initial, players, matches, onSave, onClose }: MatchEntryFormProps) {
+export function MatchEntryForm({ initial, players, matches: _matches, onSave, onClose }: MatchEntryFormProps) {
   const {
     register,
     handleSubmit,

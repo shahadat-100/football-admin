@@ -127,7 +127,7 @@ export function MonthlyTopXI({ players, matchEntries }: MonthlyTopXIProps) {
                     {/* Dark Purple thick border around the avatar */}
                     <div className="w-[60px] h-[60px] lg:w-[68px] lg:h-[68px] rounded-full border-[3px] border-[#31103f] bg-white overflow-hidden shadow-[0_8px_16px_rgba(0,0,0,0.15)] flex items-center justify-center">
                       {pd.player.profileImageUrl ? (
-                        <img src={pd.player.profileImageUrl} alt={pd.player.name} className="w-full h-full object-cover" />
+                        <img src={pd.player.profileImageUrl} alt={pd.player.name} className="w-full h-full object-cover" loading="lazy" />
                       ) : (
                         <span className="font-bold text-[#31103f] text-lg">{pd.player.name.charAt(0)}</span>
                       )}

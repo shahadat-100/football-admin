@@ -36,7 +36,6 @@ export function PieChart({ data, size = 130 }: PieChartProps) {
   let currentOffset = 0;
   const segments = data.map((d) => {
     const pct = d.value / total;
-    const strokeDasharray = `${pct * circumference} ${circumference}`;
     const strokeDashoffset = -currentOffset;
     currentOffset += pct * circumference;
     // Add small gap for visual separation if there are multiple segments

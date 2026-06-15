@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Player } from '../types';
 import { Avatar, Badge, Button, Modal, DeleteConfirm, PieChart } from '@/shared/components';
 import { usePlayerStats } from '../hooks/usePlayerStats';
@@ -68,26 +68,31 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
     (s.wins * 3) + s.draws - s.losses + s.goals - s.goalsConceded + (s.motmCount * 2) + s.hattricks;
 
   // Compute Leaderboard Rank based on total points
-  const playerRanks = players.map(p => {
-    const pStats = playerSeasonStats.filter(s => s.playerId === p.id);
-    const totalPoints = pStats.reduce((acc, s) => acc + calcSeasonPoints(s), 0);
-    return { id: p.id, points: totalPoints };
-  }).sort((a, b) => b.points - a.points);
-  
-  const rankIndex = playerRanks.findIndex(r => r.id === player.id);
-  const currentRank = rankIndex !== -1 ? rankIndex + 1 : undefined;
+  const currentRank = useMemo(() => {
+    const playerRanks = players.map(p => {
+      let totalPoints = 0;
+      for (const s of playerSeasonStats) {
+        if (s.playerId === p.id) {
+          totalPoints += calcSeasonPoints(s);
+        }
+      }
+      return { id: p.id, points: totalPoints };
+    }).sort((a, b) => b.points - a.points);
+    const rankIndex = playerRanks.findIndex(r => r.id === player.id);
+    return rankIndex !== -1 ? rankIndex + 1 : undefined;
+  }, [players, playerSeasonStats, player.id]);
 
   // Compute Current Season Rank
-  const currentSeason = seasons.find(s => s.is_current) || seasons[seasons.length - 1];
-  let currentSeasonRank: number | undefined = undefined;
-  if (currentSeason) {
+  const currentSeason = useMemo(() => seasons.find(s => s.is_current) || seasons[seasons.length - 1], [seasons]);
+  const currentSeasonRank = useMemo(() => {
+    if (!currentSeason) return undefined;
     const seasonRanks = players.map(p => {
       const pStats = playerSeasonStats.find(s => s.playerId === p.id && s.seasonId === currentSeason.id);
       return { id: p.id, points: pStats ? calcSeasonPoints(pStats) : 0 };
     }).sort((a, b) => b.points - a.points);
     const sRankIndex = seasonRanks.findIndex(r => r.id === player.id);
-    if (sRankIndex !== -1) currentSeasonRank = sRankIndex + 1;
-  }
+    return sRankIndex !== -1 ? sRankIndex + 1 : undefined;
+  }, [players, playerSeasonStats, currentSeason, player.id]);
 
   return (
     <div>
@@ -316,32 +321,28 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
         // then find where this player sits in the ranking.
         type PeriodStats = { wins: number; draws: number; losses: number; goals: number; matches: number; points: number };
 
-        const buildPeriodKey = (date: Date, mode: 'month' | 'week') => {
-          const monthKey = date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
-          if (mode === 'month') return monthKey;
-          const weekNum = Math.ceil(date.getDate() / 7);
-          return `W${weekNum} ${monthKey}`;
-        };
+        const monthlyRankData = useMemo(() => {
+          const buildPeriodKey = (date: Date, mode: 'month' | 'week') => {
+            const monthKey = date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+            if (mode === 'month') return monthKey;
+            const weekNum = Math.ceil(date.getDate() / 7);
+            return `W${weekNum} ${monthKey}`;
+          };
 
-        // Collect all unique period keys from this player's entries
-        const myMonthKeys = new Set<string>();
-        const myWeekKeys = new Set<string>();
-        entries.forEach(e => {
-          if (!e.date) return;
-          const d = new Date(e.date);
-          if (isNaN(d.getTime())) return;
-          myMonthKeys.add(buildPeriodKey(d, 'month'));
-          myWeekKeys.add(buildPeriodKey(d, 'week'));
-        });
-
-        const getRankForPeriod = (periodKey: string, mode: 'month' | 'week'): { rank: number; wins: number; draws: number; losses: number; goals: number; matches: number; totalPlayers: number } => {
-          // Build a points map for all players in this period
-          const playerPoints = new Map<string, PeriodStats>();
+          // Single pass grouping
+          const periodPlayerPoints = new Map<string, Map<string, PeriodStats>>();
+          
           matchEntries.forEach(e => {
             if (!e.date) return;
             const d = new Date(e.date);
             if (isNaN(d.getTime())) return;
-            if (buildPeriodKey(d, mode) !== periodKey) return;
+            const monthKey = buildPeriodKey(d, 'month');
+
+            if (!periodPlayerPoints.has(monthKey)) {
+              periodPlayerPoints.set(monthKey, new Map());
+            }
+            const playerPoints = periodPlayerPoints.get(monthKey)!;
+            
             if (!playerPoints.has(e.playerId)) {
               playerPoints.set(e.playerId, { wins: 0, draws: 0, losses: 0, goals: 0, matches: 0, points: 0 });
             }
@@ -354,21 +355,32 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
             if (e.motm) ps.points += 2;
           });
 
-          const sorted = Array.from(playerPoints.entries()).sort((a, b) => b[1].points - a[1].points || b[1].goals - a[1].goals);
-          const rankIdx = sorted.findIndex(([id]) => id === playerId);
-          const myStats = playerPoints.get(playerId) || { wins: 0, draws: 0, losses: 0, goals: 0, matches: 0, points: 0 };
-          return {
-            rank: rankIdx !== -1 ? rankIdx + 1 : sorted.length + 1,
-            ...myStats,
-            totalPlayers: sorted.length
+          const getRankForPeriod = (periodKey: string): { rank: number; wins: number; draws: number; losses: number; goals: number; matches: number; totalPlayers: number } => {
+            const playerPoints = periodPlayerPoints.get(periodKey);
+            if (!playerPoints) return { rank: 1, wins: 0, draws: 0, losses: 0, goals: 0, matches: 0, totalPlayers: 0 };
+            const sorted = Array.from(playerPoints.entries()).sort((a, b) => b[1].points - a[1].points || b[1].goals - a[1].goals);
+            const rankIdx = sorted.findIndex(([id]) => id === playerId);
+            const myStats = playerPoints.get(playerId) || { wins: 0, draws: 0, losses: 0, goals: 0, matches: 0, points: 0 };
+            return {
+              rank: rankIdx !== -1 ? rankIdx + 1 : sorted.length + 1,
+              ...myStats,
+              totalPlayers: sorted.length
+            };
           };
-        };
 
-        // Only keep months where this player ranked top 5
-        const monthlyRankData = Array.from(myMonthKeys)
-          .map(key => ({ label: key, ...getRankForPeriod(key, 'month') }))
-          .filter(d => d.rank <= 5)
-          .sort((a, b) => a.rank - b.rank); // best rank first
+          const myMonthKeys = new Set<string>();
+          entries.forEach(e => {
+            if (!e.date) return;
+            const d = new Date(e.date);
+            if (isNaN(d.getTime())) return;
+            myMonthKeys.add(buildPeriodKey(d, 'month'));
+          });
+
+          return Array.from(myMonthKeys)
+            .map(key => ({ label: key, ...getRankForPeriod(key) }))
+            .filter(d => d.rank <= 5)
+            .sort((a, b) => a.rank - b.rank); // best rank first
+        }, [entries, matchEntries, playerId]);
 
         return (
           <>

@@ -21,23 +21,36 @@ export function AppShell() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    state.fetchPlayers();
-    state.fetchSeasons().then(() => {
-      state.fetchPlayerSeasonStats();
-      state.fetchCompetitions();
-    });
-    state.fetchMatches();
-    state.fetchMatchEntries();
-    state.fetchNews();
-    state.fetchHallOfFame();
-    state.fetchAvailableRoles();
-    state.fetchAvailableTags();
+    if (!state.isInitialized) {
+      state.initializeData();
+    }
   }, []);
 
   // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
+
+  if (!state.isInitialized) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-[#0d0e12] text-foreground">
+        <div className="flex flex-col items-center gap-5 text-center">
+          {/* Pulsing football icon */}
+          <div className="relative">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary via-red-800 to-amber-600 flex items-center justify-center shadow-lg shadow-primary/20 animate-pulse">
+              <span className="text-3xl animate-spin [animation-duration:8s]">⚽</span>
+            </div>
+            {/* Spinning outer ring */}
+            <div className="absolute -inset-2 rounded-full border-2 border-primary/20 border-t-primary animate-spin [animation-duration:1.5s]"></div>
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-lg font-bold tracking-tight text-white">Loading Club Records</h3>
+            <p className="text-[12px] text-muted-foreground animate-pulse max-w-[200px] mx-auto font-medium">Fetching players, matches, stats and details...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const counts: Record<string, number> = {
     players: state.players.length,

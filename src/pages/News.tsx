@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFootballStore } from '@/store/footballStore';
 import { NewsArticle } from '@/features/news/types';
 import { NewsForm } from '@/features/news';
@@ -7,7 +7,11 @@ import { fuzzyFilter } from '@/shared/lib/utils';
 import { Search, Plus } from 'lucide-react';
 
 export function News() {
-  const { news, addNews, updateNews, removeNews } = useFootballStore();
+  const { news, fetchNews, addNews, updateNews, removeNews } = useFootballStore();
+
+  useEffect(() => {
+    fetchNews();
+  }, [fetchNews]);
   const [modal, setModal] = useState<{ type: 'add' | 'edit' | 'delete', data?: NewsArticle } | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -76,7 +80,7 @@ export function News() {
           <div key={n.id} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col shadow-sm hover:border-primary/50 transition-colors">
             {n.image && (
               <div className="h-48 w-full overflow-hidden flex-shrink-0">
-                <img src={n.image} alt={n.title} className="w-full h-full object-cover" />
+                <img src={n.image} alt={n.title} className="w-full h-full object-cover" loading="lazy" />
               </div>
             )}
             <div className="p-4 flex-1 flex flex-col">

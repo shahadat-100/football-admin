@@ -150,6 +150,15 @@ interface FootballStore {
   hallOfFame: HallOfFameEntry[];
   availableRoles: PlayerRole[];
   availableTags: CustomTag[];
+
+  // Server-side paginated entries (for MatchEntries page)
+  paginatedMatchEntries: MatchEntry[];
+  totalMatchEntriesCount: number;
+  isPaginatedEntriesLoading: boolean;
+  
+  isInitialized: boolean;
+  initializeData: () => Promise<void>;
+  fetchPaginatedMatchEntries: (page: number, pageSize: number, searchPlayerIds?: string[]) => Promise<void>;
   
   fetchPlayers: () => Promise<void>;
   setPlayers: (p: Player[]) => void;
@@ -443,6 +452,57 @@ export const useFootballStore = create<FootballStore>()(
       hallOfFame: [],
       availableRoles: [],
       availableTags: [],
+
+      paginatedMatchEntries: [],
+      totalMatchEntriesCount: 0,
+      isPaginatedEntriesLoading: false,
+      
+      isInitialized: false,
+      initializeData: async () => {
+        // Smart caching: skip if already initialized
+        if (get().isInitialized) return;
+        const store = get();
+        await Promise.all([
+          store.fetchSeasons(),
+          store.fetchPlayers(),
+          store.fetchMatches(),
+          store.fetchMatchEntries()
+        ]);
+        await store.fetchPlayerSeasonStats();
+        set({ isInitialized: true });
+      },
+
+      fetchPaginatedMatchEntries: async (page, pageSize, searchPlayerIds) => {
+        set({ isPaginatedEntriesLoading: true });
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        let query = supabase
+          .from('match_entries')
+          .select('*', { count: 'exact' })
+          .order('date', { ascending: false })
+          .range(from, to);
+
+        if (searchPlayerIds && searchPlayerIds.length > 0) {
+          query = query.in('playerid', searchPlayerIds);
+        } else if (searchPlayerIds && searchPlayerIds.length === 0) {
+          // No matching players → return empty immediately
+          set({ paginatedMatchEntries: [], totalMatchEntriesCount: 0, isPaginatedEntriesLoading: false });
+          return;
+        }
+
+        const { data, error, count } = await query;
+        if (data) {
+          set({
+            paginatedMatchEntries: data.map(mapMatchEntryFromDb),
+            totalMatchEntriesCount: count ?? 0,
+            isPaginatedEntriesLoading: false,
+          });
+        }
+        if (error) {
+          console.error('Error fetching paginated match entries:', error);
+          set({ isPaginatedEntriesLoading: false });
+        }
+      },
       
       fetchPlayers: async () => {
         const { data, error } = await supabase
@@ -788,7 +848,7 @@ export const useFootballStore = create<FootballStore>()(
       },
       
       fetchMatchEntries: async () => {
-        const { data, error } = await supabase.from('match_entries').select('*, matches(date)');
+        const { data, error } = await supabase.from('match_entries').select('*');
         if (data) {
           set({ matchEntries: data.map(mapMatchEntryFromDb) });
         }
@@ -1008,24 +1068,28 @@ export const useFootballStore = create<FootballStore>()(
       },
 
       fetchPlayerSeasonStats: async () => {
-        const { data, error } = await supabase.from('player_season_stats').select('*, season(name)');
+        const { data, error } = await supabase.from('player_season_stats').select('*');
         if (data) {
+          const seasons = get().seasons;
           set({
-            playerSeasonStats: data.map(item => ({
-              id: item.id,
-              playerId: item.player_id,
-              seasonId: item.season_id,
-              seasonName: item.season?.name || `Season ${item.season_id}`,
-              appearances: item.appearances || 0,
-              goals: item.goals || 0,
-              cleansheets: item.cleansheets || 0,
-              hattricks: item.hattricks || 0,
-              motmCount: item.motmcount || 0,
-              wins: item.wins || 0,
-              draws: item.draws || 0,
-              losses: item.losses || 0,
-              goalsConceded: item.goalsconceded || 0,
-            }))
+            playerSeasonStats: data.map(item => {
+              const seasonObj = seasons.find(s => s.id === item.season_id);
+              return {
+                id: item.id,
+                playerId: item.player_id,
+                seasonId: item.season_id,
+                seasonName: seasonObj?.name || `Season ${item.season_id}`,
+                appearances: item.appearances || 0,
+                goals: item.goals || 0,
+                cleansheets: item.cleansheets || 0,
+                hattricks: item.hattricks || 0,
+                motmCount: item.motmcount || 0,
+                wins: item.wins || 0,
+                draws: item.draws || 0,
+                losses: item.losses || 0,
+                goalsConceded: item.goalsconceded || 0,
+              };
+            })
           });
         }
         if (error) console.error('Error fetching player season stats:', error);

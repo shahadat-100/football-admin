@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent } from 'react';
+import { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { playerFormSchema } from '../schemas';
@@ -15,7 +15,21 @@ interface PlayerFormProps {
 }
 
 export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
-  const { availableRoles, availableTags } = useFootballStore();
+  const { 
+    availableRoles, 
+    availableTags,
+    fetchAvailableRoles,
+    fetchAvailableTags
+  } = useFootballStore();
+
+  useEffect(() => {
+    if (availableRoles.length === 0) {
+      fetchAvailableRoles();
+    }
+    if (availableTags.length === 0) {
+      fetchAvailableTags();
+    }
+  }, [availableRoles.length, availableTags.length, fetchAvailableRoles, fetchAvailableTags]);
   const [seasons, setSeasons] = useState<Season[]>((initial as any)?.seasons ?? []);
   const [showAddSeason, setShowAddSeason] = useState(false);
   const [newSeasonYear, setNewSeasonYear] = useState('');

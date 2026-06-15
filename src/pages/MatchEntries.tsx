@@ -1,64 +1,99 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useFootballStore } from '@/store/footballStore';
 import { MatchEntry } from '@/features/match-entries/types';
 import { MatchEntryForm } from '@/features/match-entries';
 import { Button, Input, Modal, DeleteConfirm, Avatar, Badge } from '@/shared/components';
-import { Search, Plus, Trophy, Target, TrendingUp, Star, Zap, Shield } from 'lucide-react';
+import { Search, Plus, Trophy, Target, TrendingUp, Star, Zap, Shield, Loader2 } from 'lucide-react';
 import { RESULT_BADGE } from '@/shared/lib/constants';
 
+const PAGE_SIZE = 50;
+
 export function MatchEntries() {
-  const { matchEntries, players, matches, addMatchEntry, updateMatchEntry, removeMatchEntry } = useFootballStore();
+  const {
+    players,
+    matches,
+    playerSeasonStats,
+    paginatedMatchEntries,
+    totalMatchEntriesCount,
+    isPaginatedEntriesLoading,
+    fetchPaginatedMatchEntries,
+    addMatchEntry,
+    updateMatchEntry,
+    removeMatchEntry,
+  } = useFootballStore();
+
   const [modal, setModal] = useState<{ type: 'add' | 'edit' | 'delete', data?: MatchEntry } | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState<'overview' | 'entries'>('overview');
-  const PAGE_SIZE = 50;
 
   const getPlayer = (id: string) => players.find(p => p.id === id);
 
-  // ── Aggregated totals ──────────────────────────────────────────
-  const totals = matchEntries.reduce((acc, e) => ({
-    matches: acc.matches + 1,
-    goals: acc.goals + (e.goals || 0),
-    conceded: acc.conceded + (e.goalsConceded || 0),
-    wins: acc.wins + (e.result === 'win' ? 1 : 0),
-    losses: acc.losses + (e.result === 'loss' ? 1 : 0),
-    draws: acc.draws + (e.result === 'draw' ? 1 : 0),
-    hattricks: acc.hattricks + (e.hattricks || 0),
-    motm: acc.motm + (e.motm ? 1 : 0),
-    cleanSheets: acc.cleanSheets + (e.cleanSheet ? 1 : 0),
-  }), { matches: 0, goals: 0, conceded: 0, wins: 0, losses: 0, draws: 0, hattricks: 0, motm: 0, cleanSheets: 0 });
+  // Resolve search → matching player IDs (client-side lookup, O(N) on players only)
+  const resolveSearchPlayerIds = useCallback(
+    (q: string): string[] | undefined => {
+      if (!q.trim()) return undefined; // undefined = no filter = fetch all
+      const lower = q.toLowerCase();
+      const ids = players.filter(p => p.name.toLowerCase().includes(lower)).map(p => p.id);
+      return ids; // empty array = no match → store will return empty immediately
+    },
+    [players]
+  );
+
+  // Fetch paginated entries whenever page or search changes (only on "entries" tab)
+  useEffect(() => {
+    if (activeTab !== 'entries') return;
+    const ids = resolveSearchPlayerIds(search);
+    fetchPaginatedMatchEntries(page, PAGE_SIZE, ids);
+  }, [page, search, activeTab, fetchPaginatedMatchEntries, resolveSearchPlayerIds]);
+
+  // When switching to entries tab for the first time, trigger initial load
+  const handleTabChange = (tab: 'overview' | 'entries') => {
+    setActiveTab(tab);
+    if (tab === 'entries') {
+      setPage(1);
+    }
+  };
+
+  // ── Totals from pre-aggregated playerSeasonStats (fast, no raw entry scan) ──
+  const totals = playerSeasonStats.reduce(
+    (acc, s) => ({
+      matches: acc.matches + (s.appearances || 0),
+      goals: acc.goals + (s.goals || 0),
+      conceded: acc.conceded + (s.goalsConceded || 0),
+      wins: acc.wins + (s.wins || 0),
+      losses: acc.losses + (s.losses || 0),
+      draws: acc.draws + (s.draws || 0),
+      hattricks: acc.hattricks + (s.hattricks || 0),
+      motm: acc.motm + (s.motmCount || 0),
+      cleanSheets: acc.cleanSheets + (s.cleansheets || 0),
+    }),
+    { matches: 0, goals: 0, conceded: 0, wins: 0, losses: 0, draws: 0, hattricks: 0, motm: 0, cleanSheets: 0 }
+  );
 
   const winRate = totals.matches > 0 ? Math.round((totals.wins / totals.matches) * 100) : 0;
 
-  // ── Per-player breakdown ──────────────────────────────────────
-  const playerStats = players.map(p => {
-    const entries = matchEntries.filter(e => e.playerId === p.id);
-    return {
-      player: p,
-      matches: entries.length,
-      goals: entries.reduce((s, e) => s + (e.goals || 0), 0),
-      conceded: entries.reduce((s, e) => s + (e.goalsConceded || 0), 0),
-      wins: entries.filter(e => e.result === 'win').length,
-      losses: entries.filter(e => e.result === 'loss').length,
-      draws: entries.filter(e => e.result === 'draw').length,
-      hattricks: entries.reduce((s, e) => s + (e.hattricks || 0), 0),
-      motm: entries.filter(e => e.motm).length,
-      cleanSheets: entries.filter(e => e.cleanSheet).length,
-    };
-  }).filter(ps => ps.matches > 0).sort((a, b) => b.goals - a.goals);
-
-  // ── Filtered entries ──────────────────────────────────────────
-  const filtered = matchEntries
-    .filter(me => {
-      if (!search) return true;
-      const p = getPlayer(me.playerId);
-      return p && p.name.toLowerCase().includes(search.toLowerCase());
+  // ── Per-player overview from playerSeasonStats ──
+  const playerStats = players
+    .map(p => {
+      const stats = playerSeasonStats.filter(s => s.playerId === p.id);
+      return {
+        player: p,
+        matches: stats.reduce((s, e) => s + (e.appearances || 0), 0),
+        goals: stats.reduce((s, e) => s + (e.goals || 0), 0),
+        conceded: stats.reduce((s, e) => s + (e.goalsConceded || 0), 0),
+        wins: stats.reduce((s, e) => s + (e.wins || 0), 0),
+        losses: stats.reduce((s, e) => s + (e.losses || 0), 0),
+        draws: stats.reduce((s, e) => s + (e.draws || 0), 0),
+        hattricks: stats.reduce((s, e) => s + (e.hattricks || 0), 0),
+        motm: stats.reduce((s, e) => s + (e.motmCount || 0), 0),
+        cleanSheets: stats.reduce((s, e) => s + (e.cleansheets || 0), 0),
+      };
     })
-    .sort((a, b) => b.date.localeCompare(a.date));
+    .filter(ps => ps.matches > 0)
+    .sort((a, b) => b.goals - a.goals);
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.ceil(totalMatchEntriesCount / PAGE_SIZE);
 
   const STAT_CARDS = [
     { label: 'Total Entries', value: totals.matches, icon: Trophy, color: 'text-blue-400', bg: 'bg-blue-500/10' },
@@ -96,24 +131,27 @@ export function MatchEntries() {
         onConfirm={() => { if (modal?.data) removeMatchEntry(modal.data.id); setModal(null); }}
         onClose={() => setModal(null)}
       />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between mb-6 gap-4">
         <div>
           <h2 className="font-bold text-[22px] mb-1">Match Entries</h2>
           <p className="text-muted-foreground text-[13px]">
-            {totals.matches} entries · {totals.wins}W {totals.losses}L {totals.draws}D · {totals.goals} goals
+            {totals.matches.toLocaleString()} entries · {totals.wins}W {totals.losses}L {totals.draws}D · {totals.goals} goals
           </p>
         </div>
         <div className="flex gap-3 items-center flex-wrap">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Filter by player..."
-              className="pl-9 w-full sm:w-[200px]"
-            />
-          </div>
+          {activeTab === 'entries' && (
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={e => { setSearch(e.target.value); setPage(1); }}
+                placeholder="Filter by player..."
+                className="pl-9 w-full sm:w-[200px]"
+              />
+            </div>
+          )}
           <Button onClick={() => setModal({ type: 'add' })}>
             <Plus className="w-4 h-4 mr-1.5" /> Add Entry
           </Button>
@@ -141,7 +179,7 @@ export function MatchEntries() {
         {(['overview', 'entries'] as const).map(tab => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => handleTabChange(tab)}
             className={`px-4 py-1.5 rounded-md text-[13px] font-medium transition-colors capitalize ${
               activeTab === tab ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
             }`}
@@ -151,7 +189,7 @@ export function MatchEntries() {
         ))}
       </div>
 
-      {/* OVERVIEW TAB — Per-player breakdown */}
+      {/* OVERVIEW TAB — Per-player breakdown from playerSeasonStats */}
       {activeTab === 'overview' && (
         <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -216,10 +254,18 @@ export function MatchEntries() {
         </div>
       )}
 
-      {/* ENTRIES TAB — All individual entries */}
+      {/* ENTRIES TAB — Server-side paginated entries */}
       {activeTab === 'entries' && (
         <>
-          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden relative">
+            {isPaginatedEntriesLoading && (
+              <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center z-10 rounded-xl">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span className="text-[13px] font-medium">Loading entries...</span>
+                </div>
+              </div>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full text-[13px] text-left">
                 <thead className="bg-muted text-muted-foreground font-medium border-b border-border">
@@ -230,7 +276,7 @@ export function MatchEntries() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50 bg-popover">
-                  {paginated.map(me => {
+                  {paginatedMatchEntries.map(me => {
                     const p = getPlayer(me.playerId);
                     const rb = RESULT_BADGE[me.result as keyof typeof RESULT_BADGE] ?? RESULT_BADGE.draw;
                     const isBulk = (me as any).source === 'bulk' || me.notes?.startsWith('Generated from');
@@ -264,7 +310,7 @@ export function MatchEntries() {
                       </tr>
                     );
                   })}
-                  {filtered.length === 0 && (
+                  {!isPaginatedEntriesLoading && paginatedMatchEntries.length === 0 && (
                     <tr>
                       <td colSpan={8} className="py-12 text-center text-muted-foreground">No entries found</td>
                     </tr>
@@ -277,12 +323,12 @@ export function MatchEntries() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4 bg-card border border-border p-3 rounded-xl">
               <p className="text-[12px] text-muted-foreground">
-                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalMatchEntriesCount)} of {totalMatchEntriesCount.toLocaleString()}
               </p>
               <div className="flex gap-2">
-                <Button variant="secondary" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
+                <Button variant="secondary" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1 || isPaginatedEntriesLoading}>Previous</Button>
                 <div className="flex items-center px-3 text-[12px] font-medium border border-border rounded-md bg-muted/30">Page {page}/{totalPages}</div>
-                <Button variant="secondary" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
+                <Button variant="secondary" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages || isPaginatedEntriesLoading}>Next</Button>
               </div>
             </div>
           )}
