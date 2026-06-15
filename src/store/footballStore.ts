@@ -524,7 +524,7 @@ export const useFootballStore = create<FootballStore>()(
           const [playersRes, junctionRolesRes, rolesRes, junctionTagsRes, tagsRes] = await Promise.all([
             supabase.from('players').select('*'),
             supabase.from('player_player_roles').select('*'),
-            supabase.from('player_roles').select('*'),
+            supabase.from('player_role').select('*'),
             supabase.from('player_custom_tags').select('*'),
             supabase.from('custom_tags').select('*')
           ]);
