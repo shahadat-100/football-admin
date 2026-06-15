@@ -464,11 +464,11 @@ export const useFootballStore = create<FootballStore>()(
         if (get().isInitialized) return;
         const store = get();
         await Promise.all([
-          store.fetchSeasons(),
-          store.fetchPlayers(),
-          store.fetchMatches(),
-          store.fetchMatchEntries(),
-          store.fetchPlayerSeasonStats()
+          (async () => { console.time('fetchSeasons'); await store.fetchSeasons(); console.timeEnd('fetchSeasons'); })(),
+          (async () => { console.time('fetchPlayers'); await store.fetchPlayers(); console.timeEnd('fetchPlayers'); })(),
+          (async () => { console.time('fetchMatches'); await store.fetchMatches(); console.timeEnd('fetchMatches'); })(),
+          (async () => { console.time('fetchMatchEntries'); await store.fetchMatchEntries(); console.timeEnd('fetchMatchEntries'); })(),
+          (async () => { console.time('fetchPlayerSeasonStats'); await store.fetchPlayerSeasonStats(); console.timeEnd('fetchPlayerSeasonStats'); })()
         ]);
         set({ isInitialized: true });
       },
