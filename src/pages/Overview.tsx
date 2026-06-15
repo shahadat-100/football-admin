@@ -63,27 +63,28 @@ export function Overview({ setTab }: OverviewProps) {
   ];
 
   // ── 2. Win / Draw / Loss Data ──
-  // Use unique match IDs to calculate actual team W/D/L, not per-player entries
-  const uniqueMatchesResults = useMemo(() => {
-    // If we have actual match result status we would use `matches`, 
-    // but right now matches table doesn't store outcome explicitly in the schema shown.
-    // Instead we derive team win/draw/loss from matchEntries. 
-    // Just looking at one player's result per match gives the team result.
-    const matchResultsMap = new Map();
+  // Use unique match IDs to calculate team result for the Recent Matches list
+  const matchResultsMap = useMemo(() => {
+    const map = new Map();
     matchEntries.forEach(e => {
-      if (e.matchId && !matchResultsMap.has(e.matchId) && e.result) {
-        matchResultsMap.set(e.matchId, e.result);
+      if (e.matchId && !map.has(e.matchId) && e.result) {
+        map.set(e.matchId, e.result);
       }
     });
-    
-    let w = 0, d = 0, l = 0;
-    matchResultsMap.forEach(res => {
-      if (res === 'win') w++;
-      if (res === 'draw') d++;
-      if (res === 'loss') l++;
-    });
-    return { wins: w, draws: d, losses: l, matchResultsMap };
+    return map;
   }, [matchEntries]);
+
+  // Win/Draw/Loss donut chart now takes data directly from playerSeasonStats
+  // which is Supabase DB's real authoritative data, avoiding missed entries without matchId.
+  const donutStats = useMemo(() => {
+    let w = 0, d = 0, l = 0;
+    playerSeasonStats.forEach(s => {
+      w += s.wins || 0;
+      d += s.draws || 0;
+      l += s.losses || 0;
+    });
+    return { wins: w, draws: d, losses: l };
+  }, [playerSeasonStats]);
 
   // ── 3. Awards Data (MOTM / Clean Sheets / Hat-tricks) ──
   // topScorers is now computed inside TopScorersBars with season filter support
@@ -126,9 +127,9 @@ export function Overview({ setTab }: OverviewProps) {
         {/* Row 1 */}
         <div className="lg:col-span-1 h-full">
           <WinRateDonut 
-            wins={uniqueMatchesResults.wins || totalWins} 
-            draws={uniqueMatchesResults.draws || totalDraws} 
-            losses={uniqueMatchesResults.losses || totalLosses} 
+            wins={donutStats.wins || totalWins} 
+            draws={donutStats.draws || totalDraws} 
+            losses={donutStats.losses || totalLosses} 
           />
         </div>
         <div className="lg:col-span-2 h-full">
@@ -177,7 +178,7 @@ export function Overview({ setTab }: OverviewProps) {
               <div className="flex flex-col gap-2">
                 {([...matches].reverse().slice(0, 8)).map(m => {
                   const sb = STATUS_BADGE[m.status as keyof typeof STATUS_BADGE] ?? STATUS_BADGE.finished;
-                  const result = uniqueMatchesResults.matchResultsMap.get(m.id);
+                  const result = matchResultsMap.get(m.id);
                   
                   return (
                     <div key={m.id} className="py-4 border-b border-border/50 last:border-0 group transition-colors">
