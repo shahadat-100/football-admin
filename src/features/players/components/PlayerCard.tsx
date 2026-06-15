@@ -49,7 +49,10 @@ export function PlayerCard({ player, onView, onEdit, onDelete }: PlayerCardProps
 
       <div className="flex flex-wrap gap-1.5 mb-3">
         {(player.playerRoles ?? []).slice(0, 3).map(t => (
-          <Badge key={t}>{t}</Badge>
+          <Badge key={t} bg="#1a1a1a" c="#e5e5e5">{t}</Badge>
+        ))}
+        {(player.customTags ?? []).slice(0, 2).map(t => (
+          <Badge key={t} bg="#4b5563" c="#e5e7eb">{t}</Badge>
         ))}
       </div>
 
