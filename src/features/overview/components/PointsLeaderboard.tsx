@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Player, PlayerSeasonStat, SeasonDb } from '@/features/players/types';
-import { MatchEntry } from '@/features/match-entries/types';
 import { Avatar } from '@/shared/components';
 import { cn } from '@/shared/lib/cn';
+import { useFootballStore } from '@/store/footballStore';
+import { Loader2 } from 'lucide-react';
 
 interface PointsLeaderboardProps {
   players: Player[];
-  matchEntries: MatchEntry[];
   seasons: SeasonDb[];
   playerSeasonStats: PlayerSeasonStat[];
 }
@@ -27,78 +27,78 @@ const calcSeasonPoints = (stats: PlayerSeasonStat[]): number =>
     total + (s.wins * 3) + s.draws - s.losses + s.goals - s.goalsConceded + (s.motmCount * 2) + s.hattricks
   , 0);
 
-// Points from individual match entries (for Weekly / Monthly)
-const calcEntryPoints = (entries: MatchEntry[]): number =>
-  entries.reduce((total, e) => {
-    let pts = 0;
-    if (e.result === 'win') pts += 3;
-    else if (e.result === 'draw') pts += 1;
-    else if (e.result === 'loss') pts -= 1;
-    pts += (e.goals || 0);
-    pts -= (e.goalsConceded || 0);
-    pts += (e.motm ? 2 : 0);
-    pts += (e.hattricks || 0);
-    return total + pts;
-  }, 0);
-
 const today = new Date();
 const currentMonthIndex = today.getMonth(); // 0-indexed
 const currentYear = today.getFullYear();
 const currentDay = today.getDate();
 
-export function PointsLeaderboard({ players, matchEntries, seasons, playerSeasonStats }: PointsLeaderboardProps) {
+export function PointsLeaderboard({ players, seasons, playerSeasonStats }: PointsLeaderboardProps) {
+  const { fetchPlayerStatsPeriod } = useFootballStore();
+
   // ── Monthly filters ──
   const [selectedMonthlySeasonId, setSelectedMonthlySeasonId] = useState<number | null>(null);
-  const [selectedMonthlyMonth, setSelectedMonthlyMonth]       = useState<number>(currentMonthIndex); // 0-indexed
+  const [selectedMonthlyMonth, setSelectedMonthlyMonth]       = useState<number>(currentMonthIndex);
 
   // ── Overall filter ──
   const [selectedOverallSeasonId, setSelectedOverallSeasonId] = useState<number | null>(null);
 
-  const { weeklyRanking, monthlyRanking, overallRanking } = useMemo(() => {
-    // Current week bucket
+  // ── State for async DB fetch ──
+  const [weeklyRanking, setWeeklyRanking] = useState<{ name: string, list: RankedPlayer[] }>({ name: 'Week', list: [] });
+  const [isWeeklyLoading, setIsWeeklyLoading] = useState(true);
+
+  const [monthlyRankingList, setMonthlyRankingList] = useState<RankedPlayer[]>([]);
+  const [isMonthlyLoading, setIsMonthlyLoading] = useState(true);
+
+  // 1. Fetch Weekly Data
+  useEffect(() => {
     let activeWeekStart = 1, activeWeekEnd = 7, activeWeekName = 'Week 1';
     if (currentDay >= 8  && currentDay <= 14) { activeWeekStart = 8;  activeWeekEnd = 14; activeWeekName = 'Week 2'; }
     else if (currentDay >= 15 && currentDay <= 21) { activeWeekStart = 15; activeWeekEnd = 21; activeWeekName = 'Week 3'; }
     else if (currentDay >= 22) { activeWeekStart = 22; activeWeekEnd = 31; activeWeekName = 'Week 4'; }
 
-    const weeklyMap  = new Map<string, number>();
-    const monthlyMap = new Map<string, number>();
+    // Use current month/year for the week
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const startStr = `${currentYear}-${pad(currentMonthIndex + 1)}-${pad(activeWeekStart)}`;
+    const endStr = `${currentYear}-${pad(currentMonthIndex + 1)}-${pad(activeWeekEnd)}`;
+
+    setIsWeeklyLoading(true);
+    fetchPlayerStatsPeriod(startStr, endStr, null).then(data => {
+      const list = data
+        .map(d => ({ player: players.find(p => p.id === d.playerid)!, points: Number(d.points) }))
+        .filter(x => x.player)
+        .sort((a, b) => b.points - a.points);
+      
+      setWeeklyRanking({ name: activeWeekName, list });
+      setIsWeeklyLoading(false);
+    });
+  }, [fetchPlayerStatsPeriod, players]);
+
+  // 2. Fetch Monthly Data
+  useEffect(() => {
+    // If a season is selected, we could use the season's year, but let's stick to currentYear if not specified
+    // Note: If they pick a season, we pass the seasonId to the RPC.
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    
+    // Find last day of the selected month
+    const lastDay = new Date(currentYear, selectedMonthlyMonth + 1, 0).getDate();
+    const startStr = `${currentYear}-${pad(selectedMonthlyMonth + 1)}-01`;
+    const endStr = `${currentYear}-${pad(selectedMonthlyMonth + 1)}-${pad(lastDay)}`;
+
+    setIsMonthlyLoading(true);
+    fetchPlayerStatsPeriod(startStr, endStr, selectedMonthlySeasonId).then(data => {
+      const list = data
+        .map(d => ({ player: players.find(p => p.id === d.playerid)!, points: Number(d.points) }))
+        .filter(x => x.player)
+        .sort((a, b) => b.points - a.points);
+        
+      setMonthlyRankingList(list);
+      setIsMonthlyLoading(false);
+    });
+  }, [fetchPlayerStatsPeriod, players, selectedMonthlyMonth, selectedMonthlySeasonId]);
+
+  // 3. Compute Overall Data (Synchronous)
+  const overallRanking = useMemo(() => {
     const overallMap = new Map<string, number>();
-
-    players.forEach(p => {
-      weeklyMap.set(p.id, 0);
-      monthlyMap.set(p.id, 0);
-      overallMap.set(p.id, 0);
-    });
-
-    matchEntries.forEach(entry => {
-      if (!entry.date) return;
-      const d = new Date(entry.date);
-      const pts = calcEntryPoints([entry]);
-
-      // ── Weekly: always current week of current year ──
-      const isCurrentWeek =
-        d.getFullYear() === currentYear &&
-        d.getMonth() === currentMonthIndex &&
-        d.getDate() >= activeWeekStart &&
-        d.getDate() <= activeWeekEnd;
-
-      if (isCurrentWeek && weeklyMap.has(entry.playerId)) {
-        weeklyMap.set(entry.playerId, weeklyMap.get(entry.playerId)! + pts);
-      }
-
-      // ── Monthly: filtered by season + month ──
-      const isMonthMatch = d.getMonth() === selectedMonthlyMonth;
-      const isSeasonOrYearMatch = selectedMonthlySeasonId !== null
-        ? entry.seasonId === selectedMonthlySeasonId
-        : d.getFullYear() === currentYear; // default: current year
-
-      if (isMonthMatch && isSeasonOrYearMatch && monthlyMap.has(entry.playerId)) {
-        monthlyMap.set(entry.playerId, monthlyMap.get(entry.playerId)! + pts);
-      }
-    });
-
-    // ── Overall: from playerSeasonStats (includes historical) ──
     players.forEach(p => {
       const stats = playerSeasonStats.filter(s =>
         s.playerId === p.id &&
@@ -107,27 +107,23 @@ export function PointsLeaderboard({ players, matchEntries, seasons, playerSeason
       overallMap.set(p.id, calcSeasonPoints(stats));
     });
 
-    const toSortedList = (map: Map<string, number>): RankedPlayer[] =>
-      Array.from(map.entries())
-        .map(([id, points]) => ({ player: players.find(p => p.id === id)!, points }))
-        .filter(x => x.player)
-        .sort((a, b) => b.points - a.points);
+    const list = Array.from(overallMap.entries())
+      .map(([id, points]) => ({ player: players.find(p => p.id === id)!, points }))
+      .filter(x => x.player)
+      .sort((a, b) => b.points - a.points);
 
-    const monthlySeasonLabel = selectedMonthlySeasonId
-      ? seasons.find(s => s.id === selectedMonthlySeasonId)?.name ?? ''
-      : currentYear.toString();
+    const name = selectedOverallSeasonId
+      ? (seasons.find(s => s.id === selectedOverallSeasonId)?.name ?? 'Overall')
+      : 'All Time';
 
-    return {
-      weeklyRanking:  { name: activeWeekName, list: toSortedList(weeklyMap) },
-      monthlyRanking: { label: `${MONTHS[selectedMonthlyMonth]} · ${monthlySeasonLabel}`, list: toSortedList(monthlyMap) },
-      overallRanking: {
-        name: selectedOverallSeasonId
-          ? (seasons.find(s => s.id === selectedOverallSeasonId)?.name ?? 'Overall')
-          : 'All Time',
-        list: toSortedList(overallMap)
-      },
-    };
-  }, [players, matchEntries, playerSeasonStats, seasons, selectedMonthlySeasonId, selectedMonthlyMonth, selectedOverallSeasonId]);
+    return { name, list };
+  }, [players, playerSeasonStats, seasons, selectedOverallSeasonId]);
+
+  const monthlySeasonLabel = selectedMonthlySeasonId
+    ? seasons.find(s => s.id === selectedMonthlySeasonId)?.name ?? ''
+    : currentYear.toString();
+  const monthlyLabel = `${MONTHS[selectedMonthlyMonth]} · ${monthlySeasonLabel}`;
+
 
   const renderRow = (r: RankedPlayer, i: number) => (
     <div key={r.player.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors">
@@ -152,8 +148,8 @@ export function PointsLeaderboard({ players, matchEntries, seasons, playerSeason
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
 
-      {/* ── Weekly: no filter, always current week ── */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-sm flex flex-col h-[420px]">
+      {/* ── Weekly ── */}
+      <div className="bg-card border border-border rounded-2xl p-5 shadow-sm flex flex-col h-[420px] relative">
         <div className="mb-4 border-b border-border pb-3 flex items-center justify-between">
           <h3 className="font-semibold text-base text-foreground">Weekly Points</h3>
           <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
@@ -161,7 +157,9 @@ export function PointsLeaderboard({ players, matchEntries, seasons, playerSeason
           </span>
         </div>
         <div className="flex-1 overflow-y-auto pr-1 space-y-1 custom-scrollbar">
-          {weeklyRanking.list.length === 0 || weeklyRanking.list.every(r => r.points === 0) ? (
+          {isWeeklyLoading ? (
+            <div className="h-full flex items-center justify-center text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin" /></div>
+          ) : weeklyRanking.list.length === 0 || weeklyRanking.list.every(r => r.points === 0) ? (
             <div className="h-full flex items-center justify-center">
               <p className="text-muted-foreground text-sm">No points yet</p>
             </div>
@@ -171,14 +169,13 @@ export function PointsLeaderboard({ players, matchEntries, seasons, playerSeason
         </div>
       </div>
 
-      {/* ── Monthly: season + month filters ── */}
-      <div className="bg-card border border-border rounded-2xl p-5 shadow-sm flex flex-col h-[420px]">
+      {/* ── Monthly ── */}
+      <div className="bg-card border border-border rounded-2xl p-5 shadow-sm flex flex-col h-[420px] relative">
         <div className="mb-4 border-b border-border pb-3">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold text-base text-foreground">Monthly Points</h3>
-            <span className="text-[11px] text-muted-foreground">{monthlyRanking.label}</span>
+            <span className="text-[11px] text-muted-foreground">{monthlyLabel}</span>
           </div>
-          {/* Two filter dropdowns */}
           <div className="flex gap-2">
             <select
               value={selectedMonthlySeasonId ?? ''}
@@ -202,17 +199,19 @@ export function PointsLeaderboard({ players, matchEntries, seasons, playerSeason
           </div>
         </div>
         <div className="flex-1 overflow-y-auto pr-1 space-y-1 custom-scrollbar">
-          {monthlyRanking.list.length === 0 || monthlyRanking.list.every(r => r.points === 0) ? (
+          {isMonthlyLoading ? (
+            <div className="h-full flex items-center justify-center text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin" /></div>
+          ) : monthlyRankingList.length === 0 || monthlyRankingList.every(r => r.points === 0) ? (
             <div className="h-full flex items-center justify-center">
               <p className="text-muted-foreground text-sm">No points for this period</p>
             </div>
           ) : (
-            monthlyRanking.list.slice(0, 15).map((r, i) => renderRow(r, i))
+            monthlyRankingList.slice(0, 15).map((r, i) => renderRow(r, i))
           )}
         </div>
       </div>
 
-      {/* ── Overall: season filter ── */}
+      {/* ── Overall ── */}
       <div className="bg-card border border-border rounded-2xl p-5 shadow-sm flex flex-col h-[420px]">
         <div className="mb-4 border-b border-border pb-3 flex items-center justify-between">
           <h3 className="font-semibold text-base text-foreground">Overall Points</h3>

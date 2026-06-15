@@ -1,10 +1,10 @@
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Player } from '@/features/players/types';
-import { MatchEntry } from '@/features/match-entries/types';
+import { useFootballStore } from '@/store/footballStore';
+import { Loader2 } from 'lucide-react';
 
 interface MonthlyTopXIProps {
   players: Player[];
-  matchEntries: MatchEntry[];
 }
 
 interface PlayerPoints {
@@ -36,51 +36,63 @@ const FORMATION_POSITIONS = [
   { x: 65, y: 15, role: 'RS' },
 ];
 
-export function MonthlyTopXI({ players, matchEntries }: MonthlyTopXIProps) {
-  // Find the most recent month with actual data to display
-  const mostRecentEntry = matchEntries
-    .map(e => e.date ? new Date(e.date) : null)
-    .filter((d): d is Date => d !== null && !isNaN(d.getTime()))
-    .sort((a, b) => b.getTime() - a.getTime())[0];
+export function MonthlyTopXI({ players }: MonthlyTopXIProps) {
+  const { fetchPlayerStatsPeriod } = useFootballStore();
 
-  const targetDate = mostRecentEntry || new Date();
+  const [topXI, setTopXI] = useState<PlayerPoints[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const targetDate = new Date();
   const currentMonth = targetDate.getMonth();
   const currentYear = targetDate.getFullYear();
   const monthName = targetDate.toLocaleString('en-GB', { month: 'long', year: 'numeric' });
 
-  const topXI = useMemo<PlayerPoints[]>(() => {
-    const monthEntries = matchEntries.filter(e => {
-      if (!e.date) return false;
-      const d = new Date(e.date);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  useEffect(() => {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const startStr = `${currentYear}-${pad(currentMonth + 1)}-01`;
+    const endStr = `${currentYear}-${pad(currentMonth + 1)}-${pad(lastDay)}`;
+
+    setIsLoading(true);
+    fetchPlayerStatsPeriod(startStr, endStr, null).then(data => {
+      const list = data
+        .map(d => {
+          const player = players.find(p => p.id === d.playerid);
+          if (!player) return null;
+          // In MonthlyTopXI, points are historically wins*3 + draws + goals + motm*2
+          // It doesn't penalize for losses or goals conceded. Let's keep it that way 
+          // or just use the official points from the RPC.
+          // Since the RPC `points` includes penalties, let's just construct the exact formula here using the raw stats!
+          const pts = (Number(d.wins) * 3) + Number(d.draws) + Number(d.goals) + (Number(d.motm_count) * 2);
+          
+          return {
+            player,
+            points: pts,
+            matches: Number(d.matches),
+            wins: Number(d.wins),
+            goals: Number(d.goals),
+            motm: Number(d.motm_count)
+          };
+        })
+        .filter((x): x is PlayerPoints => x !== null)
+        .sort((a, b) => b.points - a.points || b.goals - a.goals)
+        .slice(0, 11);
+
+      setTopXI(list);
+      setIsLoading(false);
     });
-
-    const pointsMap = new Map<string, PlayerPoints>();
-
-    for (const entry of monthEntries) {
-      const player = players.find(p => p.id === entry.playerId);
-      if (!player) continue;
-
-      if (!pointsMap.has(player.id)) {
-        pointsMap.set(player.id, { player, points: 0, matches: 0, wins: 0, goals: 0, motm: 0 });
-      }
-      const data = pointsMap.get(player.id)!;
-      data.matches += 1;
-      if (entry.result === 'win') { data.points += 3; data.wins += 1; }
-      else if (entry.result === 'draw') { data.points += 1; }
-      data.goals += entry.goals || 0;
-      if (entry.motm) { data.points += 2; data.motm += 1; }
-    }
-
-    return Array.from(pointsMap.values())
-      .sort((a, b) => b.points - a.points || b.goals - a.goals)
-      .slice(0, 11);
-  }, [players, matchEntries, currentMonth, currentYear]);
+  }, [fetchPlayerStatsPeriod, players, currentMonth, currentYear]);
 
   const isEmpty = topXI.length === 0;
 
   return (
-    <div className="bg-card border border-border rounded-[24px] shadow-sm overflow-hidden flex flex-col h-full w-full">
+    <div className="bg-card border border-border rounded-[24px] shadow-sm overflow-hidden flex flex-col h-full w-full relative">
+      {isLoading && (
+        <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+      
       {/* Header */}
       <div className="px-6 pt-5 pb-4 flex justify-between items-start border-b border-border bg-card">
         <div>
@@ -93,7 +105,7 @@ export function MonthlyTopXI({ players, matchEntries }: MonthlyTopXIProps) {
         </div>
       </div>
 
-      {isEmpty ? (
+      {!isLoading && isEmpty ? (
         <div className="flex flex-col items-center justify-center flex-1 h-64 text-muted-foreground text-[13px] bg-muted/30">
           <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
             <span className="text-xl">📅</span>
@@ -159,8 +171,6 @@ export function MonthlyTopXI({ players, matchEntries }: MonthlyTopXIProps) {
               );
             })}
           </div>
-
-
         </div>
       )}
     </div>

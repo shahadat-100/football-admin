@@ -20,11 +20,11 @@ export function Overview({ setTab }: OverviewProps) {
   const { players, matchEntries, matches, playerSeasonStats, seasons } = useFootballStore();
 
   // ── 1. Stat Cards Data ──
-  const liveGoals   = matchEntries.reduce((s, e) => s + e.goals, 0);
-  const liveMatches = matchEntries.length;
-  const liveWins    = matchEntries.filter(e => e.result === 'win').length;
-  const liveLosses  = matchEntries.filter(e => e.result === 'loss').length;
-  const liveDraws   = matchEntries.filter(e => e.result === 'draw').length;
+  const liveGoals   = playerSeasonStats.reduce((s, e) => s + (e.goals || 0), 0);
+  const liveMatches = playerSeasonStats.reduce((s, e) => s + (e.appearances || 0), 0);
+  const liveWins    = playerSeasonStats.reduce((s, e) => s + (e.wins || 0), 0);
+  const liveLosses  = playerSeasonStats.reduce((s, e) => s + (e.losses || 0), 0);
+  const liveDraws   = playerSeasonStats.reduce((s, e) => s + (e.draws || 0), 0);
 
   const histGoals = players.reduce((sum, p) =>
     sum + (p.seasons ?? [])
@@ -154,7 +154,6 @@ export function Overview({ setTab }: OverviewProps) {
       <div className="mb-8">
         <PointsLeaderboard
           players={players}
-          matchEntries={matchEntries}
           seasons={seasons}
           playerSeasonStats={playerSeasonStats}
         />
@@ -163,7 +162,7 @@ export function Overview({ setTab }: OverviewProps) {
       {/* Monthly Top XI & Recent Matches Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
         <div className="xl:col-span-2 flex w-full min-w-0">
-          <MonthlyTopXI players={players} matchEntries={matchEntries} />
+          <MonthlyTopXI players={players} />
         </div>
         
         <div className="xl:col-span-1 flex">

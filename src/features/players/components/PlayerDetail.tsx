@@ -318,69 +318,16 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
 
         // ── Monthly & Weekly RANK calculation ──────────────────────────────
         // For each period (month/week), tally points for EVERY player from ALL match entries,
-        // then find where this player sits in the ranking.
-        type PeriodStats = { wins: number; draws: number; losses: number; goals: number; matches: number; points: number };
+        const myMonthKeys = new Set<string>();
+        entries.forEach(e => {
+          if (!e.date) return;
+          const d = new Date(e.date);
+          if (isNaN(d.getTime())) return;
+          myMonthKeys.add(d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }));
+        });
 
-        const monthlyRankData = useMemo(() => {
-          const buildPeriodKey = (date: Date, mode: 'month' | 'week') => {
-            const monthKey = date.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
-            if (mode === 'month') return monthKey;
-            const weekNum = Math.ceil(date.getDate() / 7);
-            return `W${weekNum} ${monthKey}`;
-          };
-
-          // Single pass grouping
-          const periodPlayerPoints = new Map<string, Map<string, PeriodStats>>();
-          
-          matchEntries.forEach(e => {
-            if (!e.date) return;
-            const d = new Date(e.date);
-            if (isNaN(d.getTime())) return;
-            const monthKey = buildPeriodKey(d, 'month');
-
-            if (!periodPlayerPoints.has(monthKey)) {
-              periodPlayerPoints.set(monthKey, new Map());
-            }
-            const playerPoints = periodPlayerPoints.get(monthKey)!;
-            
-            if (!playerPoints.has(e.playerId)) {
-              playerPoints.set(e.playerId, { wins: 0, draws: 0, losses: 0, goals: 0, matches: 0, points: 0 });
-            }
-            const ps = playerPoints.get(e.playerId)!;
-            ps.matches += 1;
-            ps.goals += e.goals || 0;
-            if (e.result === 'win') { ps.wins += 1; ps.points += 3; }
-            else if (e.result === 'draw') { ps.draws += 1; ps.points += 1; }
-            else if (e.result === 'loss') { ps.losses += 1; }
-            if (e.motm) ps.points += 2;
-          });
-
-          const getRankForPeriod = (periodKey: string): { rank: number; wins: number; draws: number; losses: number; goals: number; matches: number; totalPlayers: number } => {
-            const playerPoints = periodPlayerPoints.get(periodKey);
-            if (!playerPoints) return { rank: 1, wins: 0, draws: 0, losses: 0, goals: 0, matches: 0, totalPlayers: 0 };
-            const sorted = Array.from(playerPoints.entries()).sort((a, b) => b[1].points - a[1].points || b[1].goals - a[1].goals);
-            const rankIdx = sorted.findIndex(([id]) => id === playerId);
-            const myStats = playerPoints.get(playerId) || { wins: 0, draws: 0, losses: 0, goals: 0, matches: 0, points: 0 };
-            return {
-              rank: rankIdx !== -1 ? rankIdx + 1 : sorted.length + 1,
-              ...myStats,
-              totalPlayers: sorted.length
-            };
-          };
-
-          const myMonthKeys = new Set<string>();
-          entries.forEach(e => {
-            if (!e.date) return;
-            const d = new Date(e.date);
-            if (isNaN(d.getTime())) return;
-            myMonthKeys.add(buildPeriodKey(d, 'month'));
-          });
-
-          return Array.from(myMonthKeys)
-            .map(key => ({ label: key, ...getRankForPeriod(key) }))
-            .filter(d => d.rank <= 5)
-            .sort((a, b) => a.rank - b.rank); // best rank first
-        }, [entries, matchEntries, playerId]);
+        // Rank Trend Card removed to prioritize performance (avoiding 10k+ local match_entries dependency)
+        const monthlyRankData: any[] = [];
 
         return (
           <>
@@ -406,13 +353,15 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
 
             <SeasonTable data={[...seasonData].reverse()} allTime={allTime} />
 
-            <div className="my-4">
-              <RankTrendCard
-                title="Monthly Rank"
-                subtitle="Months this player reached Top 5 in the leaderboard"
-                data={monthlyRankData}
-              />
-            </div>
+            {monthlyRankData.length > 0 && (
+              <div className="my-4">
+                <RankTrendCard
+                  title="Monthly Rank"
+                  subtitle="Months this player reached Top 5 in the leaderboard"
+                  data={monthlyRankData}
+                />
+              </div>
+            )}
           </>
         );
       })()}

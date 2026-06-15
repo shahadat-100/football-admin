@@ -159,6 +159,7 @@ interface FootballStore {
   isInitialized: boolean;
   initializeData: () => Promise<void>;
   fetchPaginatedMatchEntries: (page: number, pageSize: number, searchPlayerIds?: string[]) => Promise<void>;
+  fetchPlayerStatsPeriod: (startDate: string | null, endDate: string | null, seasonId: number | null) => Promise<any[]>;
   
   fetchPlayers: () => Promise<void>;
   setPlayers: (p: Player[]) => void;
@@ -502,6 +503,19 @@ export const useFootballStore = create<FootballStore>()(
           console.error('Error fetching paginated match entries:', error);
           set({ isPaginatedEntriesLoading: false });
         }
+      },
+
+      fetchPlayerStatsPeriod: async (startDate, endDate, seasonId) => {
+        const { data, error } = await supabase.rpc('get_player_stats_period', {
+          p_start_date: startDate,
+          p_end_date: endDate,
+          p_season_id: seasonId
+        });
+        if (error) {
+          console.error('Error fetching player stats period via RPC:', error);
+          return [];
+        }
+        return data || [];
       },
       
       fetchPlayers: async () => {
@@ -848,7 +862,14 @@ export const useFootballStore = create<FootballStore>()(
       },
       
       fetchMatchEntries: async () => {
-        const { data, error } = await supabase.from('match_entries').select('*');
+        // Only fetch the most recent 500 entries to prevent memory crashes.
+        // Full data is accessed via paginated queries or RPC functions.
+        const { data, error } = await supabase
+          .from('match_entries')
+          .select('*')
+          .order('date', { ascending: false })
+          .limit(500);
+          
         if (data) {
           set({ matchEntries: data.map(mapMatchEntryFromDb) });
         }
