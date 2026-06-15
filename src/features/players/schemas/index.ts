@@ -55,6 +55,7 @@ export const playerSchema = z.object({
   jerseyNumber: z.number().optional(),
   playerRoles: z.array(z.string()).default([]),
   customTags: z.array(z.string()).default([]),
+  customStringTags: z.array(z.string()).default([]),
   createdAt: z.string(),
   seasons: z.array(seasonSchema).default([]),
   email: z.string().email('Valid email is required'),
@@ -67,6 +68,7 @@ export const playerFormSchema = playerSchema.omit({ id: true, createdAt: true, s
     if (typeof v === 'string') return v.split(',').map(s => s.trim()).filter(Boolean);
     return [];
   }),
+  customStringTags: z.array(z.string()).default([]),
   previousSeasons: z.array(z.object({
     season: z.string(),
     goals: z.number(),

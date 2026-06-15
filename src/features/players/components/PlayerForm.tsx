@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, KeyboardEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { playerFormSchema } from '../schemas';
@@ -6,7 +6,7 @@ import { Player, PlayerFormValues, Season } from '../types';
 import { Button, Input, ImageUpload } from '@/shared/components';
 import { SeasonStatsEditor } from './SeasonStatsEditor';
 import { useFootballStore } from '@/store/footballStore';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 
 interface PlayerFormProps {
   initial?: Partial<Player>;
@@ -21,6 +21,9 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
   const [newSeasonYear, setNewSeasonYear] = useState('');
   const [rolesOpen, setRolesOpen] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(false);
+  const [stringTags, setStringTags] = useState<string[]>(initial?.customStringTags ?? []);
+  const [tagInput, setTagInput] = useState('');
+  const tagInputRef = useRef<HTMLInputElement>(null);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<PlayerFormValues>({
     resolver: zodResolver(playerFormSchema),
@@ -80,9 +83,9 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
         }
       }
     }
-    // Explicitly merge selectedRoles & selectedTags from local state
+    // Explicitly merge selectedRoles, selectedTags & stringTags from local state
     // (react-hook-form doesn't capture setValue-only fields without register())
-    onSave({ ...values, playerRoles: selectedRoles, customTags: selectedTags, seasons } as any);
+    onSave({ ...values, playerRoles: selectedRoles, customTags: selectedTags, customStringTags: stringTags, seasons } as any);
   };
 
   return (
@@ -200,6 +203,73 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
             )}
           </div>
         )}
+      </div>
+
+      {/* Free-text Custom String Tags */}
+      <div className="space-y-1">
+        <label className="text-[10px] uppercase tracking-widest text-muted-foreground block mb-2">
+          Free Tags
+          {stringTags.length > 0 && (
+            <span className="ml-2 text-primary font-semibold">{stringTags.length} added</span>
+          )}
+        </label>
+        {/* chips */}
+        {stringTags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {stringTags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-secondary/40 border border-secondary/60 font-mono"
+              >
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => setStringTags(prev => prev.filter(t => t !== tag))}
+                  className="hover:text-red-400 transition-colors"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            ref={tagInputRef}
+            type="text"
+            value={tagInput}
+            onChange={e => setTagInput(e.target.value)}
+            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+              if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                const val = tagInput.trim().replace(/,$/, '');
+                if (val && !stringTags.includes(val)) {
+                  setStringTags(prev => [...prev, val]);
+                }
+                setTagInput('');
+              } else if (e.key === 'Backspace' && tagInput === '' && stringTags.length > 0) {
+                setStringTags(prev => prev.slice(0, -1));
+              }
+            }}
+            placeholder="Type a tag & press Enter..."
+            className="flex-1 border-2 border-foreground px-3 py-2 font-mono text-xs bg-card outline-none focus:border-primary transition-colors"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const val = tagInput.trim();
+              if (val && !stringTags.includes(val)) {
+                setStringTags(prev => [...prev, val]);
+              }
+              setTagInput('');
+              tagInputRef.current?.focus();
+            }}
+            className="border-2 border-foreground px-3 py-2 font-mono text-xs bg-card hover:bg-muted active:scale-95 transition-all"
+          >
+            + Add
+          </button>
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1">Enter বা comma চাপলে tag add হবে। Backspace দিয়ে শেষ tag মুছবে।</p>
       </div>
 
       {!initial && (

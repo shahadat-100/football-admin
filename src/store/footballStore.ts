@@ -50,6 +50,7 @@ export const mapPlayerFromDb = (p: any): Player => ({
   playerRoles: (p.player_player_roles ?? []).map((r: any) => r.player_role?.name).filter(Boolean),
   // Extract tag names from the joined junction table data
   customTags: (p.player_custom_tags ?? []).map((t: any) => t.custom_tags?.name).filter(Boolean),
+  customStringTags: Array.isArray(p.custom_string_tags) ? p.custom_string_tags : [],
   createdAt: p.createdat || '',
   seasons: [],
 });
@@ -60,6 +61,7 @@ export const mapPlayerToDb = (p: any) => ({
   profileimageurl: p.profileImageUrl || '',
   jerseynumber: p.jerseyNumber ?? null,
   email: p.email || null,
+  custom_string_tags: Array.isArray(p.customStringTags) ? p.customStringTags : [],
 });
 
 export const mapMatchFromDb = (m: any): Match => ({

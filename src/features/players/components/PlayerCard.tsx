@@ -58,6 +58,9 @@ export function PlayerCard({ player, onView, onEdit, onDelete }: PlayerCardProps
         {(player.customTags ?? []).slice(0, 2).map(t => (
           <Badge key={t} bg="#4b5563" c="#e5e7eb">{t}</Badge>
         ))}
+        {(player.customStringTags ?? []).slice(0, 2).map(t => (
+          <Badge key={`str-${t}`} bg="#1e3a5f" c="#93c5fd">{t}</Badge>
+        ))}
       </div>
 
       {stats.seasonBreakdown.length > 0 && (

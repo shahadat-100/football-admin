@@ -139,6 +139,9 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                     {(player.customTags ?? []).map(t => (
                       <Badge key={t} bg="#4b5563" c="#e5e7eb">{t}</Badge>
                     ))}
+                    {(player.customStringTags ?? []).map(t => (
+                      <Badge key={`str-${t}`} bg="#1e3a5f" c="#93c5fd">{t}</Badge>
+                    ))}
                   </div>
                   <div className="mt-4 flex flex-col gap-4">
                     <div className="flex items-center gap-4 text-[12px] bg-muted/30 p-2.5 rounded-lg border border-border/50 w-max flex-wrap">
