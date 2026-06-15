@@ -67,26 +67,13 @@ export function MatchEntryForm({ initial, players, matches, onSave, onClose }: M
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="grid gap-2">
-          <label className="text-[12px] font-medium text-gray-400">Player</label>
-          <Select
-            {...register('playerId')}
-            options={players.map(p => ({ label: p.name, value: p.id }))}
-            error={errors.playerId?.message}
-          />
-        </div>
-        <div className="grid gap-2">
-          <label className="text-[12px] font-medium text-gray-400">Match</label>
-          <Select
-            {...register('matchId')}
-            options={[
-              { label: '— None (Custom Date) —', value: '' },
-              ...matches.map(m => ({ label: `${m.homeTeam} vs ${m.awayTeam}`, value: m.id }))
-            ]}
-            error={errors.matchId?.message}
-          />
-        </div>
+      <div className="grid gap-2">
+        <label className="text-[12px] font-medium text-gray-400">Player</label>
+        <Select
+          {...register('playerId')}
+          options={players.map(p => ({ label: p.name, value: p.id }))}
+          error={errors.playerId?.message}
+        />
       </div>
 
       <div className="grid grid-cols-3 gap-4">

@@ -4,7 +4,7 @@ import { RESULTS } from '@/shared/lib/constants';
 export const matchEntrySchema = z.object({
   id: z.string(),
   playerId: z.string().min(1, "Player selection required"),
-  matchId: z.string().min(1, "Match selection required"),
+  matchId: z.string().optional().nullable().or(z.literal('')),
   goals: z.number().min(0).default(0),
   goalsConceded: z.number().min(0).default(0),
   result: z.enum(RESULTS as unknown as [string, ...string[]]),
