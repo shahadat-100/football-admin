@@ -519,23 +519,65 @@ export const useFootballStore = create<FootballStore>()(
       },
       
       fetchPlayers: async () => {
-        const { data, error } = await supabase
-          .from('players')
-          .select(`
-            *,
-            player_player_roles(
-              role_id,
-              player_role(name)
-            ),
-            player_custom_tags(
-              tag_id,
-              custom_tags(name)
-            )
-          `);
-        if (data) {
-          set({ players: data.map(mapPlayerFromDb) });
+        try {
+          // Fetch all related tables separately to avoid massive Supabase nested-join performance penalty
+          const [playersRes, junctionRolesRes, rolesRes, junctionTagsRes, tagsRes] = await Promise.all([
+            supabase.from('players').select('*'),
+            supabase.from('player_player_roles').select('*'),
+            supabase.from('player_roles').select('*'),
+            supabase.from('player_custom_tags').select('*'),
+            supabase.from('custom_tags').select('*')
+          ]);
+
+          if (playersRes.error) throw playersRes.error;
+
+          const players = playersRes.data || [];
+          const junctionRoles = junctionRolesRes.data || [];
+          const roles = rolesRes.data || [];
+          const junctionTags = junctionTagsRes.data || [];
+          const tags = tagsRes.data || [];
+
+          // Create lookup maps
+          const roleMap = new Map(roles.map(r => [r.id, r.name]));
+          const tagMap = new Map(tags.map(t => [t.id, t.name]));
+
+          // Group by player_id
+          const playerRolesMap = new Map<string, string[]>();
+          junctionRoles.forEach(jr => {
+            const roleName = roleMap.get(jr.role_id);
+            if (roleName) {
+              if (!playerRolesMap.has(jr.player_id)) playerRolesMap.set(jr.player_id, []);
+              playerRolesMap.get(jr.player_id)!.push(roleName);
+            }
+          });
+
+          const playerTagsMap = new Map<string, string[]>();
+          junctionTags.forEach(jt => {
+            const tagName = tagMap.get(jt.tag_id);
+            if (tagName) {
+              if (!playerTagsMap.has(jt.player_id)) playerTagsMap.set(jt.player_id, []);
+              playerTagsMap.get(jt.player_id)!.push(tagName);
+            }
+          });
+
+          // Map to Player type manually
+          const mappedPlayers = players.map(p => ({
+            id: p.id,
+            name: p.name,
+            profileImageUrl: p.profileimageurl || '',
+            jerseyNumber: p.jerseynumber ?? undefined,
+            email: p.email || '',
+            playerRoles: playerRolesMap.get(p.id) || [],
+            customTags: playerTagsMap.get(p.id) || [],
+            customStringTags: Array.isArray(p.custom_string_tags) ? p.custom_string_tags : [],
+            createdAt: p.createdat || '',
+            seasons: [],
+          }));
+
+          set({ players: mappedPlayers });
+        } catch (error) {
+          console.error('Error fetching players:', error);
         }
-        if (error) console.error('Error fetching players:', error);
       },
       setPlayers: (players) => set({ players }),
       
