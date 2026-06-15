@@ -347,15 +347,6 @@ const checkAndFireMilestones = async (playerId: string): Promise<boolean> => {
       .from('player_season_stats').select('*').eq('player_id', playerId);
     if (!statsRows) return false;
 
-    const totals = {
-      goals:       statsRows.reduce((s, e) => s + (e.goals       || 0), 0),
-      cleansheets: statsRows.reduce((s, e) => s + (e.cleansheets || 0), 0),
-      hattricks:   statsRows.reduce((s, e) => s + (e.hattricks   || 0), 0),
-      appearances: statsRows.reduce((s, e) => s + (e.appearances || 0), 0),
-      motm:        statsRows.reduce((s, e) => s + (e.motmcount   || 0), 0),
-      wins:        statsRows.reduce((s, e) => s + (e.wins        || 0), 0),
-    };
-
     const { data: entries } = await supabase
       .from('match_entries')
       .select('result, goals, cleansheet, hattricks, motm, date, matches(date)')

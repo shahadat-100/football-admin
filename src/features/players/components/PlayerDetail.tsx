@@ -7,7 +7,6 @@ import { PlayerForm } from './PlayerForm';
 import { MatchEntryForm } from '@/features/match-entries/components/MatchEntryForm';
 import { RESULT_BADGE } from '@/shared/lib/constants';
 import { PlayerRadarChart } from './PlayerRadarChart';
-import { PlayerFormHistory } from './PlayerFormHistory';
 import { SeasonPerformanceChart } from './SeasonPerformanceChart';
 import { RankTrendCard } from './RankTrendCard';
 import { SeasonTable } from './SeasonTable';
@@ -40,7 +39,6 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       const validB = isNaN(dateB) ? 0 : dateB;
       if (validA !== validB) return validB - validA;
       return String(b.id).localeCompare(String(a.id));
-    })
     })
     .slice(0, 30); // Requested to show 30 instead of 50
 
@@ -288,7 +286,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       {/* New Visualizations Section */}
       {(() => {
         // Prepare Data for SeasonPerformanceChart & SeasonTable
-        const seasonData = stats.seasonBreakdown.map((sb, i) => {
+        const seasonData = stats.seasonBreakdown.map((sb) => {
           const seasonEntries = entries.filter(e => e.date?.startsWith(sb.year.toString()));
           const sWins = seasonEntries.filter(e => e.result === 'win').length;
           const sDraws = seasonEntries.filter(e => e.result === 'draw').length;
@@ -386,7 +384,6 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
         };
 
         const monthlyRankData = Array.from(myMonthKeys).slice(-6).map(key => ({ label: key, ...getRankForPeriod(key, 'month') }));
-        const weeklyRankData = Array.from(myWeekKeys).slice(-8).map(key => ({ label: key, ...getRankForPeriod(key, 'week') }));
 
         return (
           <>
@@ -405,33 +402,31 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
             </div>
 
             <SeasonTable data={[...seasonData].reverse()} allTime={allTime} />
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 my-4">
+              <RankTrendCard title="Monthly Rank" subtitle="Leaderboard rank per month" data={monthlyRankData} />
+              <div className="bg-muted/20 p-5 rounded-xl border border-border flex flex-col gap-2 min-h-[300px]">
+                <div>
+                  <p className="font-semibold text-[14px] text-foreground">Top 5 Monthly Ranks</p>
+                  <p className="text-[12px] text-muted-foreground mt-1">Months this player ranked top 5 in goals</p>
+                </div>
+                {top5Months.length > 0 ? (
+                  <div className="flex flex-col gap-2 mt-3">
+                    {top5Months.map(m => (
+                      <div key={m.month} className="flex justify-between items-center text-[12px] bg-popover px-3 py-2 rounded-lg border border-border/50">
+                        <span className="font-medium text-muted-foreground">{m.month}</span>
+                        <span className="text-primary font-bold">Rank #{m.rank} <span className="text-muted-foreground text-[11px] font-normal ml-1">({m.goals}G)</span></span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[12px] text-muted-foreground italic mt-3">No top 5 ranks yet</p>
+                )}
+              </div>
+            </div>
           </>
         );
       })()}
-
-
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <RankTrendCard title="Monthly Rank" subtitle="Leaderboard rank per month" data={monthlyRankData} />
-        <div className="bg-muted/20 p-5 rounded-xl border border-border flex flex-col gap-2 min-h-[300px]">
-          <div>
-            <p className="font-semibold text-[14px] text-foreground">Top 5 Monthly Ranks</p>
-            <p className="text-[12px] text-muted-foreground mt-1">Months this player ranked top 5 in goals</p>
-          </div>
-          {top5Months.length > 0 ? (
-            <div className="flex flex-col gap-2 mt-3">
-              {top5Months.map(m => (
-                <div key={m.month} className="flex justify-between items-center text-[12px] bg-popover px-3 py-2 rounded-lg border border-border/50">
-                  <span className="font-medium text-muted-foreground">{m.month}</span>
-                  <span className="text-primary font-bold">Rank #{m.rank} <span className="text-muted-foreground text-[11px] font-normal ml-1">({m.goals}G)</span></span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-[12px] text-muted-foreground italic mt-3">No top 5 ranks yet</p>
-          )}
-        </div>
-      </div>
 
       <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
         <p className="font-semibold mb-3 text-[13px]">Match Entries & History (Recent 30)</p>

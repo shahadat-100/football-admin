@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { playerFormSchema } from '../schemas';
@@ -59,11 +59,11 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
       alert('Enter a valid year (e.g., 2023)');
       return;
     }
-    if (seasons.find(s => s.year === yr)) {
+    if (seasons.find((s: Season) => s.year === yr)) {
       alert('Season ' + yr + ' already added');
       return;
     }
-    setSeasons(prev => [...prev, { year: yr, monthlyStats: [] }].sort((a, b) => a.year - b.year));
+    setSeasons((prev: Season[]) => [...prev, { year: yr, monthlyStats: [] }].sort((a, b) => a.year - b.year));
     setShowAddSeason(false);
     setNewSeasonYear('');
   };
@@ -128,7 +128,7 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
         </label>
         <button
           type="button"
-          onClick={() => setRolesOpen(o => !o)}
+          onClick={() => setRolesOpen((o: boolean) => !o)}
           className="w-full flex justify-between items-center border-2 border-foreground px-3 py-2 font-mono text-xs uppercase tracking-widest shadow-retro bg-card"
         >
           <span className="truncate">
@@ -170,7 +170,7 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
         </label>
         <button
           type="button"
-          onClick={() => setTagsOpen(o => !o)}
+          onClick={() => setTagsOpen((o: boolean) => !o)}
           className="w-full flex justify-between items-center border-2 border-foreground px-3 py-2 font-mono text-xs uppercase tracking-widest shadow-retro bg-card"
         >
           <span className="truncate">
@@ -235,12 +235,12 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
             </p>
           )}
 
-          {seasons.map((s, i) => (
+          {seasons.map((s: Season, i: number) => (
             <SeasonStatsEditor
               key={i}
               season={s}
-              onChange={(updated) => setSeasons(prev => prev.map((old, idx) => idx === i ? updated : old))}
-              onRemove={() => setSeasons(prev => prev.filter((_, idx) => idx !== i))}
+              onChange={(updated) => setSeasons((prev: Season[]) => prev.map((old: Season, idx: number) => idx === i ? updated : old))}
+              onRemove={() => setSeasons((prev: Season[]) => prev.filter((_: any, idx: number) => idx !== i))}
             />
           ))}
         </div>

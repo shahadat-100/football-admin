@@ -23,5 +23,6 @@ export interface PlayerSeasonStat {
   draws: number;
   losses: number;
   goalsConceded: number;
+  points?: number;
   updatedAt?: string;
 }
