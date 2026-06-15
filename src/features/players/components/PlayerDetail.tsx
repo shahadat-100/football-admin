@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Player } from '../types';
 import { Avatar, Badge, Button, Modal, DeleteConfirm, PieChart } from '@/shared/components';
 import { usePlayerStats } from '../hooks/usePlayerStats';
@@ -42,41 +42,8 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
     })
     .slice(0, 30); // Requested to show 30 instead of 50
 
-  const top5Months = useMemo(() => {
-    const monthPlayerGoals: Record<string, Record<string, number>> = {};
-    const addGoals = (monthKey: string, pid: string, goals: number) => {
-      if (!monthPlayerGoals[monthKey]) monthPlayerGoals[monthKey] = {};
-      if (!monthPlayerGoals[monthKey][pid]) monthPlayerGoals[monthKey][pid] = 0;
-      monthPlayerGoals[monthKey][pid] += goals;
-    };
-    matchEntries.forEach(me => {
-      if (!me.date) return;
-      const d = new Date(me.date);
-      const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      addGoals(monthKey, me.playerId, me.goals || 0);
-    });
-    players.forEach(p => {
-      (p.seasons || []).forEach(s => {
-        (s.monthlyStats || []).forEach(m => {
-          const monthKey = `${s.year}-${String(m.month).padStart(2, '0')}`;
-          const mGoals = (m.weeklyStats || []).reduce((sum, w) => sum + (w.goalsScored || 0), 0);
-          if (mGoals > 0) addGoals(monthKey, p.id, mGoals);
-        });
-      });
-    });
 
-    const topMonths: { month: string; rank: number; goals: number }[] = [];
-    Object.entries(monthPlayerGoals).forEach(([monthKey, playerMap]) => {
-      const sortedPlayers = Object.entries(playerMap).sort((a, b) => b[1] - a[1]);
-      const myIndex = sortedPlayers.findIndex(x => x[0] === playerId);
-      if (myIndex !== -1 && myIndex < 5) {
-        const d = new Date(`${monthKey}-01`);
-        const monthName = d.toLocaleString('default', { month: 'short', year: 'numeric' });
-        topMonths.push({ month: monthName, rank: myIndex + 1, goals: sortedPlayers[myIndex][1] });
-      }
-    });
-    return topMonths.sort((a, b) => new Date(b.month).getTime() - new Date(a.month).getTime());
-  }, [players, matchEntries, playerId]);
+
 
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -383,7 +350,11 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
           };
         };
 
-        const monthlyRankData = Array.from(myMonthKeys).slice(-6).map(key => ({ label: key, ...getRankForPeriod(key, 'month') }));
+        // Only keep months where this player ranked top 5
+        const monthlyRankData = Array.from(myMonthKeys)
+          .map(key => ({ label: key, ...getRankForPeriod(key, 'month') }))
+          .filter(d => d.rank <= 5)
+          .sort((a, b) => a.rank - b.rank); // best rank first
 
         return (
           <>
@@ -391,38 +362,28 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
               <div className="lg:col-span-1 min-h-[300px]">
                 <SeasonPerformanceChart data={seasonData} />
               </div>
-              <div className="lg:col-span-1 min-h-[300px] bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col items-center">
-                <h3 className="font-semibold text-[14px] w-full text-left mb-6">Monthly Performance</h3>
-                <PieChart data={monthChartData} size={110} />
+              <div className="lg:col-span-1 min-h-[300px] bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col">
+                <h3 className="font-semibold text-[14px] w-full text-left mb-4">Monthly Performance</h3>
+                <div className="flex-1 flex items-center">
+                  <PieChart data={monthChartData} size={120} />
+                </div>
               </div>
-              <div className="lg:col-span-1 min-h-[300px] bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col items-center">
-                <h3 className="font-semibold text-[14px] w-full text-left mb-6">Recent Week Performance</h3>
-                <PieChart data={weekChartData} size={110} />
+              <div className="lg:col-span-1 min-h-[300px] bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col">
+                <h3 className="font-semibold text-[14px] w-full text-left mb-4">Recent Week Performance</h3>
+                <div className="flex-1 flex items-center">
+                  <PieChart data={weekChartData} size={120} />
+                </div>
               </div>
             </div>
 
             <SeasonTable data={[...seasonData].reverse()} allTime={allTime} />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 my-4">
-              <RankTrendCard title="Monthly Rank" subtitle="Leaderboard rank per month" data={monthlyRankData} />
-              <div className="bg-muted/20 p-5 rounded-xl border border-border flex flex-col gap-2 min-h-[300px]">
-                <div>
-                  <p className="font-semibold text-[14px] text-foreground">Top 5 Monthly Ranks</p>
-                  <p className="text-[12px] text-muted-foreground mt-1">Months this player ranked top 5 in goals</p>
-                </div>
-                {top5Months.length > 0 ? (
-                  <div className="flex flex-col gap-2 mt-3">
-                    {top5Months.map(m => (
-                      <div key={m.month} className="flex justify-between items-center text-[12px] bg-popover px-3 py-2 rounded-lg border border-border/50">
-                        <span className="font-medium text-muted-foreground">{m.month}</span>
-                        <span className="text-primary font-bold">Rank #{m.rank} <span className="text-muted-foreground text-[11px] font-normal ml-1">({m.goals}G)</span></span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-[12px] text-muted-foreground italic mt-3">No top 5 ranks yet</p>
-                )}
-              </div>
+            <div className="my-4">
+              <RankTrendCard
+                title="Monthly Rank"
+                subtitle="Months this player reached Top 5 in the leaderboard"
+                data={monthlyRankData}
+              />
             </div>
           </>
         );
