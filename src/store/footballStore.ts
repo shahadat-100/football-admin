@@ -524,9 +524,10 @@ export const useFootballStore = create<FootballStore>()(
       fetchPlayers: async () => {
         try {
           // Fetch all related tables in parallel to avoid sequential waterfall.
-          // We select specific columns to avoid downloading massive base64 profileimageurl payloads
+          // We select specific columns but include profileimageurl again. 
+          // Future uploads are resized so they won't bloat the payload.
           const [playersRes, junctionRolesRes, rolesRes, junctionTagsRes, tagsRes] = await Promise.all([
-            supabase.from('players').select('id, name, jerseynumber, email, custom_string_tags, createdat'),
+            supabase.from('players').select('id, name, jerseynumber, email, custom_string_tags, createdat, profileimageurl'),
             supabase.from('player_player_roles').select('*'),
             supabase.from('player_role').select('*'),
             supabase.from('player_custom_tags').select('*'),

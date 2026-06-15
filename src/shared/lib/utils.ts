@@ -20,7 +20,7 @@ export const fuzzyFilter = <T>(arr: T[], query: string, fields: (keyof T)[]): T[
   );
 };
 
-export const fileToBase64 = (file: File): Promise<string> => {
+export const fileToBase64 = (file: File, maxWidth = 800, maxHeight = 800): Promise<string> => {
   return new Promise((resolve, reject) => {
     // If it's not an image, fallback to normal reader
     if (!file.type.startsWith('image/')) {
@@ -31,27 +31,25 @@ export const fileToBase64 = (file: File): Promise<string> => {
       return;
     }
 
-    // For images, resize to max 256x256 using Canvas
+    // For images, resize to max dimensions using Canvas
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
 
     img.onload = () => {
       URL.revokeObjectURL(objectUrl); // Clean up memory
       const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 256;
-      const MAX_HEIGHT = 256;
       let width = img.width;
       let height = img.height;
 
       if (width > height) {
-        if (width > MAX_WIDTH) {
-          height *= MAX_WIDTH / width;
-          width = MAX_WIDTH;
+        if (width > maxWidth) {
+          height *= maxWidth / width;
+          width = maxWidth;
         }
       } else {
-        if (height > MAX_HEIGHT) {
-          width *= MAX_HEIGHT / height;
-          height = MAX_HEIGHT;
+        if (height > maxHeight) {
+          width *= maxHeight / height;
+          height = maxHeight;
         }
       }
 
