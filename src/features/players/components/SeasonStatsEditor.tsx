@@ -258,7 +258,6 @@ export function SeasonStatsEditor({ season, onChange, onRemove }: SeasonStatsEdi
                                     <input
                                       type="number"
                                       min={0}
-                                      max={20}
                                       value={w.matches}
                                       onChange={e => handleMatchCountChange(mi, wi, parseInt(e.target.value) || 0)}
                                       className="bg-input border border-border text-foreground px-3 py-1.5 rounded-md w-full text-[13px] font-semibold"
