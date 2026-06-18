@@ -652,53 +652,49 @@ export const useFootballStore = create<FootballStore>()(
                   continue;
                 }
               }
-
-              // Build match_entries directly from weekly stats — NO dummy matches created
+              // Build match_entries directly from monthly stats — NO dummy matches created
               const entriesToInsert: any[] = [];
               for (const monthlyStat of season.monthlyStats || []) {
-                for (const weeklyStat of monthlyStat.weeklyStats || []) {
-                  const dates = weeklyStat.matchDates && weeklyStat.matchDates.length > 0
-                    ? weeklyStat.matchDates
-                    : [`${season.year}-${String(monthlyStat.month || 1).padStart(2, '0')}-01`];
+                const dates = monthlyStat.matchDates && monthlyStat.matchDates.length > 0
+                  ? monthlyStat.matchDates
+                  : [`${season.year}-${String(monthlyStat.month || 1).padStart(2, '0')}-01`];
 
-                  const totalMatches = weeklyStat.matches || 0;
-                  if (totalMatches === 0) continue;
+                const totalMatches = monthlyStat.matches || 0;
+                if (totalMatches === 0) continue;
 
-                  // Distribute goals across matches as evenly as possible
-                  const goalsPerMatch = Array(totalMatches).fill(0);
-                  for (let g = 0; g < (weeklyStat.goalsScored || 0); g++) {
-                    goalsPerMatch[g % totalMatches]++;
-                  }
-                  const concededPerMatch = Array(totalMatches).fill(0);
-                  for (let g = 0; g < (weeklyStat.goalsConceded || 0); g++) {
-                    concededPerMatch[g % totalMatches]++;
-                  }
+                // Distribute goals across matches as evenly as possible
+                const goalsPerMatch = Array(totalMatches).fill(0);
+                for (let g = 0; g < (monthlyStat.goalsScored || 0); g++) {
+                  goalsPerMatch[g % totalMatches]++;
+                }
+                const concededPerMatch = Array(totalMatches).fill(0);
+                for (let g = 0; g < (monthlyStat.goalsConceded || 0); g++) {
+                  concededPerMatch[g % totalMatches]++;
+                }
 
-                  // Build result array: wins first, then losses, then draws
-                  const results: string[] = [
-                    ...Array(weeklyStat.win || 0).fill('win'),
-                    ...Array(weeklyStat.loss || 0).fill('loss'),
-                    ...Array(weeklyStat.draw || 0).fill('draw'),
-                  ];
+                // Build result array: wins first, then losses, then draws
+                const results: string[] = [
+                  ...Array(monthlyStat.win || 0).fill('win'),
+                  ...Array(monthlyStat.loss || 0).fill('loss'),
+                  ...Array(monthlyStat.draw || 0).fill('draw'),
+                ];
 
-                  for (let i = 0; i < totalMatches; i++) {
-                    entriesToInsert.push({
-                      playerid: newPlayerId,
-                      matchid: null,
-                      goals: goalsPerMatch[i] || 0,
-                      goalsconceded: concededPerMatch[i] || 0,
-                      result: results[i] || 'draw',
-                      hattricks: 0,
-                      cleansheet: false,
-                      motm: i === 0 && (weeklyStat.motm || 0) > 0,
-                      notes: `Historical - Season ${season.year}`,
-                      season_id: seasonId,
-                      date: dates[i] || dates[0],
-                    });
-                  }
+                for (let i = 0; i < totalMatches; i++) {
+                  entriesToInsert.push({
+                    playerid: newPlayerId,
+                    matchid: null,
+                    goals: goalsPerMatch[i] || 0,
+                    goalsconceded: concededPerMatch[i] || 0,
+                    result: results[i] || 'draw',
+                    hattricks: i === 0 && (monthlyStat.hattricks || 0) > 0 ? monthlyStat.hattricks : 0,
+                    cleansheet: concededPerMatch[i] === 0,
+                    motm: i === 0 && (monthlyStat.motm || 0) > 0,
+                    notes: `Historical - Season ${season.year}`,
+                    season_id: seasonId,
+                    date: dates[i] || dates[0],
+                  });
                 }
               }
-
               if (entriesToInsert.length > 0) {
                 const { error: entriesErr } = await supabase
                   .from('match_entries')

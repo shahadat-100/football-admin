@@ -88,12 +88,10 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
   const onSubmit = (values: PlayerFormValues) => {
     for (const season of seasons) {
       for (const month of season.monthlyStats || []) {
-        for (const week of month.weeklyStats || []) {
-          if (week.matches > 0 && week.win + week.loss + week.draw !== week.matches) {
-            const monthName = new Date(2000, month.month - 1, 1).toLocaleString('default', { month: 'long' });
-            alert(`Season ${season.year} - ${monthName} - Week ${week.week}:\nWins, Draws, and Losses (${week.win + week.draw + week.loss}) must exactly equal the number of matches (${week.matches}).`);
-            return;
-          }
+        if (month.matches > 0 && (month.win || 0) + (month.loss || 0) + (month.draw || 0) !== month.matches) {
+          const monthName = new Date(2000, month.month - 1, 1).toLocaleString('default', { month: 'long' });
+          alert(`Season ${season.year} - ${monthName}:\nWins, Draws, and Losses (${(month.win || 0) + (month.draw || 0) + (month.loss || 0)}) must exactly equal the number of matches (${month.matches}).`);
+          return;
         }
       }
     }

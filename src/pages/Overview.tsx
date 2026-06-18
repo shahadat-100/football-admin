@@ -28,26 +28,24 @@ export function Overview({ setTab }: OverviewProps) {
 
   const histGoals = players.reduce((sum, p) =>
     sum + (p.seasons ?? [])
-      .flatMap(s => s.monthlyStats.flatMap(m => m.weeklyStats))
-      .reduce((s, w) => s + w.goalsScored, 0), 0);
+      .flatMap(s => s.monthlyStats)
+      .reduce((s, m) => s + (m.goalsScored || 0), 0), 0);
   const histMatches = players.reduce((sum, p) =>
     sum + (p.seasons ?? [])
-      .flatMap(s => s.monthlyStats.flatMap(m => m.weeklyStats))
-      .reduce((s, w) => s + w.matches, 0), 0);
+      .flatMap(s => s.monthlyStats)
+      .reduce((s, m) => s + (m.matches || 0), 0), 0);
   const histWins = players.reduce((sum, p) =>
     sum + (p.seasons ?? [])
-      .flatMap(s => s.monthlyStats.flatMap(m => m.weeklyStats))
-      .reduce((s, w) => s + w.win, 0), 0);
+      .flatMap(s => s.monthlyStats)
+      .reduce((s, m) => s + (m.win || 0), 0), 0);
   const histLosses = players.reduce((sum, p) =>
     sum + (p.seasons ?? [])
-      .flatMap(s => s.monthlyStats.flatMap(m => m.weeklyStats))
-      .reduce((s, w) => s + w.loss, 0), 0);
+      .flatMap(s => s.monthlyStats)
+      .reduce((s, m) => s + (m.loss || 0), 0), 0);
   const histDraws = players.reduce((sum, p) =>
     sum + (p.seasons ?? [])
-      .flatMap(s => s.monthlyStats.flatMap(m => m.weeklyStats))
-      .reduce((s, w) => s + w.draw, 0), 0);
-
-  const totalGoals   = liveGoals   + histGoals;
+      .flatMap(s => s.monthlyStats)
+      .reduce((s, m) => s + (m.draw || 0), 0), 0);  const totalGoals   = liveGoals   + histGoals;
   const totalMatches = liveMatches + histMatches;
   const totalWins    = liveWins    + histWins;
   const totalLosses  = liveLosses  + histLosses;

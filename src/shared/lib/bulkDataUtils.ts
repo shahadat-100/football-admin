@@ -50,80 +50,75 @@ export function generateBulkMatchesForPlayer(player: Player): { matches: Match[]
 
   player.seasons.forEach(season => {
     season.monthlyStats.forEach(monthStat => {
-      monthStat.weeklyStats.forEach(weekStat => {
-        if (weekStat.matches <= 0) return;
+      if (monthStat.matches <= 0) return;
 
-        const { start, end } = getWeekDateRange(season.year, monthStat.month, weekStat.week);
-        const daysInWeek = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24) + 1;
+      const year = season.year;
+      const month = monthStat.month;
+      const daysInMonth = new Date(year, month, 0).getDate();
+      
+      // Distribute results: wins, losses, draws
+      const results: ('win' | 'loss' | 'draw')[] = [
+        ...Array(monthStat.win).fill('win'),
+        ...Array(monthStat.loss).fill('loss'),
+        ...Array(monthStat.draw).fill('draw'),
+      ];
+      
+      while (results.length < monthStat.matches) results.push('draw');
+      const finalResults = results.slice(0, monthStat.matches);
+
+      // Distribute stats
+      const goalsScoredDist = distributeValue(monthStat.goalsScored, monthStat.matches);
+      const goalsConcededDist = distributeValue(monthStat.goalsConceded, monthStat.matches);
+      const hattricksDist = distributeValue(monthStat.hattricks, monthStat.matches);
+      const motmDist = distributeValue(monthStat.motm, monthStat.matches);
+      const cleanSheetDist = distributeValue(monthStat.cleanSheet, monthStat.matches);
+
+      finalResults.forEach((result, idx) => {
+        const step = Math.max(1, Math.floor(daysInMonth / monthStat.matches));
+        const day = Math.min(daysInMonth, 1 + idx * step + (idx % 2)); // slight jitter
         
-        // Distribute results: wins, losses, draws
-        const results: ('win' | 'loss' | 'draw')[] = [
-          ...Array(weekStat.win).fill('win'),
-          ...Array(weekStat.loss).fill('loss'),
-          ...Array(weekStat.draw).fill('draw'),
-        ];
-        
-        // If results don't match matches count, pad with draws or trim
-        while (results.length < weekStat.matches) results.push('draw');
-        const finalResults = results.slice(0, weekStat.matches);
+        const y = year;
+        const m = String(month).padStart(2, '0');
+        const d = String(day).padStart(2, '0');
+        const dateStr = `${y}-${m}-${d}`;
 
-        // Distribute stats
-        const goalsScoredDist = distributeValue(weekStat.goalsScored, weekStat.matches);
-        const goalsConcededDist = distributeValue(weekStat.goalsConceded, weekStat.matches);
-        const hattricksDist = distributeValue(weekStat.hattricks, weekStat.matches);
-        const motmDist = distributeValue(weekStat.motm, weekStat.matches);
-        const cleanSheetDist = distributeValue(weekStat.cleanSheet, weekStat.matches);
+        const matchId = `bulk-m-${player.id}-${year}-${month}-${idx}`;
+        const entryId = `bulk-e-${player.id}-${year}-${month}-${idx}`;
 
-        finalResults.forEach((result, idx) => {
-          // Generate a deterministic but distributed date within the week
-          const dateOffset = (idx % daysInWeek);
-          const matchDate = new Date(start);
-          matchDate.setDate(start.getDate() + dateOffset);
-          
-          const y = matchDate.getFullYear();
-          const m = String(matchDate.getMonth() + 1).padStart(2, '0');
-          const d = String(matchDate.getDate()).padStart(2, '0');
-          const dateStr = `${y}-${m}-${d}`;
+        let hScore = goalsScoredDist[idx];
+        let aScore = goalsConcededDist[idx];
 
-          const matchId = `bulk-m-${player.id}-${season.year}-${monthStat.month}-${weekStat.week}-${idx}`;
-          const entryId = `bulk-e-${player.id}-${season.year}-${monthStat.month}-${weekStat.week}-${idx}`;
+        if (result === 'win' && hScore <= aScore) {
+          hScore = aScore + 1;
+        } else if (result === 'loss' && hScore >= aScore) {
+          aScore = hScore + 1;
+        } else if (result === 'draw' && hScore !== aScore) {
+          hScore = aScore;
+        }
 
-          // Adjust scores to match result if necessary
-          let hScore = goalsScoredDist[idx];
-          let aScore = goalsConcededDist[idx];
+        generatedMatches.push({
+          id: matchId,
+          homeTeam: HOME_TEAM as any,
+          awayTeam: 'Opponent',
+          homeScore: hScore,
+          awayScore: aScore,
+          date: dateStr,
+          competition: 'Bulk Season',
+          status: 'finished'
+        });
 
-          if (result === 'win' && hScore <= aScore) {
-            hScore = aScore + 1;
-          } else if (result === 'loss' && hScore >= aScore) {
-            aScore = hScore + 1;
-          } else if (result === 'draw' && hScore !== aScore) {
-            hScore = aScore;
-          }
-
-          generatedMatches.push({
-            id: matchId,
-            homeTeam: HOME_TEAM as any,
-            awayTeam: 'Opponent',
-            homeScore: hScore,
-            awayScore: aScore,
-            date: dateStr,
-            competition: 'Bulk Season',
-            status: 'finished'
-          });
-
-          generatedEntries.push({
-            id: entryId,
-            playerId: player.id,
-            matchId: matchId,
-            goals: hScore,
-            goalsConceded: aScore,
-            result: result,
-            hattricks: hattricksDist[idx] > 0 ? hattricksDist[idx] : 0,
-            cleanSheet: cleanSheetDist[idx] > 0,
-            motm: motmDist[idx] > 0,
-            date: dateStr,
-            notes: `Generated from ${season.year} Month ${monthStat.month} Week ${weekStat.week}`
-          });
+        generatedEntries.push({
+          id: entryId,
+          playerId: player.id,
+          matchId: matchId,
+          goals: hScore,
+          goalsConceded: aScore,
+          result: result,
+          hattricks: hattricksDist[idx] > 0 ? hattricksDist[idx] : 0,
+          cleanSheet: cleanSheetDist[idx] > 0,
+          motm: motmDist[idx] > 0,
+          date: dateStr,
+          notes: `Generated from ${year} Month ${month}`
         });
       });
     });
@@ -131,3 +126,4 @@ export function generateBulkMatchesForPlayer(player: Player): { matches: Match[]
 
   return { matches: generatedMatches, entries: generatedEntries };
 }
+

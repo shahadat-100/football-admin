@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Season, MonthlyStat, WeeklyStat } from '../types';
+import { Season, MonthlyStat } from '../types';
 import { Button } from '@/shared/components';
 
 const MONTHS = [
@@ -7,32 +7,18 @@ const MONTHS = [
   'July','August','September','October','November','December'
 ];
 
-const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-// Get the day range for a given week within a month
-function getWeekRange(year: number, month: number, week: number): { start: number; end: number } {
-  const daysInMonth = new Date(year, month, 0).getDate(); // month is 1-based
-  const start = (week - 1) * 7 + 1;
-  const end = week === 5 ? daysInMonth : Math.min(week * 7, daysInMonth);
-  return { start, end };
-}
-
-// Generate realistic random match dates within a week range
-function generateMatchDates(year: number, month: number, week: number, count: number): string[] {
-  const { start, end } = getWeekRange(year, month, week);
+// Generate realistic random match dates within a calendar month
+function generateMatchDatesForMonth(year: number, month: number, count: number): string[] {
+  const daysInMonth = new Date(year, month, 0).getDate();
   const availableDays: number[] = [];
-  for (let d = start; d <= end; d++) availableDays.push(d);
+  for (let d = 1; d <= daysInMonth; d++) availableDays.push(d);
 
-  // Spread matches across different days (football is usually not every day)
   const picked: number[] = [];
-  const shuffled = [...availableDays].sort(() => Math.random() - 0.5);
+  const step = Math.max(1, Math.floor(daysInMonth / count));
   
-  for (let i = 0; i < Math.min(count, availableDays.length); i++) {
-    picked.push(shuffled[i]);
-  }
-  // If more matches than days, allow repeated days
-  for (let i = picked.length; i < count; i++) {
-    picked.push(availableDays[Math.floor(Math.random() * availableDays.length)]);
+  for (let i = 0; i < count; i++) {
+    const day = Math.min(daysInMonth, 1 + i * step + (i % 2));
+    picked.push(day);
   }
 
   return picked
@@ -44,13 +30,18 @@ function generateMatchDates(year: number, month: number, week: number, count: nu
     });
 }
 
-const emptyWeekRow = (week: number): WeeklyStat => ({
-  week, matchDates: [], matches: 0, win: 0, loss: 0, draw: 0,
-  goalsScored: 0, goalsConceded: 0, hattricks: 0, motm: 0, cleanSheet: 0
-});
-
 const emptyMonthRow = (month: number): MonthlyStat => ({
-  month, weeklyStats: [emptyWeekRow(1)]
+  month,
+  matches: 0,
+  matchDates: [],
+  win: 0,
+  loss: 0,
+  draw: 0,
+  goalsScored: 0,
+  goalsConceded: 0,
+  hattricks: 0,
+  motm: 0,
+  cleanSheet: 0
 });
 
 interface SeasonStatsEditorProps {
@@ -59,7 +50,7 @@ interface SeasonStatsEditorProps {
   onRemove: () => void;
 }
 
-const STAT_LABELS: { key: keyof WeeklyStat; label: string; short: string }[] = [
+const STAT_LABELS: { key: keyof Omit<MonthlyStat, 'month' | 'matchDates'>; label: string; short: string }[] = [
   { key: 'matches', label: 'Matches', short: 'M' },
   { key: 'win', label: 'Wins', short: 'W' },
   { key: 'loss', label: 'Losses', short: 'L' },
@@ -72,18 +63,16 @@ const STAT_LABELS: { key: keyof WeeklyStat; label: string; short: string }[] = [
 
 export function SeasonStatsEditor({ season, onChange, onRemove }: SeasonStatsEditorProps) {
   const [expandedMonth, setExpandedMonth] = useState<number | null>(0);
-  const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
   const months = season.monthlyStats ?? [];
 
   const setMonths = (fn: (ms: MonthlyStat[]) => MonthlyStat[]) =>
     onChange({ ...season, monthlyStats: fn(months) });
 
   const addMonth = () => {
-    // Find the next month not yet added
     const usedMonths = new Set(months.map(m => m.month));
     for (let m = 1; m <= 12; m++) {
       if (!usedMonths.has(m)) {
-        const newIndex = months.length; // capture index BEFORE setMonths to avoid off-by-one
+        const newIndex = months.length;
         setMonths(ms => [...ms, emptyMonthRow(m)].sort((a,b) => a.month - b.month));
         setExpandedMonth(newIndex);
         return;
@@ -93,42 +82,24 @@ export function SeasonStatsEditor({ season, onChange, onRemove }: SeasonStatsEdi
 
   const removeMonth = (mi: number) => setMonths(ms => ms.filter((_, i) => i !== mi));
 
-  const addWeek = (mi: number) => setMonths(ms =>
-    ms.map((m, i) => i === mi
-      ? { ...m, weeklyStats: [...m.weeklyStats, emptyWeekRow(m.weeklyStats.length + 1)].sort((a,b) => a.week - b.week) }
-      : m)
+  const setM = (mi: number, k: keyof MonthlyStat, v: any) => setMonths(ms =>
+    ms.map((m, i) => i === mi ? { ...m, [k]: v } : m)
   );
 
-  const removeWeek = (mi: number, wi: number) => setMonths(ms =>
-    ms.map((m, i) => i === mi
-      ? { ...m, weeklyStats: m.weeklyStats.filter((_, j) => j !== wi) }
-      : m)
-  );
-
-  const setW = (mi: number, wi: number, k: keyof WeeklyStat, v: number | string[]) => setMonths(ms =>
-    ms.map((m, i) => i === mi ? {
-      ...m,
-      weeklyStats: m.weeklyStats.map((w, j) => j === wi ? { ...w, [k]: v } : w)
-    } : m)
-  );
-
-  const handleGenerateDates = (mi: number, wi: number, week: WeeklyStat, month: MonthlyStat) => {
-    if (week.matches === 0) return;
-    const dates = generateMatchDates(season.year, month.month, week.week, week.matches);
-    setW(mi, wi, 'matchDates', dates);
+  const handleGenerateDates = (mi: number, month: MonthlyStat) => {
+    if (month.matches === 0) return;
+    const dates = generateMatchDatesForMonth(season.year, month.month, month.matches);
+    setM(mi, 'matchDates', dates);
   };
 
-  const handleMatchCountChange = (mi: number, wi: number, val: number) => {
+  const handleMatchCountChange = (mi: number, val: number) => {
     setMonths(ms =>
       ms.map((m, i) => i === mi ? {
         ...m,
-        weeklyStats: m.weeklyStats.map((w, j) => j === wi ? {
-          ...w,
-          matches: val,
-          matchDates: val > 0
-            ? generateMatchDates(season.year, m.month, w.week, val)
-            : []
-        } : w)
+        matches: val,
+        matchDates: val > 0
+          ? generateMatchDatesForMonth(season.year, m.month, val)
+          : []
       } : m)
     );
   };
@@ -166,8 +137,9 @@ export function SeasonStatsEditor({ season, onChange, onRemove }: SeasonStatsEdi
         {months.map((mo, mi) => {
           const isMonthOpen = expandedMonth === mi;
           const range = `${MONTHS[mo.month - 1]} ${season.year}`;
-          const totalMatches = mo.weeklyStats.reduce((s, w) => s + w.matches, 0);
-          const totalGoals = mo.weeklyStats.reduce((s, w) => s + w.goalsScored, 0);
+          const totalMatches = mo.matches ?? 0;
+          const totalGoals = mo.goalsScored ?? 0;
+          const mm = String(mo.month).padStart(2, '0');
 
           return (
             <div key={mi}>
@@ -190,151 +162,97 @@ export function SeasonStatsEditor({ season, onChange, onRemove }: SeasonStatsEdi
 
               {/* Month Content */}
               {isMonthOpen && (
-                <div className="bg-background px-4 pb-4">
-                  <div className="flex items-center justify-between mb-3 pt-3">
-                    <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Weeks</span>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => addWeek(mi)} type="button"
-                        disabled={mo.weeklyStats.length >= 5}>
-                        + Week
-                      </Button>
-                      <button
-                        type="button" onClick={() => removeMonth(mi)}
-                        className="text-[10px] text-destructive px-2 py-1 rounded border border-destructive/30 hover:bg-destructive/10"
-                      >
-                        Remove Month
-                      </button>
-                    </div>
+                <div className="bg-background px-4 pb-4 space-y-4">
+                  <div className="flex items-center justify-between mb-1 pt-3">
+                    <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Month Setup</span>
+                    <button
+                      type="button" onClick={() => removeMonth(mi)}
+                      className="text-[10px] text-destructive px-2 py-1 rounded border border-destructive/30 hover:bg-destructive/10"
+                    >
+                      Remove Month
+                    </button>
                   </div>
 
-                  <div className="space-y-3">
-                    {mo.weeklyStats.map((w, wi) => {
-                      const { start, end } = getWeekRange(season.year, mo.month, w.week);
-                      const mm = String(mo.month).padStart(2, '0');
-                      const dateRange = `${MONTHS_SHORT[mo.month - 1]} ${start}–${end}`;
-                      const weekKey = `${mi}-${wi}`;
-                      const isWeekOpen = expandedWeek === weekKey;
+                  {/* Matches + Date Generator */}
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                    <div className="flex items-end gap-3">
+                      <div className="flex-1">
+                        <label className="text-[11px] font-semibold text-primary block mb-1">
+                          📅 Number of Matches ({range})
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={mo.matches}
+                          onChange={e => handleMatchCountChange(mi, parseInt(e.target.value) || 0)}
+                          className="bg-input border border-border text-foreground px-3 py-1.5 rounded-md w-full text-[13px] font-semibold"
+                          placeholder="0"
+                        />
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Changing this auto-generates random match dates spread across {MONTHS[mo.month - 1]}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleGenerateDates(mi, mo)}
+                        disabled={mo.matches === 0}
+                      >
+                        🔀 Regenerate Dates
+                      </Button>
+                    </div>
 
-                      return (
-                        <div key={wi} className="border border-border rounded-lg overflow-hidden">
-                          {/* Week Header */}
-                          <button
-                            type="button"
-                            onClick={() => setExpandedWeek(isWeekOpen ? null : weekKey)}
-                            className="w-full flex items-center justify-between px-3 py-2 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
-                          >
-                            <div className="flex items-center gap-3">
-                              <span className="text-[12px] font-semibold">Week {w.week}</span>
-                              <span className="text-[11px] text-muted-foreground">{dateRange}</span>
-                              {w.matches > 0 && (
-                                <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                                  {w.matches} matches · {w.win}W {w.loss}L {w.draw}D
-                                </span>
-                              )}
+                    {/* Generated Match Dates */}
+                    {mo.matchDates.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-[11px] font-semibold text-muted-foreground mb-2">Match Dates (editable):</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                          {mo.matchDates.map((date, di) => (
+                            <div key={di} className="flex items-center gap-1">
+                              <span className="text-[10px] text-muted-foreground w-12">Match {di + 1}</span>
+                              <input
+                                type="date"
+                                value={date}
+                                min={`${season.year}-${mm}-01`}
+                                max={`${season.year}-${mm}-${String(new Date(season.year, mo.month, 0).getDate()).padStart(2, '0')}`}
+                                onChange={e => {
+                                  const newDates = [...mo.matchDates];
+                                  newDates[di] = e.target.value;
+                                  setM(mi, 'matchDates', newDates.sort());
+                                }}
+                                className="bg-input border border-border text-foreground px-2 py-1 rounded text-[11px] flex-1 w-full"
+                              />
                             </div>
-                            <div className="flex items-center gap-2">
-                              {mo.weeklyStats.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); removeWeek(mi, wi); }}
-                                  className="text-[10px] text-destructive px-1.5 py-0.5 rounded border border-destructive/30 hover:bg-destructive/10"
-                                >
-                                  ✕
-                                </button>
-                              )}
-                              <span className="text-[10px] text-muted-foreground">{isWeekOpen ? '▲' : '▼'}</span>
-                            </div>
-                          </button>
-
-                          {/* Week Content */}
-                          {isWeekOpen && (
-                            <div className="p-3 space-y-4">
-                              {/* Matches + Date Generator */}
-                              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                                <div className="flex items-end gap-3">
-                                  <div className="flex-1">
-                                    <label className="text-[11px] font-semibold text-primary block mb-1">
-                                      📅 Number of Matches (Week {w.week} · {dateRange})
-                                    </label>
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      value={w.matches}
-                                      onChange={e => handleMatchCountChange(mi, wi, parseInt(e.target.value) || 0)}
-                                      className="bg-input border border-border text-foreground px-3 py-1.5 rounded-md w-full text-[13px] font-semibold"
-                                      placeholder="0"
-                                    />
-                                    <p className="text-[10px] text-muted-foreground mt-1">
-                                      Changing this auto-generates random match dates within {dateRange}
-                                    </p>
-                                  </div>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="secondary"
-                                    onClick={() => handleGenerateDates(mi, wi, w, mo)}
-                                    disabled={w.matches === 0}
-                                  >
-                                    🔀 Regenerate Dates
-                                  </Button>
-                                </div>
-
-                                {/* Generated Match Dates */}
-                                {w.matchDates.length > 0 && (
-                                  <div className="mt-3">
-                                    <p className="text-[11px] font-semibold text-muted-foreground mb-2">Match Dates (editable):</p>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                      {w.matchDates.map((date, di) => (
-                                        <div key={di} className="flex items-center gap-1">
-                                          <span className="text-[10px] text-muted-foreground w-12">Match {di + 1}</span>
-                                          <input
-                                            type="date"
-                                            value={date}
-                                            min={`${season.year}-${mm}-${String(start).padStart(2,'0')}`}
-                                            max={`${season.year}-${mm}-${String(end).padStart(2,'0')}`}
-                                            onChange={e => {
-                                              const newDates = [...w.matchDates];
-                                              newDates[di] = e.target.value;
-                                              setW(mi, wi, 'matchDates', newDates.sort());
-                                            }}
-                                            className="bg-input border border-border text-foreground px-2 py-1 rounded text-[11px] flex-1 w-full"
-                                          />
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Stats Grid */}
-                              <div>
-                                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Week Stats</p>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                  {STAT_LABELS.filter(f => f.key !== 'matches').map(f => (
-                                    <div key={f.key} className="bg-muted/30 rounded-lg p-2">
-                                      <label className="text-[10px] text-muted-foreground block mb-1">{f.label}</label>
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        value={w[f.key] as number}
-                                        onChange={e => setW(mi, wi, f.key, parseInt(e.target.value) || 0)}
-                                        className="bg-input border border-border text-foreground px-2 py-1 rounded w-full text-[12px] font-semibold"
-                                      />
-                                    </div>
-                                  ))}
-                                </div>
-                                {/* W+L+D validation hint */}
-                                {w.win + w.loss + w.draw !== w.matches && w.matches > 0 && (
-                                  <p className="text-[11px] text-amber-500 mt-1">
-                                    ⚠️ W+L+D ({w.win + w.loss + w.draw}) doesn't match Matches ({w.matches})
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          )}
+                          ))}
                         </div>
-                      );
-                    })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Month Stats</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {STAT_LABELS.filter(f => f.key !== 'matches').map(f => (
+                        <div key={f.key} className="bg-muted/30 rounded-lg p-2">
+                          <label className="text-[10px] text-muted-foreground block mb-1">{f.label}</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={mo[f.key] as number}
+                            onChange={e => setM(mi, f.key, parseInt(e.target.value) || 0)}
+                            className="bg-input border border-border text-foreground px-2 py-1 rounded w-full text-[12px] font-semibold"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    {/* W+L+D validation hint */}
+                    {(mo.win || 0) + (mo.loss || 0) + (mo.draw || 0) !== mo.matches && mo.matches > 0 && (
+                      <p className="text-[11px] text-amber-500 mt-1">
+                        ⚠️ W+L+D ({(mo.win || 0) + (mo.loss || 0) + (mo.draw || 0)}) doesn't match Matches ({mo.matches})
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

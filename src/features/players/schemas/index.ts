@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-export const weeklyStatSchema = z.object({
-  week: z.number().min(1).max(5),
-  matchDates: z.array(z.string()).default([]),
+export const monthlyStatSchema = z.object({
+  month: z.number().min(1).max(12),
   matches: z.number().min(0).default(0),
+  matchDates: z.array(z.string()).default([]),
   win: z.number().min(0).default(0),
   loss: z.number().min(0).default(0),
   draw: z.number().min(0).default(0),
@@ -14,10 +14,6 @@ export const weeklyStatSchema = z.object({
   cleanSheet: z.number().min(0).default(0),
 });
 
-export const monthlyStatSchema = z.object({
-  month: z.number().min(1).max(12),
-  weeklyStats: z.array(weeklyStatSchema).default([])
-});
 
 export const seasonSchema = z.object({
   year: z.number(),
