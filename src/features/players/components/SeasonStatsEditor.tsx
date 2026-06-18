@@ -67,6 +67,7 @@ const STAT_LABELS: { key: keyof WeeklyStat; label: string; short: string }[] = [
   { key: 'goalsScored', label: 'Goals Scored', short: 'GS' },
   { key: 'goalsConceded', label: 'Goals Conceded', short: 'GC' },
   { key: 'motm', label: 'MOTM', short: 'MOTM' },
+  { key: 'hattricks', label: 'Hattricks', short: 'HT' },
 ];
 
 export function SeasonStatsEditor({ season, onChange, onRemove }: SeasonStatsEditorProps) {
