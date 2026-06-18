@@ -59,7 +59,7 @@ export function HallOfFameForm({ initial, players, onSave, onClose }: HallOfFame
           <label className="text-[12px] font-medium text-gray-400">Category *</label>
           <Input
             {...register('category')}
-            placeholder="Ballon d'or, Goldenboot, Solo/Bid turnamnet"
+            placeholder="Ballon d'Or, Golden Boot, Solo/Bid Tournament"
             error={errors.category?.message}
             className="text-[#1a1f3c] bg-[#fdf6e3]"
           />
