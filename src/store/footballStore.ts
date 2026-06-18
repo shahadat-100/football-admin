@@ -75,7 +75,7 @@ export const mapMatchFromDb = (m: any): Match => ({
   time: m.time || null,
   status: m.status,
   competitionId: m.competition_id,
-  competition: m.competitions?.name || 'Premier League',
+  competition: m.competitions?.name || '',
 });
 
 export const mapMatchToDb = (m: any) => ({
@@ -687,7 +687,7 @@ export const useFootballStore = create<FootballStore>()(
                     goalsconceded: concededPerMatch[i] || 0,
                     result: results[i] || 'draw',
                     hattricks: i === 0 && (monthlyStat.hattricks || 0) > 0 ? monthlyStat.hattricks : 0,
-                    cleansheet: concededPerMatch[i] === 0,
+                    cleansheet: false,
                     motm: i === 0 && (monthlyStat.motm || 0) > 0,
                     notes: `Historical - Season ${season.year}`,
                     season_id: seasonId,

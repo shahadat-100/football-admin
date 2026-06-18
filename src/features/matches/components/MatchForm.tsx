@@ -27,7 +27,7 @@ export function MatchForm({ initial, onSave, onClose }: MatchFormProps) {
       awayScore: initial?.awayScore ?? undefined,
       date: initial?.date ?? format(new Date(), 'yyyy-MM-dd'),
       time: initial?.time ?? '',
-      competition: initial?.competition ?? 'Premier League',
+      competition: initial?.competition ?? '',
       status: initial?.status ?? 'upcoming',
     },
   });
@@ -95,7 +95,7 @@ export function MatchForm({ initial, onSave, onClose }: MatchFormProps) {
         <Input 
           list="competitions"
           {...register('competition')} 
-          placeholder="e.g. Premier League"
+          placeholder="Enter tournament name"
           error={errors.competition?.message}
           className="text-[#1a1f3c] bg-[#fdf6e3]"
         />
