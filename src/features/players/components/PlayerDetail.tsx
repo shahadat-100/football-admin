@@ -16,16 +16,51 @@ interface PlayerDetailProps {
   onBack: () => void;
 }
 export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
-  const { players, matchEntries, matches, playerSeasonStats, seasons, updatePlayer, removePlayer, addMatchEntry } = useFootballStore();
+  const { players, matchEntries, matches, playerSeasonStats, seasons, updatePlayer, removePlayer, addMatchEntry, repairPlayerSeasonStat } = useFootballStore();
   const player = players.find(p => p.id === playerId);
   const stats = usePlayerStats(playerId);
   
-  const [modal, setModal] = useState<'edit' | 'addEntry' | 'delete' | null>(null);
+  const [modal, setModal] = useState<'edit' | 'addEntry' | 'delete' | 'repairStats' | null>(null);
+  const [repairSaving, setRepairSaving] = useState(false);
+  const [repairValues, setRepairValues] = useState<Record<string, Record<string, number>>>({});
 
   if (!player) {
     onBack();
     return null;
   }
+
+  // ── Repair Stats: initialize editable values from current DB stats ──
+  const mySeasonStats = playerSeasonStats.filter(s => s.playerId === playerId);
+  const getRepairVal = (statId: string, field: string, fallback: number) =>
+    (repairValues[statId]?.[field] ?? fallback);
+  const setRepairVal = (statId: string, field: string, val: number) =>
+    setRepairValues(prev => ({ ...prev, [statId]: { ...(prev[statId] ?? {}), [field]: val } }));
+
+  const handleRepairSave = async () => {
+    setRepairSaving(true);
+    try {
+      for (const s of mySeasonStats) {
+        if (!repairValues[s.id]) continue; // skip unchanged rows
+        await repairPlayerSeasonStat(s.id, {
+          motmcount: getRepairVal(s.id, 'motmcount', s.motmCount),
+          cleansheets: getRepairVal(s.id, 'cleansheets', s.cleansheets),
+          goals: getRepairVal(s.id, 'goals', s.goals),
+          hattricks: getRepairVal(s.id, 'hattricks', s.hattricks),
+          appearances: getRepairVal(s.id, 'appearances', s.appearances),
+          wins: getRepairVal(s.id, 'wins', s.wins),
+          draws: getRepairVal(s.id, 'draws', s.draws),
+          losses: getRepairVal(s.id, 'losses', s.losses),
+          goalsconceded: getRepairVal(s.id, 'goalsconceded', s.goalsConceded),
+        });
+      }
+      setRepairValues({});
+      setModal(null);
+    } catch (e) {
+      alert('Error saving: ' + (e as any)?.message);
+    } finally {
+      setRepairSaving(false);
+    }
+  };
 
   const entries = matchEntries.filter(me => me.playerId === playerId);
 
@@ -113,6 +148,73 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
              onSave={(d) => { addMatchEntry({ ...d, id: Math.random().toString(36).slice(2,9) } as any); setModal(null); }}
              onClose={() => setModal(null)} 
            />
+        </Modal>
+      )}
+
+      {modal === 'repairStats' && (
+        <Modal title={`🔧 Repair Season Stats — ${player.name}`} onClose={() => setModal(null)} isOpen wide>
+          <div className="space-y-4 py-2">
+            <p className="text-[12px] text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+              ⚠️ This directly overwrites values in <code>player_season_stats</code>. Only edit fields that are wrong. Leave unchanged fields as-is.
+            </p>
+
+            {mySeasonStats.length === 0 && (
+              <p className="text-muted-foreground text-[13px] text-center py-6">No season stat rows found for this player.</p>
+            )}
+
+            {mySeasonStats.map(s => (
+              <div key={s.id} className="border border-border rounded-xl overflow-hidden">
+                <div className="bg-muted/50 px-4 py-2.5 border-b border-border">
+                  <span className="text-[13px] font-bold text-foreground">{s.seasonName}</span>
+                  <span className="text-[11px] text-muted-foreground ml-2">(ID: {s.id.slice(0,8)}…)</span>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 p-4">
+                  {([
+                    { key: 'motmcount',    label: 'MOTM',          current: s.motmCount,      icon: '🏅' },
+                    { key: 'cleansheets', label: 'Clean Sheets',   current: s.cleansheets,    icon: '🧤' },
+                    { key: 'goals',       label: 'Goals',          current: s.goals,           icon: '⚽' },
+                    { key: 'hattricks',   label: 'Hat-tricks',     current: s.hattricks,       icon: '🎩' },
+                    { key: 'appearances', label: 'Appearances',    current: s.appearances,     icon: '🎮' },
+                    { key: 'wins',        label: 'Wins',           current: s.wins,            icon: '🏆' },
+                    { key: 'draws',       label: 'Draws',          current: s.draws,           icon: '🤝' },
+                    { key: 'losses',      label: 'Losses',         current: s.losses,          icon: '❌' },
+                    { key: 'goalsconceded', label: 'Goals Conceded', current: s.goalsConceded, icon: '🥅' },
+                  ] as const).map(({ key, label, current, icon }) => {
+                    const val = getRepairVal(s.id, key, current);
+                    const isDirty = val !== current;
+                    return (
+                      <div key={key} className={`rounded-lg p-2.5 border transition-colors ${
+                        isDirty ? 'border-amber-500/40 bg-amber-500/5' : 'border-border bg-muted/30'
+                      }`}>
+                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                          {icon} {label}
+                          {isDirty && <span className="ml-1 text-amber-400">(changed)</span>}
+                        </label>
+                        <div className="text-[10px] text-muted-foreground mb-1">Current: <span className="font-bold text-foreground">{current}</span></div>
+                        <input
+                          type="number"
+                          min={0}
+                          value={val}
+                          onChange={e => setRepairVal(s.id, key, parseInt(e.target.value) || 0)}
+                          className="bg-input border border-border text-foreground px-2 py-1 rounded w-full text-[12px] font-bold"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            <div className="flex gap-3 justify-end pt-2">
+              <Button variant="secondary" onClick={() => { setRepairValues({}); setModal(null); }}>Cancel</Button>
+              <Button
+                onClick={handleRepairSave}
+                disabled={repairSaving || Object.keys(repairValues).length === 0}
+              >
+                {repairSaving ? 'Saving…' : '💾 Save Changes'}
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
       <DeleteConfirm 
@@ -222,6 +324,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                 <div className="flex gap-2 flex-wrap h-fit">
                   <Button size="sm" variant="secondary" onClick={() => setModal('edit')}>✎ Edit</Button>
                   <Button size="sm" variant="secondary" onClick={() => setModal('addEntry')}>+ Entry</Button>
+                  <Button size="sm" variant="secondary" onClick={() => { setRepairValues({}); setModal('repairStats'); }}>🔧 Repair Stats</Button>
                   <Button size="sm" variant="danger" onClick={() => setModal('delete')}>Delete</Button>
                 </div>
               </div>

@@ -190,6 +190,7 @@ interface FootballStore {
   setCurrentSeason: (id: number) => Promise<void>;
 
   fetchPlayerSeasonStats: () => Promise<void>;
+  repairPlayerSeasonStat: (statId: string, patch: Partial<{ motmcount: number; cleansheets: number; goals: number; hattricks: number; appearances: number; wins: number; draws: number; losses: number; goalsconceded: number }>) => Promise<void>;
   fetchCompetitions: () => Promise<void>;
   fetchAvailableRoles: () => Promise<void>;
   fetchAvailableTags: () => Promise<void>;
@@ -679,6 +680,23 @@ export const useFootballStore = create<FootballStore>()(
                   ...Array(monthlyStat.draw || 0).fill('draw'),
                 ];
 
+                // FIX: Distribute MOTM awards across matches (not just the first one).
+                // motm is a COUNT (e.g. 3 means 3 MOTM awards that month), so we mark
+                // the first N entries as motm=true, one per match, capped at totalMatches.
+                const motmCount = Math.min(monthlyStat.motm || 0, totalMatches);
+                const motmPerMatch = Array(totalMatches).fill(false);
+                for (let m = 0; m < motmCount; m++) {
+                  motmPerMatch[m] = true;
+                }
+
+                // FIX: Distribute clean sheets across matches (was always hardcoded false).
+                // cleanSheet is a COUNT, so we mark the first N entries as cleansheet=true.
+                const cleanSheetCount = Math.min(monthlyStat.cleanSheet || 0, totalMatches);
+                const cleanSheetPerMatch = Array(totalMatches).fill(false);
+                for (let c = 0; c < cleanSheetCount; c++) {
+                  cleanSheetPerMatch[c] = true;
+                }
+
                 for (let i = 0; i < totalMatches; i++) {
                   entriesToInsert.push({
                     playerid: newPlayerId,
@@ -687,8 +705,8 @@ export const useFootballStore = create<FootballStore>()(
                     goalsconceded: concededPerMatch[i] || 0,
                     result: results[i] || 'draw',
                     hattricks: i === 0 && (monthlyStat.hattricks || 0) > 0 ? monthlyStat.hattricks : 0,
-                    cleansheet: false,
-                    motm: i === 0 && (monthlyStat.motm || 0) > 0,
+                    cleansheet: cleanSheetPerMatch[i],
+                    motm: motmPerMatch[i],
                     notes: `Historical - Season ${season.year}`,
                     season_id: seasonId,
                     date: dates[i] || dates[0],
@@ -1129,6 +1147,19 @@ export const useFootballStore = create<FootballStore>()(
           }));
         }
         if (error) console.error('Error setting current season:', error);
+      },
+
+      repairPlayerSeasonStat: async (statId, patch) => {
+        const { error } = await supabase
+          .from('player_season_stats')
+          .update({ ...patch, updated_at: new Date().toISOString() })
+          .eq('id', statId);
+        if (error) {
+          console.error('Error repairing player season stat:', error);
+          throw error;
+        }
+        // Refresh stats from DB
+        await get().fetchPlayerSeasonStats();
       },
 
       fetchPlayerSeasonStats: async () => {
