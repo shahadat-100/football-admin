@@ -16,13 +16,15 @@ interface PlayerDetailProps {
   onBack: () => void;
 }
 export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
-  const { players, matchEntries, matches, playerSeasonStats, seasons, updatePlayer, removePlayer, addMatchEntry, repairPlayerSeasonStat } = useFootballStore();
+  const { players, matchEntries, matches, playerSeasonStats, seasons, updatePlayer, removePlayer, addMatchEntry, repairPlayerSeasonStat, recheckMilestones } = useFootballStore();
   const player = players.find(p => p.id === playerId);
   const stats = usePlayerStats(playerId);
   
   const [modal, setModal] = useState<'edit' | 'addEntry' | 'delete' | 'repairStats' | null>(null);
   const [repairSaving, setRepairSaving] = useState(false);
   const [repairValues, setRepairValues] = useState<Record<string, Record<string, number>>>({});
+  const [recheckLoading, setRecheckLoading] = useState(false);
+  const [recheckResult, setRecheckResult] = useState<string | null>(null);
 
   if (!player) {
     onBack();
@@ -325,8 +327,37 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                   <Button size="sm" variant="secondary" onClick={() => setModal('edit')}>✎ Edit</Button>
                   <Button size="sm" variant="secondary" onClick={() => setModal('addEntry')}>+ Entry</Button>
                   <Button size="sm" variant="secondary" onClick={() => { setRepairValues({}); setModal('repairStats'); }}>🔧 Repair Stats</Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={recheckLoading}
+                    onClick={async () => {
+                      setRecheckLoading(true);
+                      setRecheckResult(null);
+                      try {
+                        const { fired } = await recheckMilestones(player.id);
+                        setRecheckResult(fired ? '✅ New milestones fired! Check News.' : '✅ Done — no new milestones.');
+                      } catch (e) {
+                        setRecheckResult('❌ Error: ' + (e as any)?.message);
+                      } finally {
+                        setRecheckLoading(false);
+                        setTimeout(() => setRecheckResult(null), 5000);
+                      }
+                    }}
+                  >
+                    {recheckLoading ? '⏳ Checking…' : '🔔 Re-check Milestones'}
+                  </Button>
                   <Button size="sm" variant="danger" onClick={() => setModal('delete')}>Delete</Button>
                 </div>
+                {recheckResult && (
+                  <div className={`mt-2 text-[11px] font-medium px-3 py-1.5 rounded-lg border w-fit ${
+                    recheckResult.startsWith('✅')
+                      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                      : 'text-red-400 bg-red-500/10 border-red-500/20'
+                  }`}>
+                    {recheckResult}
+                  </div>
+                )}
               </div>
             </div>
           </div>

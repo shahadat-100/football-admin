@@ -191,6 +191,7 @@ interface FootballStore {
 
   fetchPlayerSeasonStats: () => Promise<void>;
   repairPlayerSeasonStat: (statId: string, patch: Partial<{ motmcount: number; cleansheets: number; goals: number; hattricks: number; appearances: number; wins: number; draws: number; losses: number; goalsconceded: number }>) => Promise<void>;
+  recheckMilestones: (playerId: string) => Promise<{ fired: boolean }>;
   fetchCompetitions: () => Promise<void>;
   fetchAvailableRoles: () => Promise<void>;
   fetchAvailableTags: () => Promise<void>;
@@ -727,6 +728,9 @@ export const useFootballStore = create<FootballStore>()(
             // Sync the store state with database
             await get().fetchMatchEntries();
             await get().fetchPlayerSeasonStats();
+            // Fire milestones for all the historical data just imported
+            const fired = await checkAndFireMilestones(newPlayerId);
+            if (fired) await get().fetchNews();
           }
 
         }
@@ -1160,6 +1164,21 @@ export const useFootballStore = create<FootballStore>()(
         }
         // Refresh stats from DB
         await get().fetchPlayerSeasonStats();
+      },
+
+      recheckMilestones: async (playerId) => {
+        // Step 1: Wipe existing milestone_log rows for this player so we can re-evaluate from scratch.
+        // This is safe — the log is only used to prevent duplicate news articles.
+        const { error: delErr } = await supabase
+          .from('milestone_log')
+          .delete()
+          .eq('player_id', playerId);
+        if (delErr) console.error('recheckMilestones: failed to clear milestone_log:', delErr);
+
+        // Step 2: Re-scan all match_entries and fire any milestones not yet in news.
+        const fired = await checkAndFireMilestones(playerId);
+        if (fired) await get().fetchNews();
+        return { fired };
       },
 
       fetchPlayerSeasonStats: async () => {
