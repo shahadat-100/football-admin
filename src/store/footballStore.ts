@@ -154,6 +154,7 @@ interface FootballStore {
   // Server-side paginated entries (for MatchEntries page)
   paginatedMatchEntries: MatchEntry[];
   totalMatchEntriesCount: number;
+  globalMatchEntriesCount: number;
   isPaginatedEntriesLoading: boolean;
   
   isInitialized: boolean;
@@ -458,6 +459,7 @@ export const useFootballStore = create<FootballStore>()(
 
       paginatedMatchEntries: [],
       totalMatchEntriesCount: 0,
+      globalMatchEntriesCount: 0,
       isPaginatedEntriesLoading: false,
       
       isInitialized: false,
@@ -929,14 +931,17 @@ export const useFootballStore = create<FootballStore>()(
       fetchMatchEntries: async () => {
         // Only fetch the most recent 500 entries to prevent memory crashes.
         // Full data is accessed via paginated queries or RPC functions.
-        const { data, error } = await supabase
+        const { data, error, count } = await supabase
           .from('match_entries')
-          .select('*')
+          .select('*', { count: 'exact' })
           .order('date', { ascending: false })
           .limit(500);
           
         if (data) {
-          set({ matchEntries: data.map(mapMatchEntryFromDb) });
+          set({ 
+            matchEntries: data.map(mapMatchEntryFromDb),
+            globalMatchEntriesCount: count ?? 0 
+          });
         }
         if (error) console.error('Error fetching match entries:', error);
       },

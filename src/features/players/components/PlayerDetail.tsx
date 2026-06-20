@@ -75,6 +75,9 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       const validA = isNaN(dateA) ? 0 : dateA;
       const validB = isNaN(dateB) ? 0 : dateB;
       if (validA !== validB) return validB - validA;
+      const numA = Number(a.id);
+      const numB = Number(b.id);
+      if (!isNaN(numA) && !isNaN(numB)) return numB - numA;
       return String(b.id).localeCompare(String(a.id));
     })
     .slice(0, 30); // Requested to show 30 instead of 50

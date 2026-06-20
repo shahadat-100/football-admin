@@ -15,6 +15,9 @@ export function PlayerFormHistory({ entries }: PlayerFormHistoryProps) {
       const validA = isNaN(dateA) ? 0 : dateA;
       const validB = isNaN(dateB) ? 0 : dateB;
       if (validA !== validB) return validB - validA;
+      const numA = Number(a.id);
+      const numB = Number(b.id);
+      if (!isNaN(numA) && !isNaN(numB)) return numB - numA;
       // Fallback to string comparison of ID to keep sort stable if dates are identical
       return String(b.id).localeCompare(String(a.id));
     })

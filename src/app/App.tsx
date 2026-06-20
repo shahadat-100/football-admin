@@ -35,7 +35,7 @@ export function AppShell() {
 
   const counts: Record<string, number> = {
     players: state.players.length,
-    entries: state.matchEntries.length,
+    entries: state.globalMatchEntriesCount,
     matches: state.matches.length,
     news: state.news.length,
     'hall-of-fame': state.hallOfFame.length,
