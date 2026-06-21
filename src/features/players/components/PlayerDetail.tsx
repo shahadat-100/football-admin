@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Player } from '../types';
+import { Player, MonthlyStat } from '../types';
 import { Avatar, Badge, Button, Modal, DeleteConfirm, PieChart } from '@/shared/components';
 import { usePlayerStats } from '../hooks/usePlayerStats';
 import { useFootballStore } from '@/store/footballStore';
@@ -16,13 +16,13 @@ interface PlayerDetailProps {
   onBack: () => void;
 }
 export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
-  const { players, matchEntries, matches, playerSeasonStats, seasons, updatePlayer, removePlayer, addMatchEntry, repairPlayerSeasonStat, recheckMilestones } = useFootballStore();
+  const { players, matchEntries, matches, playerSeasonStats, seasons, updatePlayer, removePlayer, addMatchEntry, repairPlayerMonthlyStats, recheckMilestones } = useFootballStore();
   const player = players.find(p => p.id === playerId);
   const stats = usePlayerStats(playerId);
   
   const [modal, setModal] = useState<'edit' | 'addEntry' | 'delete' | 'repairStats' | null>(null);
   const [repairSaving, setRepairSaving] = useState(false);
-  const [repairValues, setRepairValues] = useState<Record<string, Record<string, number>>>({});
+  const [repairValues, setRepairValues] = useState<Record<string, Record<string, any>>>({});
   const [recheckLoading, setRecheckLoading] = useState(false);
   const [recheckResult, setRecheckResult] = useState<string | null>(null);
 
@@ -31,29 +31,149 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
     return null;
   }
 
+  const entries = matchEntries.filter(me => me.playerId === playerId);
+
+  // Group player months from match entries
+  const playerMonths = useMemo(() => {
+    const result: {
+      seasonId: number;
+      seasonName: string;
+      year: number;
+      months: {
+        month: number;
+        monthName: string;
+        matches: number;
+        win: number;
+        draw: number;
+        loss: number;
+        goalsScored: number;
+        goalsConceded: number;
+        cleanSheet: number;
+        motm: number;
+        hattricks: number;
+        matchDates: string[];
+      }[];
+    }[] = [];
+
+    for (const season of seasons) {
+      const seasonEntries = entries.filter(e => e.seasonId === season.id);
+      if (seasonEntries.length === 0) continue;
+
+      let year = new Date(season.start_date).getFullYear();
+      if (isNaN(year)) {
+        const match = season.name.match(/\d{4}/);
+        year = match ? parseInt(match[0]) : new Date().getFullYear();
+      }
+
+      const monthlyGroups: Record<number, typeof seasonEntries> = {};
+      for (const entry of seasonEntries) {
+        if (!entry.date) continue;
+        const m = parseInt(entry.date.split('-')[1]);
+        if (!isNaN(m)) {
+          if (!monthlyGroups[m]) monthlyGroups[m] = [];
+          monthlyGroups[m].push(entry);
+        }
+      }
+
+      const monthsList = Object.keys(monthlyGroups)
+        .map(Number)
+        .sort((a, b) => a - b)
+        .map(m => {
+          const mEntries = monthlyGroups[m];
+          const win = mEntries.filter(e => e.result === 'win').length;
+          const draw = mEntries.filter(e => e.result === 'draw').length;
+          const loss = mEntries.filter(e => e.result === 'loss').length;
+          const goalsScored = mEntries.reduce((sum, e) => sum + (e.goals || 0), 0);
+          const goalsConceded = mEntries.reduce((sum, e) => sum + (e.goalsConceded || 0), 0);
+          const cleanSheet = mEntries.filter(e => e.cleanSheet).length;
+          const motm = mEntries.filter(e => e.motm).length;
+          const hattricks = mEntries.reduce((sum, e) => sum + (e.hattricks || 0), 0);
+          const matchDates = mEntries.map(e => e.date).filter(Boolean).sort();
+
+          const monthNames = [
+            'January','February','March','April','May','June',
+            'July','August','September','October','November','December'
+          ];
+
+          return {
+            month: m,
+            monthName: monthNames[m - 1] || `Month ${m}`,
+            matches: mEntries.length,
+            win,
+            draw,
+            loss,
+            goalsScored,
+            goalsConceded,
+            cleanSheet,
+            motm,
+            hattricks,
+            matchDates
+          };
+        });
+
+      if (monthsList.length > 0) {
+        result.push({
+          seasonId: season.id,
+          seasonName: season.name,
+          year,
+          months: monthsList
+        });
+      }
+    }
+    return result;
+  }, [entries, seasons]);
+
   // ── Repair Stats: initialize editable values from current DB stats ──
-  const mySeasonStats = playerSeasonStats.filter(s => s.playerId === playerId);
-  const getRepairVal = (statId: string, field: string, fallback: number) =>
-    (repairValues[statId]?.[field] ?? fallback);
-  const setRepairVal = (statId: string, field: string, val: number) =>
-    setRepairValues(prev => ({ ...prev, [statId]: { ...(prev[statId] ?? {}), [field]: val } }));
+  const getRepairVal = (seasonId: number, month: number, field: string, fallback: any) => {
+    const key = `${seasonId}_${month}`;
+    return repairValues[key]?.[field] ?? fallback;
+  };
+  const setRepairVal = (seasonId: number, month: number, field: string, val: any) => {
+    const key = `${seasonId}_${month}`;
+    setRepairValues(prev => ({
+      ...prev,
+      [key]: {
+        ...(prev[key] ?? {}),
+        [field]: val
+      }
+    }));
+  };
 
   const handleRepairSave = async () => {
     setRepairSaving(true);
     try {
-      for (const s of mySeasonStats) {
-        if (!repairValues[s.id]) continue; // skip unchanged rows
-        await repairPlayerSeasonStat(s.id, {
-          motmcount: getRepairVal(s.id, 'motmcount', s.motmCount),
-          cleansheets: getRepairVal(s.id, 'cleansheets', s.cleansheets),
-          goals: getRepairVal(s.id, 'goals', s.goals),
-          hattricks: getRepairVal(s.id, 'hattricks', s.hattricks),
-          appearances: getRepairVal(s.id, 'appearances', s.appearances),
-          wins: getRepairVal(s.id, 'wins', s.wins),
-          draws: getRepairVal(s.id, 'draws', s.draws),
-          losses: getRepairVal(s.id, 'losses', s.losses),
-          goalsconceded: getRepairVal(s.id, 'goalsconceded', s.goalsConceded),
-        });
+      for (const key of Object.keys(repairValues)) {
+        const [seasonIdStr, monthStr] = key.split('_');
+        const seasonId = parseInt(seasonIdStr);
+        const month = parseInt(monthStr);
+        if (isNaN(seasonId) || isNaN(month)) continue;
+
+        const sObj = playerMonths.find(s => s.seasonId === seasonId);
+        const mObj = sObj?.months.find(m => m.month === month);
+        if (!mObj || !sObj) continue;
+
+        const target: MonthlyStat = {
+          month,
+          matches: getRepairVal(seasonId, month, 'matches', mObj.matches),
+          win: getRepairVal(seasonId, month, 'win', mObj.win),
+          draw: getRepairVal(seasonId, month, 'draw', mObj.draw),
+          loss: getRepairVal(seasonId, month, 'loss', mObj.loss),
+          goalsScored: getRepairVal(seasonId, month, 'goalsScored', mObj.goalsScored),
+          goalsConceded: getRepairVal(seasonId, month, 'goalsConceded', mObj.goalsConceded),
+          cleanSheet: getRepairVal(seasonId, month, 'cleanSheet', mObj.cleanSheet),
+          motm: getRepairVal(seasonId, month, 'motm', mObj.motm),
+          hattricks: getRepairVal(seasonId, month, 'hattricks', mObj.hattricks),
+          matchDates: getRepairVal(seasonId, month, 'matchDates', mObj.matchDates)
+        };
+
+        if (target.matches > 0 && (target.win + target.draw + target.loss) !== target.matches) {
+          const monthName = mObj.monthName;
+          alert(`Season ${sObj.seasonName} - ${monthName}:\nWins, Draws, and Losses (${target.win + target.draw + target.loss}) must exactly equal the number of matches (${target.matches}).`);
+          setRepairSaving(false);
+          return;
+        }
+
+        await repairPlayerMonthlyStats(playerId, seasonId, sObj.year, month, target);
       }
       setRepairValues({});
       setModal(null);
@@ -63,8 +183,6 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       setRepairSaving(false);
     }
   };
-
-  const entries = matchEntries.filter(me => me.playerId === playerId);
 
   const historyEntries = [...entries]
     .sort((a, b) => {
@@ -157,56 +275,63 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       )}
 
       {modal === 'repairStats' && (
-        <Modal title={`🔧 Repair Season Stats — ${player.name}`} onClose={() => setModal(null)} isOpen wide>
-          <div className="space-y-4 py-2">
+        <Modal title={`🔧 Repair Monthly Stats — ${player.name}`} onClose={() => setModal(null)} isOpen wide>
+          <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-1">
             <p className="text-[12px] text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
-              ⚠️ This directly overwrites values in <code>player_season_stats</code>. Only edit fields that are wrong. Leave unchanged fields as-is.
+              ⚠️ This will update or recreate the underlying match entries for the chosen month(s). Ensure Wins + Draws + Losses exactly equals Matches.
             </p>
 
-            {mySeasonStats.length === 0 && (
-              <p className="text-muted-foreground text-[13px] text-center py-6">No season stat rows found for this player.</p>
+            {playerMonths.length === 0 && (
+              <p className="text-muted-foreground text-[13px] text-center py-6">No monthly stats found for this player.</p>
             )}
 
-            {mySeasonStats.map(s => (
-              <div key={s.id} className="border border-border rounded-xl overflow-hidden">
-                <div className="bg-muted/50 px-4 py-2.5 border-b border-border">
-                  <span className="text-[13px] font-bold text-foreground">{s.seasonName}</span>
-                  <span className="text-[11px] text-muted-foreground ml-2">(ID: {s.id.slice(0,8)}…)</span>
-                </div>
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 p-4">
-                  {([
-                    { key: 'motmcount',    label: 'MOTM',          current: s.motmCount,      icon: '🏅' },
-                    { key: 'cleansheets', label: 'Clean Sheets',   current: s.cleansheets,    icon: '🧤' },
-                    { key: 'goals',       label: 'Goals',          current: s.goals,           icon: '⚽' },
-                    { key: 'hattricks',   label: 'Hat-tricks',     current: s.hattricks,       icon: '🎩' },
-                    { key: 'appearances', label: 'Appearances',    current: s.appearances,     icon: '🎮' },
-                    { key: 'wins',        label: 'Wins',           current: s.wins,            icon: '🏆' },
-                    { key: 'draws',       label: 'Draws',          current: s.draws,           icon: '🤝' },
-                    { key: 'losses',      label: 'Losses',         current: s.losses,          icon: '❌' },
-                    { key: 'goalsconceded', label: 'Goals Conceded', current: s.goalsConceded, icon: '🥅' },
-                  ] as const).map(({ key, label, current, icon }) => {
-                    const val = getRepairVal(s.id, key, current);
-                    const isDirty = val !== current;
-                    return (
-                      <div key={key} className={`rounded-lg p-2.5 border transition-colors ${
-                        isDirty ? 'border-amber-500/40 bg-amber-500/5' : 'border-border bg-muted/30'
-                      }`}>
-                        <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
-                          {icon} {label}
-                          {isDirty && <span className="ml-1 text-amber-400">(changed)</span>}
-                        </label>
-                        <div className="text-[10px] text-muted-foreground mb-1">Current: <span className="font-bold text-foreground">{current}</span></div>
-                        <input
-                          type="number"
-                          min={0}
-                          value={val}
-                          onChange={e => setRepairVal(s.id, key, parseInt(e.target.value) || 0)}
-                          className="bg-input border border-border text-foreground px-2 py-1 rounded w-full text-[12px] font-bold"
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
+            {playerMonths.map(s => (
+              <div key={s.seasonId} className="space-y-3">
+                <h4 className="font-bold text-[14px] text-foreground border-b border-border pb-1 mt-2">
+                  {s.seasonName}
+                </h4>
+                {s.months.map(m => (
+                  <div key={`${s.seasonId}_${m.month}`} className="border border-border rounded-xl overflow-hidden bg-card">
+                    <div className="bg-muted/50 px-4 py-2 border-b border-border flex justify-between items-center">
+                      <span className="text-[12px] font-bold text-foreground">{m.monthName} {s.year}</span>
+                      <span className="text-[10px] text-muted-foreground">({m.matches} matches)</span>
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 p-4">
+                      {([
+                        { key: 'matches',       label: 'Matches',        current: m.matches,       icon: '🎮' },
+                        { key: 'win',           label: 'Wins',           current: m.win,           icon: '🏆' },
+                        { key: 'draw',          label: 'Draws',          current: m.draw,          icon: '🤝' },
+                        { key: 'loss',          label: 'Losses',         current: m.loss,          icon: '❌' },
+                        { key: 'goalsScored',   label: 'Goals Scored',   current: m.goalsScored,   icon: '⚽' },
+                        { key: 'goalsConceded', label: 'Goals Conceded', current: m.goalsConceded, icon: '🥅' },
+                        { key: 'cleanSheet',    label: 'Clean Sheets',   current: m.cleanSheet,    icon: '🧤' },
+                        { key: 'motm',          label: 'MOTM',           current: m.motm,          icon: '🏅' },
+                        { key: 'hattricks',     label: 'Hat-tricks',     current: m.hattricks,     icon: '🎩' },
+                      ] as const).map(({ key, label, current, icon }) => {
+                        const val = getRepairVal(s.seasonId, m.month, key, current);
+                        const isDirty = val !== current;
+                        return (
+                          <div key={key} className={`rounded-lg p-2 border transition-colors ${
+                            isDirty ? 'border-amber-500/40 bg-amber-500/5' : 'border-border bg-muted/30'
+                          }`}>
+                            <label className="text-[10px] font-semibold text-muted-foreground block mb-1">
+                              {icon} {label}
+                              {isDirty && <span className="ml-1 text-amber-400">(changed)</span>}
+                            </label>
+                            <div className="text-[10px] text-muted-foreground mb-1">Current: <span className="font-bold text-foreground">{current}</span></div>
+                            <input
+                              type="number"
+                              min={0}
+                              value={val}
+                              onChange={e => setRepairVal(s.seasonId, m.month, key, parseInt(e.target.value) || 0)}
+                              className="bg-input border border-border text-foreground px-2 py-1 rounded w-full text-[12px] font-bold"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             ))}
 

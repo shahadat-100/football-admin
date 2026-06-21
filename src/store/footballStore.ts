@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { Player, SeasonDb, PlayerSeasonStat } from '@/features/players/types';
+import { Player, SeasonDb, PlayerSeasonStat, MonthlyStat } from '@/features/players/types';
 import { Match } from '@/features/matches/types';
 import { MatchEntry } from '@/features/match-entries/types';
 import { NewsArticle } from '@/features/news/types';
@@ -192,6 +192,7 @@ interface FootballStore {
 
   fetchPlayerSeasonStats: () => Promise<void>;
   repairPlayerSeasonStat: (statId: string, patch: Partial<{ motmcount: number; cleansheets: number; goals: number; hattricks: number; appearances: number; wins: number; draws: number; losses: number; goalsconceded: number }>) => Promise<void>;
+  repairPlayerMonthlyStats: (playerId: string, seasonId: number, year: number, month: number, target: MonthlyStat) => Promise<void>;
   recheckMilestones: (playerId: string) => Promise<{ fired: boolean }>;
   fetchCompetitions: () => Promise<void>;
   fetchAvailableRoles: () => Promise<void>;
@@ -1163,7 +1164,7 @@ export const useFootballStore = create<FootballStore>()(
         if (error) console.error('Error setting current season:', error);
       },
 
-      repairPlayerSeasonStat: async (statId, patch) => {
+          repairPlayerSeasonStat: async (statId, patch) => {
         const { error } = await supabase
           .from('player_season_stats')
           .update({ ...patch, updated_at: new Date().toISOString() })
@@ -1174,6 +1175,142 @@ export const useFootballStore = create<FootballStore>()(
         }
         // Refresh stats from DB
         await get().fetchPlayerSeasonStats();
+      },
+
+      repairPlayerMonthlyStats: async (playerId, seasonId, year, month, target) => {
+        const mm = String(month).padStart(2, '0');
+        const startDate = `${year}-${mm}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        const endDate = `${year}-${mm}-${String(lastDay).padStart(2, '0')}`;
+
+        const { data: allEntries, error: fetchErr } = await supabase
+          .from('match_entries')
+          .select('*')
+          .eq('playerid', playerId)
+          .eq('season_id', seasonId)
+          .gte('date', startDate)
+          .lte('date', endDate);
+
+        if (fetchErr) {
+          console.error('Error fetching match entries for repair:', fetchErr);
+          throw fetchErr;
+        }
+
+        const entries = allEntries || [];
+        const realEntries = entries.filter(e => e.matchid !== null);
+        const histEntries = entries.filter(e => e.matchid === null);
+
+        // Calculate real match stats
+        const realApps = realEntries.length;
+        const realWins = realEntries.filter(e => e.result === 'win').length;
+        const realDraws = realEntries.filter(e => e.result === 'draw').length;
+        const realLosses = realEntries.filter(e => e.result === 'loss').length;
+        const realGoals = realEntries.reduce((sum, e) => sum + (e.goals || 0), 0);
+        const realConceded = realEntries.reduce((sum, e) => sum + (e.goalsconceded || 0), 0);
+        const realMOTM = realEntries.filter(e => e.motm).length;
+        const realCS = realEntries.filter(e => e.cleansheet).length;
+        const realHattricks = realEntries.reduce((sum, e) => sum + (e.hattricks || 0), 0);
+
+        // Validation check
+        if (target.matches < realApps) {
+          throw new Error(`Target matches (${target.matches}) cannot be less than actual matches played (${realApps}).`);
+        }
+
+        // Calculate historical difference needed
+        const histApps = target.matches - realApps;
+        const histWins = Math.max(0, target.win - realWins);
+        const histDraws = Math.max(0, target.draw - realDraws);
+        const histLosses = Math.max(0, target.loss - realLosses);
+        const histGoals = Math.max(0, target.goalsScored - realGoals);
+        const histConceded = Math.max(0, target.goalsConceded - realConceded);
+        const histMOTM = Math.max(0, target.motm - realMOTM);
+        const histCS = Math.max(0, target.cleanSheet - realCS);
+        const histHattricks = Math.max(0, target.hattricks - realHattricks);
+
+        // 2. Delete all existing historical entries for this month/season/player
+        if (histEntries.length > 0) {
+          const histIds = histEntries.map(e => e.id);
+          const { error: delErr } = await supabase
+            .from('match_entries')
+            .delete()
+            .in('id', histIds);
+          if (delErr) {
+            console.error('Error deleting historical match entries:', delErr);
+            throw delErr;
+          }
+        }
+
+        // 3. Insert new historical match entries if needed
+        if (histApps > 0) {
+          const picked: number[] = [];
+          const step = Math.max(1, Math.floor(lastDay / histApps));
+          for (let i = 0; i < histApps; i++) {
+            const day = Math.min(lastDay, 1 + i * step + (i % 2));
+            picked.push(day);
+          }
+          const dates = picked.sort((a, b) => a - b).map(day => `${year}-${mm}-${String(day).padStart(2, '0')}`);
+
+          const goalsPerMatch = Array(histApps).fill(0);
+          for (let g = 0; g < histGoals; g++) {
+            goalsPerMatch[g % histApps]++;
+          }
+          const concededPerMatch = Array(histApps).fill(0);
+          for (let g = 0; g < histConceded; g++) {
+            concededPerMatch[g % histApps]++;
+          }
+
+          const results: string[] = [
+            ...Array(histWins).fill('win'),
+            ...Array(histLosses).fill('loss'),
+            ...Array(histDraws).fill('draw'),
+          ];
+
+          const motmCount = Math.min(histMOTM, histApps);
+          const motmPerMatch = Array(histApps).fill(false);
+          for (let m = 0; m < motmCount; m++) {
+            motmPerMatch[m] = true;
+          }
+
+          const cleanSheetCount = Math.min(histCS, histApps);
+          const cleanSheetPerMatch = Array(histApps).fill(false);
+          for (let c = 0; c < cleanSheetCount; c++) {
+            cleanSheetPerMatch[c] = true;
+          }
+
+          const entriesToInsert = [];
+          for (let i = 0; i < histApps; i++) {
+            entriesToInsert.push({
+              playerid: playerId,
+              matchid: null,
+              goals: goalsPerMatch[i] || 0,
+              goalsconceded: concededPerMatch[i] || 0,
+              result: results[i] || 'draw',
+              hattricks: i === 0 && histHattricks > 0 ? histHattricks : 0,
+              cleansheet: cleanSheetPerMatch[i],
+              motm: motmPerMatch[i],
+              notes: `Historical - Season ${year}`,
+              season_id: seasonId,
+              date: dates[i] || dates[0],
+            });
+          }
+
+          const { error: insErr } = await supabase
+            .from('match_entries')
+            .insert(entriesToInsert);
+          if (insErr) {
+            console.error('Error inserting historical match entries:', insErr);
+            throw insErr;
+          }
+        }
+
+        // 4. Update the season aggregation row
+        await updatePlayerSeasonStats(playerId, seasonId);
+
+        // 5. Refresh local store state
+        await get().fetchMatchEntries();
+        await get().fetchPlayerSeasonStats();
+        const fired = await checkAndFireMilestones(playerId);
+        if (fired) await get().fetchNews();
       },
 
       recheckMilestones: async (playerId) => {
