@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Player, MonthlyStat } from '../types';
 import { Avatar, Badge, Button, Modal, DeleteConfirm, PieChart } from '@/shared/components';
 import { usePlayerStats } from '../hooks/usePlayerStats';
 import { useFootballStore } from '@/store/footballStore';
+import { supabase } from '@/lib/supabase';
 import { PlayerForm } from './PlayerForm';
 import { MatchEntryForm } from '@/features/match-entries/components/MatchEntryForm';
 import { RESULT_BADGE } from '@/shared/lib/constants';
@@ -20,18 +21,62 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
   const player = players.find(p => p.id === playerId);
   const stats = usePlayerStats(playerId);
   
+  if (!player) {
+    onBack();
+    return null;
+  }
+  
   const [modal, setModal] = useState<'edit' | 'addEntry' | 'delete' | 'repairStats' | null>(null);
   const [repairSaving, setRepairSaving] = useState(false);
   const [repairValues, setRepairValues] = useState<Record<string, Record<string, any>>>({});
   const [recheckLoading, setRecheckLoading] = useState(false);
   const [recheckResult, setRecheckResult] = useState<string | null>(null);
 
-  if (!player) {
-    onBack();
-    return null;
-  }
+  const [playerAllEntries, setPlayerAllEntries] = useState<any[]>([]);
+  const [loadingEntries, setLoadingEntries] = useState(true);
 
-  const entries = matchEntries.filter(me => me.playerId === playerId);
+  useEffect(() => {
+    let active = true;
+    const fetchAllPlayerEntries = async () => {
+      setLoadingEntries(true);
+      try {
+        const { data, error } = await supabase
+          .from('match_entries')
+          .select('*')
+          .eq('playerid', playerId);
+        if (error) throw error;
+        if (active && data) {
+          // Map database columns to MatchEntry format
+          const mapped = data.map(e => ({
+            id: e.id,
+            playerId: e.playerid,
+            matchId: e.matchid || '',
+            goals: e.goals || 0,
+            goalsConceded: e.goalsconceded || 0,
+            result: e.result,
+            hattricks: e.hattricks || 0,
+            cleanSheet: e.cleansheet || false,
+            motm: e.motm || false,
+            date: e.date || '',
+            time: e.time || null,
+            notes: e.notes || '',
+            seasonId: e.season_id,
+          }));
+          setPlayerAllEntries(mapped);
+        }
+      } catch (err) {
+        console.error('Error fetching all player entries:', err);
+      } finally {
+        if (active) setLoadingEntries(false);
+      }
+    };
+    fetchAllPlayerEntries();
+    return () => {
+      active = false;
+    };
+  }, [playerId, matchEntries]);
+
+  const entries = playerAllEntries;
 
   // Group player months from match entries
   const playerMonths = useMemo(() => {
@@ -57,7 +102,8 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
 
     for (const season of seasons) {
       const seasonEntries = entries.filter(e => e.seasonId === season.id);
-      if (seasonEntries.length === 0) continue;
+      const hasSeasonStats = playerSeasonStats.some(s => s.playerId === playerId && s.seasonId === season.id);
+      if (seasonEntries.length === 0 && !hasSeasonStats) continue;
 
       let year = new Date(season.start_date).getFullYear();
       if (isNaN(year)) {
@@ -65,63 +111,54 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
         year = match ? parseInt(match[0]) : new Date().getFullYear();
       }
 
-      const monthlyGroups: Record<number, typeof seasonEntries> = {};
-      for (const entry of seasonEntries) {
-        if (!entry.date) continue;
-        const m = parseInt(entry.date.split('-')[1]);
-        if (!isNaN(m)) {
-          if (!monthlyGroups[m]) monthlyGroups[m] = [];
-          monthlyGroups[m].push(entry);
-        }
-      }
-
-      const monthsList = Object.keys(monthlyGroups)
-        .map(Number)
-        .sort((a, b) => a - b)
-        .map(m => {
-          const mEntries = monthlyGroups[m];
-          const win = mEntries.filter(e => e.result === 'win').length;
-          const draw = mEntries.filter(e => e.result === 'draw').length;
-          const loss = mEntries.filter(e => e.result === 'loss').length;
-          const goalsScored = mEntries.reduce((sum, e) => sum + (e.goals || 0), 0);
-          const goalsConceded = mEntries.reduce((sum, e) => sum + (e.goalsConceded || 0), 0);
-          const cleanSheet = mEntries.filter(e => e.cleanSheet).length;
-          const motm = mEntries.filter(e => e.motm).length;
-          const hattricks = mEntries.reduce((sum, e) => sum + (e.hattricks || 0), 0);
-          const matchDates = mEntries.map(e => e.date).filter(Boolean).sort();
-
-          const monthNames = [
-            'January','February','March','April','May','June',
-            'July','August','September','October','November','December'
-          ];
-
-          return {
-            month: m,
-            monthName: monthNames[m - 1] || `Month ${m}`,
-            matches: mEntries.length,
-            win,
-            draw,
-            loss,
-            goalsScored,
-            goalsConceded,
-            cleanSheet,
-            motm,
-            hattricks,
-            matchDates
-          };
+      const monthsList = Array.from({ length: 12 }, (_, i) => {
+        const m = i + 1;
+        const mEntries = seasonEntries.filter(e => {
+          if (!e.date) return false;
+          const monthPart = parseInt(e.date.split('-')[1]);
+          return monthPart === m;
         });
 
-      if (monthsList.length > 0) {
-        result.push({
-          seasonId: season.id,
-          seasonName: season.name,
-          year,
-          months: monthsList
-        });
-      }
+        const win = mEntries.filter(e => e.result === 'win').length;
+        const draw = mEntries.filter(e => e.result === 'draw').length;
+        const loss = mEntries.filter(e => e.result === 'loss').length;
+        const goalsScored = mEntries.reduce((sum, e) => sum + (e.goals || 0), 0);
+        const goalsConceded = mEntries.reduce((sum, e) => sum + (e.goalsConceded || 0), 0);
+        const cleanSheet = mEntries.filter(e => e.cleanSheet).length;
+        const motm = mEntries.filter(e => e.motm).length;
+        const hattricks = mEntries.reduce((sum, e) => sum + (e.hattricks || 0), 0);
+        const matchDates = mEntries.map(e => e.date).filter(Boolean).sort();
+
+        const monthNames = [
+          'January','February','March','April','May','June',
+          'July','August','September','October','November','December'
+        ];
+
+        return {
+          month: m,
+          monthName: monthNames[m - 1],
+          matches: mEntries.length,
+          win,
+          draw,
+          loss,
+          goalsScored,
+          goalsConceded,
+          cleanSheet,
+          motm,
+          hattricks,
+          matchDates
+        };
+      });
+
+      result.push({
+        seasonId: season.id,
+        seasonName: season.name,
+        year,
+        months: monthsList
+      });
     }
     return result;
-  }, [entries, seasons]);
+  }, [entries, seasons, playerSeasonStats, playerId]);
 
   // ── Repair Stats: initialize editable values from current DB stats ──
   const getRepairVal = (seasonId: number, month: number, field: string, fallback: any) => {
