@@ -364,7 +364,7 @@ const checkAndFireMilestones = async (playerId: string): Promise<boolean> => {
 
     const { data: entries } = await supabase
       .from('match_entries')
-      .select('result, goals, cleansheet, hattricks, motm, date, matches(date)')
+      .select('result, goals, cleansheet, hattricks, motm, date, notes, matches(date)')
       .eq('playerid', playerId);
 
     const sorted = ((entries ?? []) as any[])
@@ -393,9 +393,14 @@ const checkAndFireMilestones = async (playerId: string): Promise<boolean> => {
       if (e.cleansheet) rCleansheets++;
       if (e.motm) rMotm++;
       
-      if (e.result === 'win') { rWins++; currentWinStreak++; currentUnbeatenStreak++; }
-      else if (e.result === 'draw') { currentWinStreak = 0; currentUnbeatenStreak++; }
-      else { currentWinStreak = 0; currentUnbeatenStreak = 0; }
+      if (e.result === 'win') { rWins++; }
+      
+      const isGeneratedMatch = e.notes && e.notes.startsWith('Historical - Season');
+      if (!isGeneratedMatch) {
+        if (e.result === 'win') { currentWinStreak++; currentUnbeatenStreak++; }
+        else if (e.result === 'draw') { currentWinStreak = 0; currentUnbeatenStreak++; }
+        else { currentWinStreak = 0; currentUnbeatenStreak = 0; }
+      }
 
       checkThresholds(GOAL_MILESTONES,        rGoals,                'goals',       d, '⚽');
       checkThresholds(MOTM_MILESTONES,        rMotm,                 'motm',        d, '🏅');
