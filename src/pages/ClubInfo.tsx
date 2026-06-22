@@ -229,19 +229,23 @@ export function ClubInfo() {
       {activeTab === 'ranks' && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {filteredRanks.map(rank => (
-            <div key={rank.id} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col shadow-sm hover:border-primary/40 transition-all group">
-              {rank.imageUrl && (
-                <div className="h-44 w-full bg-muted/20 border-b border-border p-4 flex items-center justify-center">
+            <div key={rank.id} className="bg-card border border-border rounded-xl p-6 flex flex-col items-center text-center shadow-sm hover:border-primary/40 transition-all group relative">
+              {rank.imageUrl ? (
+                <div className="w-24 h-24 rounded-full bg-muted/20 border border-border flex items-center justify-center p-3 mb-4 shadow-inner">
                   <img src={rank.imageUrl} alt={rank.title} className="max-h-full max-w-full object-contain" />
                 </div>
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-muted/20 border border-border flex items-center justify-center mb-4 text-muted-foreground">
+                  <Trophy className="w-8 h-8 opacity-40" />
+                </div>
               )}
-              <div className="p-5 flex-1 flex flex-col justify-between">
+              <div className="flex-1 flex flex-col justify-between w-full">
                 <div>
                   <h3 className="font-bold text-[16px] mb-1 text-foreground leading-snug">{rank.title}</h3>
                   {rank.subtitle && <p className="text-[12px] font-medium text-primary mb-3">{rank.subtitle}</p>}
                   <p className="text-[13px] text-muted-foreground leading-relaxed break-words whitespace-pre-wrap">{rank.description || 'No description.'}</p>
                 </div>
-                <div className="flex gap-2 justify-end mt-5 pt-3 border-t border-border/40 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-2 justify-end mt-5 pt-3 border-t border-border/40 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity w-full">
                   <Button size="sm" variant="secondary" onClick={() => openEditRank(rank)}>
                     <Edit className="w-3.5 h-3.5 mr-1" /> Edit
                   </Button>
@@ -266,8 +270,8 @@ export function ClubInfo() {
           {filteredAchievements.map(ach => (
             <div key={ach.id} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col shadow-sm hover:border-primary/40 transition-all group">
               {ach.imageUrl && (
-                <div className="h-44 w-full bg-muted/20 border-b border-border p-4 flex items-center justify-center">
-                  <img src={ach.imageUrl} alt={ach.title} className="max-h-full max-w-full object-contain" />
+                <div className="h-44 w-full bg-muted/20 border-b border-border overflow-hidden flex items-center justify-center">
+                  <img src={ach.imageUrl} alt={ach.title} className="w-full h-full object-cover" />
                 </div>
               )}
               <div className="p-5 flex-1 flex flex-col justify-between">
