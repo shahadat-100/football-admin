@@ -231,8 +231,8 @@ export function ClubInfo() {
           {filteredRanks.map(rank => (
             <div key={rank.id} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col shadow-sm hover:border-primary/40 transition-all group">
               {rank.imageUrl && (
-                <div className="h-44 w-full bg-muted/20 border-b border-border overflow-hidden flex items-center justify-center">
-                  <img src={rank.imageUrl} alt={rank.title} className="w-full h-full object-cover" />
+                <div className="h-44 w-full bg-muted/20 border-b border-border p-4 flex items-center justify-center">
+                  <img src={rank.imageUrl} alt={rank.title} className="max-h-full max-w-full object-contain" />
                 </div>
               )}
               <div className="p-5 flex-1 flex flex-col justify-between">
@@ -266,8 +266,8 @@ export function ClubInfo() {
           {filteredAchievements.map(ach => (
             <div key={ach.id} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col shadow-sm hover:border-primary/40 transition-all group">
               {ach.imageUrl && (
-                <div className="h-44 w-full bg-muted/20 border-b border-border overflow-hidden flex items-center justify-center">
-                  <img src={ach.imageUrl} alt={ach.title} className="w-full h-full object-cover" />
+                <div className="h-44 w-full bg-muted/20 border-b border-border p-4 flex items-center justify-center">
+                  <img src={ach.imageUrl} alt={ach.title} className="max-h-full max-w-full object-contain" />
                 </div>
               )}
               <div className="p-5 flex-1 flex flex-col justify-between">
