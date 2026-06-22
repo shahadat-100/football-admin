@@ -231,11 +231,11 @@ export function ClubInfo() {
           {filteredRanks.map(rank => (
             <div key={rank.id} className="bg-card border border-border rounded-xl p-6 flex flex-col items-center text-center shadow-sm hover:border-primary/40 transition-all group relative">
               {rank.imageUrl ? (
-                <div className="w-24 h-24 rounded-full bg-muted/20 border border-border flex items-center justify-center p-3 mb-4 shadow-inner">
-                  <img src={rank.imageUrl} alt={rank.title} className="max-h-full max-w-full object-contain" />
+                <div className="w-24 h-24 rounded-full bg-muted/20 border-2 border-border overflow-hidden mb-4 shadow-md flex-shrink-0">
+                  <img src={rank.imageUrl} alt={rank.title} className="w-full h-full object-cover" />
                 </div>
               ) : (
-                <div className="w-24 h-24 rounded-full bg-muted/20 border border-border flex items-center justify-center mb-4 text-muted-foreground">
+                <div className="w-24 h-24 rounded-full bg-muted/20 border-2 border-border flex items-center justify-center mb-4 text-muted-foreground flex-shrink-0">
                   <Trophy className="w-8 h-8 opacity-40" />
                 </div>
               )}
