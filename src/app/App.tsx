@@ -58,7 +58,7 @@ export function AppShell() {
             <div className="hidden sm:flex w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-red-800 items-center justify-center shadow-sm">
               <span className="text-white text-lg leading-none">⚽</span>
             </div>
-            <span className="font-semibold text-[15px] tracking-tight text-foreground">Football Admin</span>
+            <span className="font-semibold text-[15px] tracking-tight text-foreground uppercase">THE ENIGMATIC ELITE</span>
           </div>
 
           {/* Navigation - Desktop */}
