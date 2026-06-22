@@ -6,6 +6,7 @@ export * from './ImageUpload';
 export * from './Input';
 export * from './Modal';
 export * from './Select';
+export * from './SearchableSelect';
 export * from './Textarea';
 export * from './Toggle';
 export * from './PieChart';

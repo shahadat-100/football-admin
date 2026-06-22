@@ -1,10 +1,10 @@
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { matchEntryFormSchema } from '../schemas';
 import { MatchEntry, MatchEntryFormValues } from '../types';
 import { Player } from '@/features/players/types';
 import { Match } from '@/features/matches/types';
-import { Button, Input, Select, Toggle, Textarea } from '@/shared/components';
+import { Button, Input, Select, SearchableSelect, Toggle, Textarea } from '@/shared/components';
 import { RESULTS } from '@/shared/lib/constants';
 import { calcHattricks } from '@/shared/lib/utils';
 import { format } from 'date-fns';
@@ -24,6 +24,7 @@ export function MatchEntryForm({ initial, players, matches: _matches, onSave, on
     handleSubmit,
     watch,
     setValue,
+    control,
     formState: { errors },
   } = useForm<MatchEntryFormValues>({
     resolver: zodResolver(matchEntryFormSchema),
@@ -69,10 +70,17 @@ export function MatchEntryForm({ initial, players, matches: _matches, onSave, on
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
       <div className="grid gap-2">
         <label className="text-[12px] font-medium text-gray-400">Player</label>
-        <Select
-          {...register('playerId')}
-          options={players.map(p => ({ label: p.name, value: p.id }))}
-          error={errors.playerId?.message}
+        <Controller
+          name="playerId"
+          control={control}
+          render={({ field }) => (
+            <SearchableSelect
+              value={field.value}
+              onChange={field.onChange}
+              options={players.map(p => ({ label: p.name, value: p.id }))}
+              error={errors.playerId?.message}
+            />
+          )}
         />
       </div>
 
