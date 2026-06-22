@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useFootballStore } from '@/store/footballStore';
 import { useAuthStore } from '@/features/auth/store/useAuthStore';
-import { Hexagon, Users, ClipboardList, Trophy, Newspaper, LogOut, Award, Menu, X } from 'lucide-react';
+import { Hexagon, Users, ClipboardList, Trophy, Newspaper, LogOut, Award, Menu, X, Shield } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 
 const NAV = [
@@ -12,6 +12,7 @@ const NAV = [
   { id: 'matches', label: 'Matches', icon: Trophy },
   { id: 'news', label: 'News', icon: Newspaper },
   { id: 'hall-of-fame', label: 'Hall of Fame', icon: Award },
+  { id: 'club-info', label: 'Club Info', icon: Shield },
 ];
 
 export function AppShell() {
@@ -92,12 +93,7 @@ export function AppShell() {
 
         {/* Right Section */}
         <div className="flex items-center gap-3 sm:gap-4">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Live System</span>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3 sm:pl-4 sm:border-l border-border">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-[12px] font-semibold text-white shadow-sm">
                 {user?.name?.charAt(0) || 'A'}

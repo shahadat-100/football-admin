@@ -6,6 +6,7 @@ import { MatchEntries } from '@/pages/MatchEntries';
 import { Matches } from '@/pages/Matches';
 import { News } from '@/pages/News';
 import { HallOfFame } from '@/pages/HallOfFame';
+import { ClubInfo } from '@/pages/ClubInfo';
 import { LoginForm } from '@/features/auth/components/LoginForm';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { useAuthStore } from '@/features/auth/store/useAuthStore';
@@ -42,6 +43,8 @@ export const router = createBrowserRouter([
       { path: "matches", element: <Matches /> },
       { path: "news", element: <News /> },
       { path: "hall-of-fame", element: <HallOfFame /> },
+      { path: "club-info", element: <ClubInfo /> },
     ]
   }
 ]);
+

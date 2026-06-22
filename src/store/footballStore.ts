@@ -38,7 +38,79 @@ export interface CustomTag {
   createdAt: string;
 }
 
+export interface ClubRule {
+  id: number;
+  createdAt: string;
+  title: string;
+  subtitle: string;
+  description: string;
+}
+
+export interface ClubRank {
+  id: number;
+  createdAt: string;
+  imageUrl: string;
+  title: string;
+  subtitle: string;
+  description: string;
+}
+
+export interface ClubAchievement {
+  id: number;
+  createdAt: string;
+  imageUrl: string;
+  title: string;
+  subtitle: string;
+  description: string;
+}
+
 // ── Database Mapping Helpers ─────────────────────────────────────────
+
+export const mapClubRuleFromDb = (r: any): ClubRule => ({
+  id: r.id,
+  createdAt: r.created_at,
+  title: r.title,
+  subtitle: r.subtitle || '',
+  description: r.description || '',
+});
+
+export const mapClubRuleToDb = (r: any) => ({
+  title: r.title,
+  subtitle: r.subtitle || null,
+  description: r.description || null,
+});
+
+export const mapClubRankFromDb = (r: any): ClubRank => ({
+  id: r.id,
+  createdAt: r.created_at,
+  imageUrl: r.image_url || '',
+  title: r.title,
+  subtitle: r.subtitle || '',
+  description: r.description || '',
+});
+
+export const mapClubRankToDb = (r: any) => ({
+  image_url: r.imageUrl || null,
+  title: r.title,
+  subtitle: r.subtitle || null,
+  description: r.description || null,
+});
+
+export const mapClubAchievementFromDb = (a: any): ClubAchievement => ({
+  id: a.id,
+  createdAt: a.created_at,
+  imageUrl: a.image_url || '',
+  title: a.title,
+  subtitle: a.subtitle || '',
+  description: a.description || '',
+});
+
+export const mapClubAchievementToDb = (a: any) => ({
+  image_url: a.imageUrl || null,
+  title: a.title,
+  subtitle: a.subtitle || null,
+  description: a.description || null,
+});
 
 export const mapPlayerFromDb = (p: any): Player => ({
   id: p.id,
@@ -150,6 +222,9 @@ interface FootballStore {
   hallOfFame: HallOfFameEntry[];
   availableRoles: PlayerRole[];
   availableTags: CustomTag[];
+  clubRules: ClubRule[];
+  clubRanks: ClubRank[];
+  clubAchievements: ClubAchievement[];
 
   // Server-side paginated entries (for MatchEntries page)
   paginatedMatchEntries: MatchEntry[];
@@ -202,7 +277,23 @@ interface FootballStore {
   addHallOfFameEntry: (entry: Omit<HallOfFameEntry, 'id' | 'createdAt'>) => Promise<void>;
   updateHallOfFameEntry: (entry: HallOfFameEntry) => Promise<void>;
   removeHallOfFameEntry: (id: number) => Promise<void>;
+
+  fetchClubRules: () => Promise<void>;
+  addClubRule: (rule: Omit<ClubRule, 'id' | 'createdAt'>) => Promise<void>;
+  updateClubRule: (rule: ClubRule) => Promise<void>;
+  removeClubRule: (id: number) => Promise<void>;
+
+  fetchClubRanks: () => Promise<void>;
+  addClubRank: (rank: Omit<ClubRank, 'id' | 'createdAt'>) => Promise<void>;
+  updateClubRank: (rank: ClubRank) => Promise<void>;
+  removeClubRank: (id: number) => Promise<void>;
+
+  fetchClubAchievements: () => Promise<void>;
+  addClubAchievement: (achievement: Omit<ClubAchievement, 'id' | 'createdAt'>) => Promise<void>;
+  updateClubAchievement: (achievement: ClubAchievement) => Promise<void>;
+  removeClubAchievement: (id: number) => Promise<void>;
 }
+
 
 // ── Upsert Roles & Tags to Junction Tables ───────────────────────────
 
@@ -462,6 +553,9 @@ export const useFootballStore = create<FootballStore>()(
       hallOfFame: [],
       availableRoles: [],
       availableTags: [],
+      clubRules: [],
+      clubRanks: [],
+      clubAchievements: [],
 
       paginatedMatchEntries: [],
       totalMatchEntriesCount: 0,
@@ -481,10 +575,14 @@ export const useFootballStore = create<FootballStore>()(
           (async () => { console.time('fetchPlayers'); await store.fetchPlayers(); console.timeEnd('fetchPlayers'); })(),
           (async () => { console.time('fetchMatches'); await store.fetchMatches(); console.timeEnd('fetchMatches'); })(),
           (async () => { console.time('fetchMatchEntries'); await store.fetchMatchEntries(); console.timeEnd('fetchMatchEntries'); })(),
-          (async () => { console.time('fetchPlayerSeasonStats'); await store.fetchPlayerSeasonStats(); console.timeEnd('fetchPlayerSeasonStats'); })()
+          (async () => { console.time('fetchPlayerSeasonStats'); await store.fetchPlayerSeasonStats(); console.timeEnd('fetchPlayerSeasonStats'); })(),
+          (async () => { console.time('fetchClubRules'); await store.fetchClubRules(); console.timeEnd('fetchClubRules'); })(),
+          (async () => { console.time('fetchClubRanks'); await store.fetchClubRanks(); console.timeEnd('fetchClubRanks'); })(),
+          (async () => { console.time('fetchClubAchievements'); await store.fetchClubAchievements(); console.timeEnd('fetchClubAchievements'); })()
         ]);
         set({ isInitialized: true });
       },
+
 
       fetchPaginatedMatchEntries: async (page, pageSize, searchPlayerIds) => {
         set({ isPaginatedEntriesLoading: true });
@@ -1444,7 +1542,119 @@ export const useFootballStore = create<FootballStore>()(
           alert('Failed to delete entry: ' + error.message);
         }
       },
+
+      fetchClubRules: async () => {
+        const { data, error } = await supabase.from('club_rules').select('*').order('created_at', { ascending: false });
+        if (data) set({ clubRules: data.map(mapClubRuleFromDb) });
+        if (error) console.error('Error fetching club rules:', error);
+      },
+      addClubRule: async (rule) => {
+        const dbData = mapClubRuleToDb(rule);
+        const { data, error } = await supabase.from('club_rules').insert([dbData]).select().single();
+        if (data) {
+          set((state) => ({ clubRules: [mapClubRuleFromDb(data), ...state.clubRules] }));
+        }
+        if (error) {
+          console.error('Error adding club rule:', error);
+          alert('Failed to add rule: ' + error.message);
+        }
+      },
+      updateClubRule: async (rule) => {
+        const dbData = mapClubRuleToDb(rule);
+        const { data, error } = await supabase.from('club_rules').update(dbData).eq('id', rule.id).select().single();
+        if (data) {
+          set((state) => ({ clubRules: state.clubRules.map(x => x.id === rule.id ? mapClubRuleFromDb(data) : x) }));
+        }
+        if (error) {
+          console.error('Error updating club rule:', error);
+          alert('Failed to update rule: ' + error.message);
+        }
+      },
+      removeClubRule: async (id) => {
+        const { error } = await supabase.from('club_rules').delete().eq('id', id);
+        if (!error) {
+          set((state) => ({ clubRules: state.clubRules.filter(x => x.id !== id) }));
+        } else {
+          console.error('Error removing club rule:', error);
+          alert('Failed to delete rule: ' + error.message);
+        }
+      },
+
+      fetchClubRanks: async () => {
+        const { data, error } = await supabase.from('club_ranks').select('*').order('created_at', { ascending: false });
+        if (data) set({ clubRanks: data.map(mapClubRankFromDb) });
+        if (error) console.error('Error fetching club ranks:', error);
+      },
+      addClubRank: async (rank) => {
+        const dbData = mapClubRankToDb(rank);
+        const { data, error } = await supabase.from('club_ranks').insert([dbData]).select().single();
+        if (data) {
+          set((state) => ({ clubRanks: [mapClubRankFromDb(data), ...state.clubRanks] }));
+        }
+        if (error) {
+          console.error('Error adding club rank:', error);
+          alert('Failed to add rank: ' + error.message);
+        }
+      },
+      updateClubRank: async (rank) => {
+        const dbData = mapClubRankToDb(rank);
+        const { data, error } = await supabase.from('club_ranks').update(dbData).eq('id', rank.id).select().single();
+        if (data) {
+          set((state) => ({ clubRanks: state.clubRanks.map(x => x.id === rank.id ? mapClubRankFromDb(data) : x) }));
+        }
+        if (error) {
+          console.error('Error updating club rank:', error);
+          alert('Failed to update rank: ' + error.message);
+        }
+      },
+      removeClubRank: async (id) => {
+        const { error } = await supabase.from('club_ranks').delete().eq('id', id);
+        if (!error) {
+          set((state) => ({ clubRanks: state.clubRanks.filter(x => x.id !== id) }));
+        } else {
+          console.error('Error removing club rank:', error);
+          alert('Failed to delete rank: ' + error.message);
+        }
+      },
+
+      fetchClubAchievements: async () => {
+        const { data, error } = await supabase.from('club_achievements').select('*').order('created_at', { ascending: false });
+        if (data) set({ clubAchievements: data.map(mapClubAchievementFromDb) });
+        if (error) console.error('Error fetching club achievements:', error);
+      },
+      addClubAchievement: async (achievement) => {
+        const dbData = mapClubAchievementToDb(achievement);
+        const { data, error } = await supabase.from('club_achievements').insert([dbData]).select().single();
+        if (data) {
+          set((state) => ({ clubAchievements: [mapClubAchievementFromDb(data), ...state.clubAchievements] }));
+        }
+        if (error) {
+          console.error('Error adding club achievement:', error);
+          alert('Failed to add achievement: ' + error.message);
+        }
+      },
+      updateClubAchievement: async (achievement) => {
+        const dbData = mapClubAchievementToDb(achievement);
+        const { data, error } = await supabase.from('club_achievements').update(dbData).eq('id', achievement.id).select().single();
+        if (data) {
+          set((state) => ({ clubAchievements: state.clubAchievements.map(x => x.id === achievement.id ? mapClubAchievementFromDb(data) : x) }));
+        }
+        if (error) {
+          console.error('Error updating club achievement:', error);
+          alert('Failed to update achievement: ' + error.message);
+        }
+      },
+      removeClubAchievement: async (id) => {
+        const { error } = await supabase.from('club_achievements').delete().eq('id', id);
+        if (!error) {
+          set((state) => ({ clubAchievements: state.clubAchievements.filter(x => x.id !== id) }));
+        } else {
+          console.error('Error removing club achievement:', error);
+          alert('Failed to delete achievement: ' + error.message);
+        }
+      },
     }),
     { enabled: process.env.NODE_ENV !== 'production' }
   )
 );
+
