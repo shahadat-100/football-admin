@@ -1190,7 +1190,7 @@ export const useFootballStore = create<FootballStore>()(
         // Issue 8 fix: limit to 200 most-recent articles — milestone automation can grow this table large
         const { data, error } = await supabase
           .from('news')
-          .select('id, title, content, author, category, hot, date')
+          .select('id, title, content, author, category, hot, date, image')
           .order('date', { ascending: false })
           .limit(200);
         if (data) set({ news: data as NewsArticle[] });
@@ -1199,7 +1199,7 @@ export const useFootballStore = create<FootballStore>()(
       setNews: (news) => set({ news }),
       addNews: async (n) => {
         const { id, ...newsData } = n;
-        const { data, error } = await supabase.from('news').insert([newsData]).select().single();
+        const { data, error } = await supabase.from('news').insert([newsData]).select('id, title, content, author, category, hot, date, image').single();
         if (data) {
           set((state) => ({ news: [...state.news, data as NewsArticle] }));
         }
@@ -1210,7 +1210,7 @@ export const useFootballStore = create<FootballStore>()(
       },
       updateNews: async (n) => {
         const { id, ...newsData } = n;
-        const { data, error } = await supabase.from('news').update(newsData).eq('id', id).select().single();
+        const { data, error } = await supabase.from('news').update(newsData).eq('id', id).select('id, title, content, author, category, hot, date, image').single();
         if (data) {
           set((state) => ({ news: state.news.map(x => x.id === id ? (data as NewsArticle) : x) }));
         }
