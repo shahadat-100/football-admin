@@ -231,6 +231,7 @@ interface FootballStore {
   totalMatchEntriesCount: number;
   globalMatchEntriesCount: number;
   isPaginatedEntriesLoading: boolean;
+  matchEntriesLoaded: boolean; // Issue 12: lazy-load guard
   
   isInitialized: boolean;
   initializeData: () => Promise<void>;
@@ -249,7 +250,7 @@ interface FootballStore {
   updateMatch: (m: Match) => Promise<void>;
   removeMatch: (id: string) => Promise<void>;
   
-  fetchMatchEntries: () => Promise<void>;
+  fetchMatchEntries: (force?: boolean) => Promise<void>;
   setMatchEntries: (e: MatchEntry[]) => void;
   addMatchEntry: (e: MatchEntry) => Promise<void>;
   updateMatchEntry: (e: MatchEntry) => Promise<void>;
@@ -298,56 +299,59 @@ interface FootballStore {
 // ── Upsert Roles & Tags to Junction Tables ───────────────────────────
 
 // Sync player roles via junction table — roles are pre-defined, just look up by name
+// FIX 1: Batch lookup (1 query) + bulk insert (1 query) instead of 2N sequential queries.
 const syncPlayerRoles = async (playerId: string, roles: string[]) => {
-  // Delete existing role links for this player
   await supabase.from('player_player_roles').delete().eq('player_id', playerId);
   if (!roles || roles.length === 0) return;
 
-  for (const name of roles) {
-    if (!name.trim()) continue;
-    // Just SELECT the existing role by name (pre-defined, no insert needed)
-    const { data: roleData } = await supabase
-      .from('player_role')
-      .select('id')
-      .eq('name', name.trim())
-      .single();
-    if (roleData?.id) {
-      await supabase
-        .from('player_player_roles')
-        .insert({ player_id: playerId, role_id: roleData.id });
-    }
-  }
+  const trimmed = roles.map(r => r.trim()).filter(Boolean);
+  if (trimmed.length === 0) return;
+
+  // 1 query: fetch all matching role IDs at once
+  const { data: roleRows } = await supabase
+    .from('player_role')
+    .select('id, name')
+    .in('name', trimmed);
+
+  if (!roleRows?.length) return;
+
+  // 1 query: bulk insert all junction rows
+  await supabase
+    .from('player_player_roles')
+    .insert(roleRows.map(r => ({ player_id: playerId, role_id: r.id })));
 };
 
 // Sync player tags via junction table — tags are pre-defined, just look up by name
+// FIX 1: Batch lookup (1 query) + bulk insert (1 query) instead of 2N sequential queries.
 const syncPlayerTags = async (playerId: string, tags: string[]) => {
-  // Delete existing tag links for this player
   await supabase.from('player_custom_tags').delete().eq('player_id', playerId);
   if (!tags || tags.length === 0) return;
 
-  for (const name of tags) {
-    if (!name.trim()) continue;
-    // Just SELECT the existing tag by name (pre-defined, no insert needed)
-    const { data: tagData } = await supabase
-      .from('custom_tags')
-      .select('id')
-      .eq('name', name.trim())
-      .single();
-    if (tagData?.id) {
-      await supabase
-        .from('player_custom_tags')
-        .insert({ player_id: playerId, tag_id: tagData.id });
-    }
-  }
+  const trimmed = tags.map(t => t.trim()).filter(Boolean);
+  if (trimmed.length === 0) return;
+
+  // 1 query: fetch all matching tag IDs at once
+  const { data: tagRows } = await supabase
+    .from('custom_tags')
+    .select('id, name')
+    .in('name', trimmed);
+
+  if (!tagRows?.length) return;
+
+  // 1 query: bulk insert all junction rows
+  await supabase
+    .from('player_custom_tags')
+    .insert(tagRows.map(t => ({ player_id: playerId, tag_id: t.id })));
 };
 
 // ── Background Aggregation Sync Helper ───────────────────────────────
 
 
 const updatePlayerSeasonStats = async (playerId: string, seasonId: number) => {
+  // FIX 4: Project only the columns needed for aggregation — drops notes, time, date, matchid, etc.
   const { data: entries, error } = await supabase
     .from('match_entries')
-    .select('*, matches(status, date)')
+    .select('goals, goalsconceded, cleansheet, hattricks, motm, result, matches(status)')
     .eq('playerid', playerId)
     .eq('season_id', seasonId);
 
@@ -454,13 +458,14 @@ const checkAndFireMilestones = async (playerId: string): Promise<boolean> => {
       .from('player_season_stats').select('*').eq('player_id', playerId);
     if (!statsRows) return false;
 
+    // FIX 3: Use RPC instead of a full match_entries scan with an embedded join.
+    // The function returns result, goals, cleansheet, hattricks, motm, entry_date, notes
+    // already sorted ascending by date — eliminating the client-side sort and the join.
     const { data: entries } = await supabase
-      .from('match_entries')
-      .select('result, goals, cleansheet, hattricks, motm, date, notes, matches(date)')
-      .eq('playerid', playerId);
+      .rpc('get_player_milestone_data', { p_player_id: playerId });
 
     const sorted = ((entries ?? []) as any[])
-      .map(e => ({ ...e, date: e.date || e.matches?.date }))
+      .map(e => ({ ...e, date: e.entry_date }))
       .filter(e => e.date)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
@@ -561,6 +566,7 @@ export const useFootballStore = create<FootballStore>()(
       totalMatchEntriesCount: 0,
       globalMatchEntriesCount: 0,
       isPaginatedEntriesLoading: false,
+      matchEntriesLoaded: false,
       
       isInitialized: false,
       initializeData: async () => {
@@ -571,6 +577,9 @@ export const useFootballStore = create<FootballStore>()(
         // All subsequent requests reuse the warm connection and are fast.
         await store.fetchSeasons();
         // Step 2: Fetch everything else in parallel on the warm connection.
+        // Note: fetchMatchEntries is intentionally excluded from initializeData — it is
+        // lazily loaded on first call (guarded by matchEntriesLoaded flag). Overview and
+        // the MatchEntries page each trigger it on mount, but only the first call hits Supabase.
         await Promise.all([
           (async () => { console.time('fetchPlayers'); await store.fetchPlayers(); console.timeEnd('fetchPlayers'); })(),
           (async () => { console.time('fetchMatches'); await store.fetchMatches(); console.timeEnd('fetchMatches'); })(),
@@ -588,9 +597,10 @@ export const useFootballStore = create<FootballStore>()(
         set({ isPaginatedEntriesLoading: true });
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
+        // Issue 6 fix: project only columns mapMatchEntryFromDb reads
         let query = supabase
           .from('match_entries')
-          .select('*', { count: 'exact' })
+          .select('id, playerid, matchid, goals, goalsconceded, result, hattricks, cleansheet, motm, date, time, notes, season_id', { count: 'exact' })
           .order('date', { ascending: false })
           .range(from, to);
 
@@ -634,12 +644,13 @@ export const useFootballStore = create<FootballStore>()(
           // Fetch all related tables in parallel to avoid sequential waterfall.
           // We select specific columns but include profileimageurl again. 
           // Future uploads are resized so they won't bloat the payload.
+          // Issue 7 fix: project only needed columns on junction/lookup tables
           const [playersRes, junctionRolesRes, rolesRes, junctionTagsRes, tagsRes] = await Promise.all([
             supabase.from('players').select('id, name, jerseynumber, email, custom_string_tags, createdat, profileimageurl'),
-            supabase.from('player_player_roles').select('*'),
-            supabase.from('player_role').select('*'),
-            supabase.from('player_custom_tags').select('*'),
-            supabase.from('custom_tags').select('*')
+            supabase.from('player_player_roles').select('player_id, role_id'),
+            supabase.from('player_role').select('id, name'),
+            supabase.from('player_custom_tags').select('player_id, tag_id'),
+            supabase.from('custom_tags').select('id, name')
           ]);
 
           if (playersRes.error) throw playersRes.error;
@@ -714,18 +725,20 @@ export const useFootballStore = create<FootballStore>()(
           await syncPlayerRoles(newPlayerId, playerRoles).catch(console.error);
           await syncPlayerTags(newPlayerId, customTags).catch(console.error);
 
-          // Re-fetch this player with joined roles & tags to build correct state
-          const { data: fullPlayer } = await supabase
-            .from('players')
-            .select(`
-              *,
-              player_player_roles(role_id, player_role(name)),
-              player_custom_tags(tag_id, custom_tags(name))
-            `)
-            .eq('id', newPlayerId)
-            .single();
-
-          const newPlayer = mapPlayerFromDb(fullPlayer ?? data);
+          // Issue 10 fix: build the player object from in-memory data — no re-fetch needed.
+          // We already know the roles and tags we just synced.
+          const newPlayer: Player = {
+            id: newPlayerId,
+            name: data.name,
+            profileImageUrl: (data as any).profileimageurl || '',
+            jerseyNumber: (data as any).jerseynumber ?? undefined,
+            email: data.email || '',
+            playerRoles,
+            customTags,
+            customStringTags: Array.isArray((data as any).custom_string_tags) ? (data as any).custom_string_tags : [],
+            createdAt: (data as any).createdat || '',
+            seasons: [],
+          };
           set((state) => ({ players: [...state.players, newPlayer] }));
 
           // Save previous seasons data by generating bulk matches and entries
@@ -831,8 +844,8 @@ export const useFootballStore = create<FootballStore>()(
               await updatePlayerSeasonStats(newPlayerId, seasonId);
             }
 
-            // Sync the store state with database
-            await get().fetchMatchEntries();
+            // Sync the store state with database — force=true bypasses lazy guard after bulk insert
+            await get().fetchMatchEntries(true);
             await get().fetchPlayerSeasonStats();
             // Fire milestones for all the historical data just imported
             const fired = await checkAndFireMilestones(newPlayerId);
@@ -855,18 +868,19 @@ export const useFootballStore = create<FootballStore>()(
           await syncPlayerRoles(p.id, p.playerRoles || []).catch(console.error);
           await syncPlayerTags(p.id, p.customTags || []).catch(console.error);
 
-          // Re-fetch this player with joined roles & tags
-          const { data: fullPlayer } = await supabase
-            .from('players')
-            .select(`
-              *,
-              player_player_roles(role_id, player_role(name)),
-              player_custom_tags(tag_id, custom_tags(name))
-            `)
-            .eq('id', p.id)
-            .single();
-
-          const updated = mapPlayerFromDb(fullPlayer ?? data);
+          // Issue 10 fix: build updated player from in-memory data — no re-fetch needed.
+          const updated: Player = {
+            id: p.id,
+            name: data.name,
+            profileImageUrl: (data as any).profileimageurl || '',
+            jerseyNumber: (data as any).jerseynumber ?? undefined,
+            email: data.email || '',
+            playerRoles: p.playerRoles || [],
+            customTags: p.customTags || [],
+            customStringTags: Array.isArray((data as any).custom_string_tags) ? (data as any).custom_string_tags : [],
+            createdAt: (data as any).createdat || '',
+            seasons: [],
+          };
           set((state) => ({ players: state.players.map(x => x.id === p.id ? updated : x) }));
         }
       },
@@ -1032,19 +1046,23 @@ export const useFootballStore = create<FootballStore>()(
         }
       },
       
-      fetchMatchEntries: async () => {
+      fetchMatchEntries: async (force = false) => {
+        // Issue 12: lazy-load guard — only fetch once. Pass force=true to bypass after bulk inserts.
+        if (!force && get().matchEntriesLoaded) return;
         // Only fetch the most recent 500 entries to prevent memory crashes.
         // Full data is accessed via paginated queries or RPC functions.
+        // Issue 5 fix: project only columns mapMatchEntryFromDb reads
         const { data, error, count } = await supabase
           .from('match_entries')
-          .select('*', { count: 'exact' })
+          .select('id, playerid, matchid, goals, goalsconceded, result, hattricks, cleansheet, motm, date, time, notes, season_id', { count: 'exact' })
           .order('date', { ascending: false })
           .limit(500);
           
         if (data) {
           set({ 
             matchEntries: data.map(mapMatchEntryFromDb),
-            globalMatchEntriesCount: count ?? 0 
+            globalMatchEntriesCount: count ?? 0,
+            matchEntriesLoaded: true,
           });
         }
         if (error) console.error('Error fetching match entries:', error);
@@ -1102,11 +1120,9 @@ export const useFootballStore = create<FootballStore>()(
         const { data, error } = await supabase.from('match_entries').insert([entryData]).select('*, matches(date)').single();
         if (data) {
           const newEntry = mapMatchEntryFromDb(data);
+          // FIX 2: Optimistic insert already keeps local state correct — remove the
+          // full fetchMatchEntries() + fetchPlayerSeasonStats() double-refetch.
           set((state) => ({ matchEntries: [...state.matchEntries, newEntry] }));
-          
-          // Database trigger handles stats sync, just fetch the updated stats
-          await get().fetchPlayerSeasonStats();
-          await get().fetchMatchEntries(); // Refresh match entries completely to ensure everything is in sync
           // Auto-milestone check
           const fired = await checkAndFireMilestones(newEntry.playerId);
           if (fired) await get().fetchNews();
@@ -1132,10 +1148,9 @@ export const useFootballStore = create<FootballStore>()(
         const { data, error } = await supabase.from('match_entries').update(entryData).eq('id', e.id).select('*, matches(date)').single();
         if (data) {
           const updatedEntry = mapMatchEntryFromDb(data);
+          // FIX 2: Optimistic update already keeps local state correct — remove the
+          // full fetchMatchEntries() + fetchPlayerSeasonStats() double-refetch.
           set((state) => ({ matchEntries: state.matchEntries.map(x => x.id === e.id ? updatedEntry : x) }));
-          // Database trigger handles stats sync, just fetch the updated stats
-          await get().fetchPlayerSeasonStats();
-          await get().fetchMatchEntries(); // Refresh match entries completely to ensure everything is in sync
           // Auto-milestone check
           const fired = await checkAndFireMilestones(updatedEntry.playerId);
           if (fired) await get().fetchNews();
@@ -1160,7 +1175,12 @@ export const useFootballStore = create<FootballStore>()(
       },
       
       fetchNews: async () => {
-        const { data, error } = await supabase.from('news').select('*');
+        // Issue 8 fix: limit to 200 most-recent articles — milestone automation can grow this table large
+        const { data, error } = await supabase
+          .from('news')
+          .select('id, title, content, author, category, hot, date')
+          .order('date', { ascending: false })
+          .limit(200);
         if (data) set({ news: data as NewsArticle[] });
         if (error) console.error('Error fetching news:', error);
       },
@@ -1245,21 +1265,20 @@ export const useFootballStore = create<FootballStore>()(
       },
 
       setCurrentSeason: async (id: number) => {
-        // Set all seasons is_current to false
-        const { error: resetError } = await supabase.from('season').update({ is_current: false }).neq('id', id);
-        if (resetError) {
-          console.error('Error resetting current seasons:', resetError);
+        // Issue 11: single atomic RPC instead of two blanket-update queries.
+        // The DB function flips is_current=false for all rows, then is_current=true for the target.
+        const { error } = await supabase.rpc('set_current_season', { p_season_id: id });
+        if (error) {
+          console.error('Error setting current season:', error);
           return;
         }
-
-        // Set specific season is_current to true
-        const { data, error } = await supabase.from('season').update({ is_current: true }).eq('id', id).select().single();
-        if (data) {
-          set((state) => ({
-            seasons: state.seasons.map(s => s.id === id ? { ...s, is_current: true } : { ...s, is_current: false })
-          }));
-        }
-        if (error) console.error('Error setting current season:', error);
+        // Update local state to match — no extra select needed
+        set((state) => ({
+          seasons: state.seasons.map(s => s.id === id
+            ? { ...s, is_current: true }
+            : { ...s, is_current: false }
+          )
+        }));
       },
 
           repairPlayerSeasonStat: async (statId, patch) => {
@@ -1404,8 +1423,8 @@ export const useFootballStore = create<FootballStore>()(
         // 4. Update the season aggregation row
         await updatePlayerSeasonStats(playerId, seasonId);
 
-        // 5. Refresh local store state
-        await get().fetchMatchEntries();
+        // 5. Refresh local store state — force=true bypasses lazy guard after bulk repair
+        await get().fetchMatchEntries(true);
         await get().fetchPlayerSeasonStats();
         const fired = await checkAndFireMilestones(playerId);
         if (fired) await get().fetchNews();
@@ -1427,7 +1446,10 @@ export const useFootballStore = create<FootballStore>()(
       },
 
       fetchPlayerSeasonStats: async () => {
-        const { data, error } = await supabase.from('player_season_stats').select('*');
+        // Issue 9 fix: project only the columns the mapper below actually reads
+        const { data, error } = await supabase
+          .from('player_season_stats')
+          .select('id, player_id, season_id, appearances, goals, cleansheets, hattricks, motmcount, wins, draws, losses, goalsconceded');
         if (data) {
           const seasons = get().seasons;
           set({
