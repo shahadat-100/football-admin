@@ -454,9 +454,8 @@ const checkAndFireMilestones = async (playerId: string): Promise<boolean> => {
     if (!player) return false;
     const playerName = player.name;
 
-    const { data: statsRows } = await supabase
-      .from('player_season_stats').select('*').eq('player_id', playerId);
-    if (!statsRows) return false;
+    // (statsRows fetch removed — it was fetched but never used beyond the null check,
+    // making it a dead round-trip on every milestone evaluation.)
 
     // FIX 3: Use RPC instead of a full match_entries scan with an embedded join.
     // The function returns result, goals, cleansheet, hattricks, motm, entry_date, notes
@@ -1159,7 +1158,20 @@ export const useFootballStore = create<FootballStore>()(
       },
       
       removeMatchEntry: async (id) => {
-        const entry = get().matchEntries.find(x => x.id === id);
+        // Try local cache first (entry is in the 500-row window).
+        // Fall back to a targeted DB fetch for entries outside the window
+        // (e.g. deleted from the paginated MatchEntries page) so that
+        // fetchPlayerSeasonStats and checkAndFireMilestones always run.
+        let entry = get().matchEntries.find(x => x.id === id) as any;
+        if (!entry) {
+          const { data: fallback } = await supabase
+            .from('match_entries')
+            .select('playerid, season_id')
+            .eq('id', id)
+            .single();
+          if (fallback) entry = { playerId: fallback.playerid, seasonId: fallback.season_id };
+        }
+
         const { error } = await supabase.from('match_entries').delete().eq('id', id);
         if (!error) {
           set((state) => ({ matchEntries: state.matchEntries.filter(x => x.id !== id) }));
