@@ -31,18 +31,27 @@ export function ImageUpload({ value, onChange, onRemove, className }: ImageUploa
         const res = await fetch(b64);
         const blob = await res.blob();
         
+        // Compute SHA-256 hash of the file to use as the filename
+        const hashBuffer = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
         // Upload to Supabase 'images' bucket
         const ext = file.name.split('.').pop() || 'jpg';
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+        const fileName = `${hashHex}.${ext}`;
         
-        const { data, error } = await supabase.storage
+        const { error } = await supabase.storage
           .from('images')
           .upload(fileName, blob, { contentType: blob.type, upsert: false });
           
         if (error) {
-          console.error("Upload error:", error);
-          alert("Failed to upload image: " + error.message);
-          return;
+          // If the file already exists, we can safely ignore the error and reuse the existing image
+          const isDuplicate = error.message.toLowerCase().includes('already exists') || error.message.toLowerCase().includes('duplicate');
+          if (!isDuplicate) {
+            console.error("Upload error:", error);
+            alert("Failed to upload image: " + error.message);
+            return;
+          }
         }
         
         // Get public URL
