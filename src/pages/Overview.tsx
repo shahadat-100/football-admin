@@ -45,32 +45,9 @@ export function Overview({ setTab }: OverviewProps) {
     load();
   }, [fetchPlayers, fetchMatches, fetchMatchEntries, fetchPlayerSeasonStats]);
 
-  if (isLoading) {
-    return (
-      <div className="animate-in fade-in duration-300">
-        <div className="mb-10 space-y-2 animate-pulse">
-          <div className="h-6 w-64 bg-muted rounded-md" />
-          <div className="h-4 w-80 bg-muted rounded-md" />
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-card border border-border rounded-xl p-5 space-y-3 animate-pulse">
-              <div className="h-4 w-20 bg-muted rounded-md" />
-              <div className="h-8 w-12 bg-muted rounded-md" />
-            </div>
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-1 h-[320px] bg-card border border-border rounded-xl p-5 animate-pulse" />
-          <div className="lg:col-span-2 h-[320px] bg-card border border-border rounded-xl p-5 animate-pulse" />
-          <div className="lg:col-span-2 h-[320px] bg-card border border-border rounded-xl p-5 animate-pulse" />
-          <div className="lg:col-span-1 h-[320px] bg-card border border-border rounded-xl p-5 animate-pulse" />
-        </div>
-      </div>
-    );
-  }
-
   // ── 1. Stat Cards Data ──
+  // NOTE: All hooks and derived state must be declared BEFORE any early returns
+  // to comply with the Rules of Hooks.
   const liveGoals   = playerSeasonStats.reduce((s, e) => s + (e.goals || 0), 0);
   const liveMatches = playerSeasonStats.reduce((s, e) => s + (e.appearances || 0), 0);
   const liveWins    = playerSeasonStats.reduce((s, e) => s + (e.wins || 0), 0);
@@ -96,7 +73,9 @@ export function Overview({ setTab }: OverviewProps) {
   const histDraws = players.reduce((sum, p) =>
     sum + (p.seasons ?? [])
       .flatMap(s => s.monthlyStats)
-      .reduce((s, m) => s + (m.draw || 0), 0), 0);  const totalGoals   = liveGoals   + histGoals;
+      .reduce((s, m) => s + (m.draw || 0), 0), 0);
+
+  const totalGoals   = liveGoals   + histGoals;
   const totalMatches = liveMatches + histMatches;
   const totalWins    = liveWins    + histWins;
   const totalLosses  = liveLosses  + histLosses;
@@ -156,6 +135,31 @@ export function Overview({ setTab }: OverviewProps) {
   const matchDates = useMemo(() => {
     return matches.map(m => m.date).filter(Boolean) as string[];
   }, [matches]);
+
+  if (isLoading) {
+    return (
+      <div className="animate-in fade-in duration-300">
+        <div className="mb-10 space-y-2 animate-pulse">
+          <div className="h-6 w-64 bg-muted rounded-md" />
+          <div className="h-4 w-80 bg-muted rounded-md" />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-card border border-border rounded-xl p-5 space-y-3 animate-pulse">
+              <div className="h-4 w-20 bg-muted rounded-md" />
+              <div className="h-8 w-12 bg-muted rounded-md" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-1 h-[320px] bg-card border border-border rounded-xl p-5 animate-pulse" />
+          <div className="lg:col-span-2 h-[320px] bg-card border border-border rounded-xl p-5 animate-pulse" />
+          <div className="lg:col-span-2 h-[320px] bg-card border border-border rounded-xl p-5 animate-pulse" />
+          <div className="lg:col-span-1 h-[320px] bg-card border border-border rounded-xl p-5 animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
