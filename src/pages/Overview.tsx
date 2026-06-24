@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useFootballStore } from '@/store/footballStore';
 import { StatCard } from '@/features/overview/components/StatCard';
 import { Badge } from '@/shared/components';
@@ -17,7 +17,58 @@ interface OverviewProps {
 }
 
 export function Overview({ setTab }: OverviewProps) {
-  const { players, matchEntries, matches, playerSeasonStats, seasons } = useFootballStore();
+  const { 
+    players, 
+    matchEntries, 
+    matches, 
+    playerSeasonStats, 
+    seasons,
+    fetchPlayers,
+    fetchMatches,
+    fetchMatchEntries,
+    fetchPlayerSeasonStats
+  } = useFootballStore();
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      await Promise.all([
+        fetchPlayers(),
+        fetchMatches(),
+        fetchMatchEntries(),
+        fetchPlayerSeasonStats(),
+      ]);
+      setIsLoading(false);
+    };
+    load();
+  }, [fetchPlayers, fetchMatches, fetchMatchEntries, fetchPlayerSeasonStats]);
+
+  if (isLoading) {
+    return (
+      <div className="animate-in fade-in duration-300">
+        <div className="mb-10 space-y-2 animate-pulse">
+          <div className="h-6 w-64 bg-muted rounded-md" />
+          <div className="h-4 w-80 bg-muted rounded-md" />
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-card border border-border rounded-xl p-5 space-y-3 animate-pulse">
+              <div className="h-4 w-20 bg-muted rounded-md" />
+              <div className="h-8 w-12 bg-muted rounded-md" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-1 h-[320px] bg-card border border-border rounded-xl p-5 animate-pulse" />
+          <div className="lg:col-span-2 h-[320px] bg-card border border-border rounded-xl p-5 animate-pulse" />
+          <div className="lg:col-span-2 h-[320px] bg-card border border-border rounded-xl p-5 animate-pulse" />
+          <div className="lg:col-span-1 h-[320px] bg-card border border-border rounded-xl p-5 animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   // ── 1. Stat Cards Data ──
   const liveGoals   = playerSeasonStats.reduce((s, e) => s + (e.goals || 0), 0);

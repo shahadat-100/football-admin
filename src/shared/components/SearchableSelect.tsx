@@ -18,6 +18,8 @@ export const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelec
     const [searchTerm, setSearchTerm] = useState('');
     const containerRef = useRef<HTMLDivElement>(null);
 
+    React.useImperativeHandle(ref, () => containerRef.current!);
+
     const selectedOption = options.find((opt) => opt.value === value);
 
     const filteredOptions = options.filter(

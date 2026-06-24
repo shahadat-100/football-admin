@@ -667,7 +667,9 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
 
       <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
         <p className="font-semibold mb-3 text-[13px]">Match Entries & History (Recent 30)</p>
-        {historyEntries.length === 0 ? (
+        {loadingEntries ? (
+          <p className="text-muted-foreground text-[12px] bg-muted/30 p-4 rounded-lg border border-border/50 text-center animate-pulse">Loading history entries...</p>
+        ) : historyEntries.length === 0 ? (
           <p className="text-muted-foreground text-[12px] bg-muted/30 p-4 rounded-lg border border-border/50 text-center">No entries yet. Click "+ Entry" above.</p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-border">

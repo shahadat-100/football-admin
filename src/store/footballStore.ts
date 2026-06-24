@@ -231,7 +231,9 @@ interface FootballStore {
   totalMatchEntriesCount: number;
   globalMatchEntriesCount: number;
   isPaginatedEntriesLoading: boolean;
-  matchEntriesLoaded: boolean; // Issue 12: lazy-load guard
+  matchEntriesLoaded: boolean;
+  globalCounts: Record<string, number>;
+  fetchGlobalCounts: () => Promise<void>;
   
   isInitialized: boolean;
   initializeData: () => Promise<void>;
@@ -566,28 +568,46 @@ export const useFootballStore = create<FootballStore>()(
       globalMatchEntriesCount: 0,
       isPaginatedEntriesLoading: false,
       matchEntriesLoaded: false,
+      globalCounts: {
+        players: 0,
+        matches: 0,
+        news: 0,
+        'hall-of-fame': 0,
+      },
+
+      fetchGlobalCounts: async () => {
+        try {
+          const [playersRes, matchesRes, newsRes, hofRes] = await Promise.all([
+            supabase.from('players').select('id', { count: 'exact', head: true }),
+            supabase.from('matches').select('id', { count: 'exact', head: true }),
+            supabase.from('news').select('id', { count: 'exact', head: true }),
+            supabase.from('hall_of_frame').select('id', { count: 'exact', head: true }),
+          ]);
+          
+          set({
+            globalCounts: {
+              players: playersRes.count || 0,
+              matches: matchesRes.count || 0,
+              news: newsRes.count || 0,
+              'hall-of-fame': hofRes.count || 0,
+            }
+          });
+        } catch (err) {
+          console.error('Error fetching global counts:', err);
+        }
+      },
       
       isInitialized: false,
       initializeData: async () => {
         // Smart caching: skip if already initialized
         if (get().isInitialized) return;
         const store = get();
-        // Step 1: Fetch seasons first — this wakes up Supabase free tier cold start.
-        // All subsequent requests reuse the warm connection and are fast.
-        await store.fetchSeasons();
-        // Step 2: Fetch everything else in parallel on the warm connection.
-        // Note: fetchMatchEntries is intentionally excluded from initializeData — it is
-        // lazily loaded on first call (guarded by matchEntriesLoaded flag). Overview and
-        // the MatchEntries page each trigger it on mount, but only the first call hits Supabase.
+        // Step 1: Fetch seasons first and fetch global counts for navigation badges
         await Promise.all([
-          (async () => { console.time('fetchPlayers'); await store.fetchPlayers(); console.timeEnd('fetchPlayers'); })(),
-          (async () => { console.time('fetchMatches'); await store.fetchMatches(); console.timeEnd('fetchMatches'); })(),
-          (async () => { console.time('fetchMatchEntries'); await store.fetchMatchEntries(); console.timeEnd('fetchMatchEntries'); })(),
-          (async () => { console.time('fetchPlayerSeasonStats'); await store.fetchPlayerSeasonStats(); console.timeEnd('fetchPlayerSeasonStats'); })(),
-          (async () => { console.time('fetchClubRules'); await store.fetchClubRules(); console.timeEnd('fetchClubRules'); })(),
-          (async () => { console.time('fetchClubRanks'); await store.fetchClubRanks(); console.timeEnd('fetchClubRanks'); })(),
-          (async () => { console.time('fetchClubAchievements'); await store.fetchClubAchievements(); console.timeEnd('fetchClubAchievements'); })()
+          store.fetchSeasons(),
+          store.fetchGlobalCounts(),
         ]);
+        
         set({ isInitialized: true });
       },
 
@@ -639,6 +659,7 @@ export const useFootballStore = create<FootballStore>()(
       },
       
       fetchPlayers: async () => {
+        if (get().players.length > 0) return;
         try {
           // Fetch all related tables in parallel to avoid sequential waterfall.
           // We select specific columns but include profileimageurl again. 
@@ -708,7 +729,7 @@ export const useFootballStore = create<FootballStore>()(
         const { seasons, ...profileData } = p as any;
         const playerData = mapPlayerToDb(profileData);
         
-        const { data, error } = await supabase.from('players').insert([playerData]).select().single();
+        const { data, error } = await supabase.from('players').insert([playerData]).select('id, name, jerseynumber, email, custom_string_tags, createdat, profileimageurl').single();
         if (error) {
           console.error('Error adding player:', error);
           alert('Failed to save player: ' + error.message);
@@ -763,11 +784,17 @@ export const useFootballStore = create<FootballStore>()(
                     start_date: `${season.year}-01-01T00:00:00Z`,
                     is_current: false
                   })
-                  .select()
+                  .select('id')
                   .single();
                 if (newSeason) {
                   seasonId = newSeason.id;
-                  set(state => ({ seasons: [...state.seasons, newSeason] }));
+                  const fullNewSeason = {
+                    id: newSeason.id,
+                    name: seasonName,
+                    start_date: `${season.year}-01-01T00:00:00Z`,
+                    is_current: false
+                  };
+                  set(state => ({ seasons: [...state.seasons, fullNewSeason] }));
                 } else {
                   continue;
                 }
@@ -856,7 +883,7 @@ export const useFootballStore = create<FootballStore>()(
       
       updatePlayer: async (p) => {
         const playerData = mapPlayerToDb(p);
-        const { data, error } = await supabase.from('players').update(playerData).eq('id', p.id).select().single();
+        const { data, error } = await supabase.from('players').update(playerData).eq('id', p.id).select('id, name, jerseynumber, email, custom_string_tags, createdat, profileimageurl').single();
         if (error) {
           console.error('Error updating player:', error);
           alert('Failed to update player: ' + error.message);
@@ -899,7 +926,8 @@ export const useFootballStore = create<FootballStore>()(
       },
       
       fetchMatches: async () => {
-        const { data, error } = await supabase.from('matches').select('*, competitions(name)');
+        if (get().matches.length > 0) return;
+        const { data, error } = await supabase.from('matches').select('id, season_id, hometeam, awayteam, homescore, awayscore, date, time, status, competition_id, competitions(name)');
         if (data) {
           set({ matches: data.map(mapMatchFromDb) });
         }
@@ -918,11 +946,17 @@ export const useFootballStore = create<FootballStore>()(
             const { data: newComp } = await supabase
               .from('competitions')
               .insert({ name: m.competition })
-              .select()
+              .select('id')
               .single();
             if (newComp) {
               competitionId = newComp.id;
-              set(state => ({ competitions: [...state.competitions, newComp] }));
+              const fullNewComp = {
+                id: newComp.id,
+                name: m.competition,
+                isActive: true,
+                createdAt: new Date().toISOString()
+              };
+              set(state => ({ competitions: [...state.competitions, fullNewComp] }));
             }
           }
         }
@@ -943,7 +977,7 @@ export const useFootballStore = create<FootballStore>()(
               start_date: `${year}-01-01T00:00:00Z`,
               is_current: false
             })
-            .select()
+            .select('id, name, is_current, start_date')
             .single();
 
           if (seasonError || !newSeason) {
@@ -962,7 +996,7 @@ export const useFootballStore = create<FootballStore>()(
           competitionId,
         });
 
-        const { data, error } = await supabase.from('matches').insert([matchData]).select('*, competitions(name)').single();
+        const { data, error } = await supabase.from('matches').insert([matchData]).select('id, season_id, hometeam, awayteam, homescore, awayscore, date, time, status, competition_id, competitions(name)').single();
         if (data) {
           set((state) => ({ matches: [...state.matches, mapMatchFromDb(data)] }));
         }
@@ -982,11 +1016,17 @@ export const useFootballStore = create<FootballStore>()(
             const { data: newComp } = await supabase
               .from('competitions')
               .insert({ name: m.competition })
-              .select()
+              .select('id')
               .single();
             if (newComp) {
               competitionId = newComp.id;
-              set(state => ({ competitions: [...state.competitions, newComp] }));
+              const fullNewComp = {
+                id: newComp.id,
+                name: m.competition,
+                isActive: true,
+                createdAt: new Date().toISOString()
+              };
+              set(state => ({ competitions: [...state.competitions, fullNewComp] }));
             }
           }
         }
@@ -1007,7 +1047,7 @@ export const useFootballStore = create<FootballStore>()(
               start_date: `${year}-01-01T00:00:00Z`,
               is_current: false
             })
-            .select()
+            .select('id, name, is_current, start_date')
             .single();
 
           if (seasonError || !newSeason) {
@@ -1026,7 +1066,7 @@ export const useFootballStore = create<FootballStore>()(
           competitionId,
         });
 
-        const { data, error } = await supabase.from('matches').update(matchData).eq('id', m.id).select('*, competitions(name)').single();
+        const { data, error } = await supabase.from('matches').update(matchData).eq('id', m.id).select('id, season_id, hometeam, awayteam, homescore, awayscore, date, time, status, competition_id, competitions(name)').single();
         if (data) {
           set((state) => ({ matches: state.matches.map(x => x.id === m.id ? mapMatchFromDb(data) : x) }));
         }
@@ -1097,7 +1137,7 @@ export const useFootballStore = create<FootballStore>()(
                 start_date: `${year}-01-01T00:00:00Z`,
                 is_current: false
               })
-              .select()
+              .select('id, name, is_current, start_date')
               .single();
 
             if (seasonError || !newSeason) {
@@ -1116,7 +1156,7 @@ export const useFootballStore = create<FootballStore>()(
           date: entryDate || new Date().toISOString().split('T')[0]
         });
 
-        const { data, error } = await supabase.from('match_entries').insert([entryData]).select('*, matches(date)').single();
+        const { data, error } = await supabase.from('match_entries').insert([entryData]).select('id, playerid, matchid, goals, goalsconceded, result, hattricks, cleansheet, motm, date, time, notes, season_id').single();
         if (data) {
           const newEntry = mapMatchEntryFromDb(data);
           // FIX 2: Optimistic insert already keeps local state correct — remove the
@@ -1144,7 +1184,7 @@ export const useFootballStore = create<FootballStore>()(
           seasonId,
         });
         
-        const { data, error } = await supabase.from('match_entries').update(entryData).eq('id', e.id).select('*, matches(date)').single();
+        const { data, error } = await supabase.from('match_entries').update(entryData).eq('id', e.id).select('id, playerid, matchid, goals, goalsconceded, result, hattricks, cleansheet, motm, date, time, notes, season_id').single();
         if (data) {
           const updatedEntry = mapMatchEntryFromDb(data);
           // FIX 2: Optimistic update already keeps local state correct — remove the
@@ -1187,6 +1227,7 @@ export const useFootballStore = create<FootballStore>()(
       },
       
       fetchNews: async () => {
+        if (get().news.length > 0) return;
         // Issue 8 fix: limit to 200 most-recent articles — milestone automation can grow this table large
         const { data, error } = await supabase
           .from('news')
@@ -1230,7 +1271,8 @@ export const useFootballStore = create<FootballStore>()(
       },
 
       fetchSeasons: async () => {
-        const { data, error } = await supabase.from('season').select('*').order('name', { ascending: true });
+        if (get().seasons.length > 0) return;
+        const { data, error } = await supabase.from('season').select('id, name, is_current, start_date').order('name', { ascending: true });
         if (data) {
           set({ seasons: data as SeasonDb[] });
 
@@ -1244,7 +1286,7 @@ export const useFootballStore = create<FootballStore>()(
                 is_current: true,
                 start_date: new Date().toISOString()
               })
-              .select()
+              .select('id, name, is_current, start_date')
               .single();
             if (newSeason) {
               set({ seasons: [newSeason as SeasonDb] });
@@ -1262,7 +1304,7 @@ export const useFootballStore = create<FootballStore>()(
             start_date: new Date().toISOString(),
             is_current: false
           })
-          .select()
+          .select('id, name, is_current, start_date')
           .single();
 
         if (data) {
@@ -1458,6 +1500,7 @@ export const useFootballStore = create<FootballStore>()(
       },
 
       fetchPlayerSeasonStats: async () => {
+        if (get().playerSeasonStats.length > 0) return;
         // Issue 9 fix: project only the columns the mapper below actually reads
         const { data, error } = await supabase
           .from('player_season_stats')
@@ -1489,17 +1532,26 @@ export const useFootballStore = create<FootballStore>()(
       },
 
       fetchCompetitions: async () => {
-        const { data, error } = await supabase.from('competitions').select('*');
+        if (get().competitions.length > 0) return;
+        const { data, error } = await supabase.from('competitions').select('id, name, is_active, created_at');
         if (data) {
-          set({ competitions: data as Competition[] });
+          set({
+            competitions: data.map(c => ({
+              id: c.id,
+              name: c.name,
+              isActive: c.is_active,
+              createdAt: c.created_at
+            }))
+          });
         }
         if (error) console.error('Error fetching competitions:', error);
       },
 
       fetchAvailableRoles: async () => {
+        if (get().availableRoles.length > 0) return;
         const { data, error } = await supabase
           .from('player_role')
-          .select('*')
+          .select('id, name, status, created_at')
           .eq('status', true)
           .order('name', { ascending: true });
         if (data) {
@@ -1516,9 +1568,10 @@ export const useFootballStore = create<FootballStore>()(
       },
 
       fetchAvailableTags: async () => {
+        if (get().availableTags.length > 0) return;
         const { data, error } = await supabase
           .from('custom_tags')
-          .select('*')
+          .select('id, name, status, created_at')
           .eq('status', true)
           .order('name', { ascending: true });
         if (data) {
@@ -1536,7 +1589,8 @@ export const useFootballStore = create<FootballStore>()(
 
 
       fetchHallOfFame: async () => {
-        const { data, error } = await supabase.from('hall_of_frame').select('*');
+        if (get().hallOfFame.length > 0) return;
+        const { data, error } = await supabase.from('hall_of_frame').select('id, created_at, player_id, category, season_text, sub_title, descriptions');
         if (data) {
           set({ hallOfFame: data.map(mapHallOfFameFromDb) });
         }
@@ -1545,7 +1599,7 @@ export const useFootballStore = create<FootballStore>()(
 
       addHallOfFameEntry: async (entry) => {
         const dbData = mapHallOfFameToDb(entry);
-        const { data, error } = await supabase.from('hall_of_frame').insert([dbData]).select().single();
+        const { data, error } = await supabase.from('hall_of_frame').insert([dbData]).select('id, created_at, player_id, category, season_text, sub_title, descriptions').single();
         if (data) {
           set((state) => ({ hallOfFame: [...state.hallOfFame, mapHallOfFameFromDb(data)] }));
         }
@@ -1557,7 +1611,7 @@ export const useFootballStore = create<FootballStore>()(
 
       updateHallOfFameEntry: async (entry) => {
         const dbData = mapHallOfFameToDb(entry);
-        const { data, error } = await supabase.from('hall_of_frame').update(dbData).eq('id', entry.id).select().single();
+        const { data, error } = await supabase.from('hall_of_frame').update(dbData).eq('id', entry.id).select('id, created_at, player_id, category, season_text, sub_title, descriptions').single();
         if (data) {
           set((state) => ({ hallOfFame: state.hallOfFame.map(x => x.id === entry.id ? mapHallOfFameFromDb(data) : x) }));
         }
@@ -1578,13 +1632,14 @@ export const useFootballStore = create<FootballStore>()(
       },
 
       fetchClubRules: async () => {
-        const { data, error } = await supabase.from('club_rules').select('*').order('created_at', { ascending: false });
+        if (get().clubRules.length > 0) return;
+        const { data, error } = await supabase.from('club_rules').select('id, title, subtitle, description, created_at').order('created_at', { ascending: false });
         if (data) set({ clubRules: data.map(mapClubRuleFromDb) });
         if (error) console.error('Error fetching club rules:', error);
       },
       addClubRule: async (rule) => {
         const dbData = mapClubRuleToDb(rule);
-        const { data, error } = await supabase.from('club_rules').insert([dbData]).select().single();
+        const { data, error } = await supabase.from('club_rules').insert([dbData]).select('id, title, subtitle, description, created_at').single();
         if (data) {
           set((state) => ({ clubRules: [mapClubRuleFromDb(data), ...state.clubRules] }));
         }
@@ -1595,7 +1650,7 @@ export const useFootballStore = create<FootballStore>()(
       },
       updateClubRule: async (rule) => {
         const dbData = mapClubRuleToDb(rule);
-        const { data, error } = await supabase.from('club_rules').update(dbData).eq('id', rule.id).select().single();
+        const { data, error } = await supabase.from('club_rules').update(dbData).eq('id', rule.id).select('id, title, subtitle, description, created_at').single();
         if (data) {
           set((state) => ({ clubRules: state.clubRules.map(x => x.id === rule.id ? mapClubRuleFromDb(data) : x) }));
         }
@@ -1615,13 +1670,14 @@ export const useFootballStore = create<FootballStore>()(
       },
 
       fetchClubRanks: async () => {
-        const { data, error } = await supabase.from('club_ranks').select('*').order('created_at', { ascending: false });
+        if (get().clubRanks.length > 0) return;
+        const { data, error } = await supabase.from('club_ranks').select('id, rank_name, requirements, benefits, created_at').order('created_at', { ascending: false });
         if (data) set({ clubRanks: data.map(mapClubRankFromDb) });
         if (error) console.error('Error fetching club ranks:', error);
       },
       addClubRank: async (rank) => {
         const dbData = mapClubRankToDb(rank);
-        const { data, error } = await supabase.from('club_ranks').insert([dbData]).select().single();
+        const { data, error } = await supabase.from('club_ranks').insert([dbData]).select('id, rank_name, requirements, benefits, created_at').single();
         if (data) {
           set((state) => ({ clubRanks: [mapClubRankFromDb(data), ...state.clubRanks] }));
         }
@@ -1632,7 +1688,7 @@ export const useFootballStore = create<FootballStore>()(
       },
       updateClubRank: async (rank) => {
         const dbData = mapClubRankToDb(rank);
-        const { data, error } = await supabase.from('club_ranks').update(dbData).eq('id', rank.id).select().single();
+        const { data, error } = await supabase.from('club_ranks').update(dbData).eq('id', rank.id).select('id, rank_name, requirements, benefits, created_at').single();
         if (data) {
           set((state) => ({ clubRanks: state.clubRanks.map(x => x.id === rank.id ? mapClubRankFromDb(data) : x) }));
         }
@@ -1652,13 +1708,13 @@ export const useFootballStore = create<FootballStore>()(
       },
 
       fetchClubAchievements: async () => {
-        const { data, error } = await supabase.from('club_achievements').select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('club_achievements').select('id, title, description, date, type, created_at').order('created_at', { ascending: false });
         if (data) set({ clubAchievements: data.map(mapClubAchievementFromDb) });
         if (error) console.error('Error fetching club achievements:', error);
       },
       addClubAchievement: async (achievement) => {
         const dbData = mapClubAchievementToDb(achievement);
-        const { data, error } = await supabase.from('club_achievements').insert([dbData]).select().single();
+        const { data, error } = await supabase.from('club_achievements').insert([dbData]).select('id, title, description, date, type, created_at').single();
         if (data) {
           set((state) => ({ clubAchievements: [mapClubAchievementFromDb(data), ...state.clubAchievements] }));
         }
@@ -1669,7 +1725,7 @@ export const useFootballStore = create<FootballStore>()(
       },
       updateClubAchievement: async (achievement) => {
         const dbData = mapClubAchievementToDb(achievement);
-        const { data, error } = await supabase.from('club_achievements').update(dbData).eq('id', achievement.id).select().single();
+        const { data, error } = await supabase.from('club_achievements').update(dbData).eq('id', achievement.id).select('id, title, description, date, type, created_at').single();
         if (data) {
           set((state) => ({ clubAchievements: state.clubAchievements.map(x => x.id === achievement.id ? mapClubAchievementFromDb(data) : x) }));
         }
