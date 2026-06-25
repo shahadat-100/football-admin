@@ -260,7 +260,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
 
   // Points calculation helper (matching PointsLeaderboard)
   const calcSeasonPoints = (s: any) => 
-    (s.wins * 3) + s.draws - s.losses + s.goals - s.goalsConceded + (s.motmCount * 2) + s.hattricks;
+    (s.wins * 10) + (s.draws * 5) - (s.losses * 3) + s.goals - s.goalsConceded + (s.motmCount * 4) + s.hattricks;
 
   // Compute Leaderboard Rank based on total points
   const currentRank = useMemo(() => {
