@@ -538,7 +538,7 @@ const checkAndFireMilestones = async (playerId: string): Promise<boolean> => {
         title:    _milestoneTitle(playerName, key, t, emoji),
         content:  _milestoneContent(playerName, key, t),
         author:   'Club Records',
-        category: 'Player',
+        category: 'Milestone',
         hot:      true,
         date:     date, // EXACT date it happened
       };
