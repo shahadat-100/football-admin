@@ -452,9 +452,12 @@ const _milestoneContent = (name: string, key: string, n: number): string => {
 
 const checkAndFireMilestones = async (playerId: string): Promise<boolean> => {
   try {
-    const { data: player } = await supabase.from('players').select('name').eq('id', playerId).single();
+    const { data: player } = await supabase.from('players').select('name, profileimageurl').eq('id', playerId).single();
     if (!player) return false;
     const playerName = player.name;
+    // Use the player's existing profile image URL for the news article.
+    // We do NOT upload or copy the image — just reference the same URL already in storage.
+    const playerImageUrl: string | null = (player as any).profileimageurl || null;
 
     // (statsRows fetch removed — it was fetched but never used beyond the null check,
     // making it a dead round-trip on every milestone evaluation.)
@@ -529,14 +532,20 @@ const checkAndFireMilestones = async (playerId: string): Promise<boolean> => {
       });
       if (logErr) continue;
 
-      await supabase.from('news').insert({
+      // Attach the player's existing profile image as the news image.
+      // The URL is already persisted in the players table — no re-upload needed.
+      const newsPayload: Record<string, any> = {
         title:    _milestoneTitle(playerName, key, t, emoji),
         content:  _milestoneContent(playerName, key, t),
         author:   'Club Records',
         category: 'Player',
         hot:      true,
         date:     date, // EXACT date it happened
-      });
+      };
+      if (playerImageUrl) {
+        newsPayload.image = playerImageUrl;
+      }
+      await supabase.from('news').insert(newsPayload);
       firedAny = true;
     }
     return firedAny;
