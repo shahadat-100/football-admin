@@ -28,7 +28,7 @@ export function NewsForm({ initial, onSave, onClose }: NewsFormProps) {
       title: initial?.title ?? '',
       content: initial?.content ?? '',
       author: initial?.author ?? 'Admin',
-      category: initial?.category ?? 'General',
+      category: initial?.category ?? 'Milestone',
       date: initial?.date ?? format(new Date(), 'yyyy-MM-dd'),
       hot: initial?.hot ?? false,
     },

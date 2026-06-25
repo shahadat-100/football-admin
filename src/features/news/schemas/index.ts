@@ -8,7 +8,7 @@ export const newsSchema = z.object({
   author: z.string(),
   hot: z.boolean().default(false),
   date: z.string(),
-  category: z.enum(NEWS_CATEGORIES as unknown as [string, ...string[]]),
+  category: z.enum(NEWS_CATEGORIES as unknown as [string, ...string[]]).default('Milestone'),
   image: z.string().optional(),
   created_at: z.string().optional(),
 });

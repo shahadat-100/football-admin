@@ -2,7 +2,7 @@ export const POSITIONS = ['Forward', 'Striker', 'Winger', 'Midfielder', 'Defende
 export const RESULTS = ['win', 'draw', 'loss'] as const;
 export const MATCH_STATUSES = ['upcoming', 'live', 'finished', 'cancelled'] as const;
 export const COMPETITIONS = ['Premier League', 'Champions League', 'FA Cup', 'EFL Cup', 'La Liga', 'Bundesliga', 'Serie A', 'Ligue 1'];
-export const NEWS_CATEGORIES = ['General', 'Player', 'League', 'Transfer', 'Injury'] as const;
+export const NEWS_CATEGORIES = ['Milestone', 'General', 'Player', 'League', 'Transfer'] as const;
 
 export const RESULT_BADGE = {
   win: { bg: '#064e3b', c: '#6ee7b7' },
