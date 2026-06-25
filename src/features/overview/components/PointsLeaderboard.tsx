@@ -51,10 +51,11 @@ export function PointsLeaderboard({ players, seasons, playerSeasonStats }: Point
 
   // 1. Fetch Weekly Data
   useEffect(() => {
+    const lastDayOfCurrentMonth = new Date(currentYear, currentMonthIndex + 1, 0).getDate();
     let activeWeekStart = 1, activeWeekEnd = 7, activeWeekName = 'Week 1';
     if (currentDay >= 8  && currentDay <= 14) { activeWeekStart = 8;  activeWeekEnd = 14; activeWeekName = 'Week 2'; }
     else if (currentDay >= 15 && currentDay <= 21) { activeWeekStart = 15; activeWeekEnd = 21; activeWeekName = 'Week 3'; }
-    else if (currentDay >= 22) { activeWeekStart = 22; activeWeekEnd = 31; activeWeekName = 'Week 4'; }
+    else if (currentDay >= 22) { activeWeekStart = 22; activeWeekEnd = lastDayOfCurrentMonth; activeWeekName = 'Week 4'; }
 
     // Use current month/year for the week
     const pad = (n: number) => n.toString().padStart(2, '0');
