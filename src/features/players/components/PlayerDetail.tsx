@@ -397,11 +397,23 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
         <span className="text-[12px] font-semibold">{player.name}</span>
       </div>
 
-      <div className="bg-card border border-border rounded-xl p-5 mb-4 shadow-sm">
-        <div className="flex flex-col lg:flex-row gap-8 items-start justify-between">
-          <div className="flex gap-5 items-center flex-wrap flex-1">
-            <Avatar name={player.name} size={100} src={player.profileImageUrl} />
-            <div className="flex-1">
+      <div className="bg-card border border-border rounded-xl mb-4 shadow-sm overflow-hidden relative">
+        {/* Cover Image Banner */}
+        {player.coverImageUrl ? (
+          <div 
+            className="h-40 w-full bg-cover bg-center" 
+            style={{ backgroundImage: `url(${player.coverImageUrl})` }}
+          />
+        ) : (
+          <div className="h-24 w-full bg-muted" />
+        )}
+
+        <div className="p-5 flex flex-col lg:flex-row gap-8 items-start justify-between">
+          <div className="flex gap-5 items-end flex-wrap flex-1 -mt-16 relative z-10">
+            <div className="rounded-full border-4 border-card bg-card overflow-hidden shrink-0">
+              <Avatar name={player.name} size={110} src={player.profileImageUrl} />
+            </div>
+            <div className="flex-1 pb-1">
               <div className="flex justify-between flex-wrap gap-3">
                 <div>
                   <h2 className="font-bold text-[26px]">{player.name}</h2>

@@ -48,6 +48,7 @@ export const playerSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Name is required"),
   profileImageUrl: z.string().optional(),
+  coverImageUrl: z.string().optional(),
   jerseyNumber: z.number().optional(),
   playerRoles: z.array(z.string()).default([]),
   customTags: z.array(z.string()).default([]),

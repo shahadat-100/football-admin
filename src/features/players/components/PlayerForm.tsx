@@ -44,6 +44,7 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
     defaultValues: {
       name: initial?.name ?? '',
       profileImageUrl: initial?.profileImageUrl ?? '',
+      coverImageUrl: initial?.coverImageUrl ?? '',
       jerseyNumber: initial?.jerseyNumber ?? '',
       email: initial?.email ?? '',
       playerRoles: initial?.playerRoles ?? [],
@@ -113,6 +114,16 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
           value={watch('profileImageUrl')}
           onChange={(val) => setValue('profileImageUrl', val || '')}
           onRemove={() => setValue('profileImageUrl', '')}
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <label className="text-[12px] font-medium text-gray-400">Cover Image</label>
+        <ImageUpload
+          value={watch('coverImageUrl')}
+          onChange={(val) => setValue('coverImageUrl', val || '')}
+          onRemove={() => setValue('coverImageUrl', '')}
+          className="w-full max-w-sm"
         />
       </div>
 
