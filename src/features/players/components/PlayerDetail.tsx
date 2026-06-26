@@ -398,127 +398,107 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       </div>
 
       {/* ── Player Overview Hero Card ─────────────────────────── */}
-      <div className="mb-4 rounded-2xl overflow-hidden border border-border shadow-sm grid grid-cols-1 lg:grid-cols-10 bg-card">
-        
-        {/* Left Side: Player Info + Cover Image Background */}
+      <div className="mb-6 rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-card">
+
+        {/* ── COVER IMAGE BANNER ── */}
         <div
-          className="lg:col-span-7 relative p-6 flex flex-col sm:flex-row gap-5 items-start"
-          style={
-            player.coverImageUrl
-              ? { backgroundImage: `url(${player.coverImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-              : {}
-          }
+          className="relative w-full overflow-hidden"
+          style={{ height: player.coverImageUrl ? '260px' : '0px' }}
         >
-          {/* Transparent/dimming overlay without blur to keep cover image clear */}
           {player.coverImageUrl && (
-            <div className="absolute inset-0 bg-black/45 pointer-events-none" />
+            <>
+              <img
+                src={player.coverImageUrl}
+                alt="cover"
+                className="w-full h-full object-cover object-center"
+                style={{ display: 'block' }}
+              />
+              {/* Bottom gradient so info panel blends in */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: 'linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.55) 100%)'
+                }}
+              />
+            </>
           )}
+        </div>
 
-          <div className="relative z-10 flex gap-5 items-center flex-wrap w-full">
-            {/* Avatar */}
+        {/* ── MAIN CONTENT PANEL ── */}
+        <div className="relative grid grid-cols-1 lg:grid-cols-10">
+
+          {/* LEFT: Player info */}
+          <div className="lg:col-span-7 px-7 pb-7 pt-0">
+
+            {/* Avatar row — overlaps cover image */}
             <div
-              className="rounded-full overflow-hidden shrink-0"
-              style={{
-                border: player.coverImageUrl ? '4px solid rgba(255,255,255,0.4)' : '4px solid var(--border)',
-                boxShadow: player.coverImageUrl ? '0 0 20px rgba(0,0,0,0.1)' : 'none',
-              }}
+              className="flex items-end gap-5 flex-wrap"
+              style={{ marginTop: player.coverImageUrl ? '-52px' : '28px' }}
             >
-              <Avatar name={player.name} size={110} src={player.profileImageUrl} />
-            </div>
+              {/* Avatar with golden ring */}
+              <div
+                className="rounded-full overflow-hidden shrink-0 shadow-2xl"
+                style={{
+                  width: 104,
+                  height: 104,
+                  border: '3px solid rgba(251,191,36,0.7)',
+                  boxShadow: '0 0 0 4px rgba(251,191,36,0.18), 0 8px 32px rgba(0,0,0,0.45)',
+                }}
+              >
+                <Avatar name={player.name} size={104} src={player.profileImageUrl} />
+              </div>
 
-            <div className={`flex-1 p-5 rounded-2xl ${player.coverImageUrl ? 'backdrop-blur-md bg-background/70 border border-border/40 shadow-lg' : ''}`}>
-              <div className="flex justify-between flex-wrap gap-3">
+              {/* Name / jersey / action buttons row */}
+              <div className="flex flex-1 justify-between items-end flex-wrap gap-3 pb-1">
                 <div>
-                  <h2 className="font-bold text-[26px] text-foreground">{player.name}</h2>
-                  <p className="text-[14px] font-medium mt-0.5 text-muted-foreground">#{player.jerseyNumber || '—'}</p>
-                  
-                  <div className="flex gap-1.5 flex-wrap mt-2">
-                    {(player.playerRoles ?? []).map(t => (
-                      <Badge key={t} bg="#1a1a1a" c="#e5e5e5">{t}</Badge>
-                    ))}
-                    {(player.customTags ?? []).map(t => (
-                      <Badge key={t} bg="#4b5563" c="#e5e7eb">{t}</Badge>
-                    ))}
-                    {(player.customStringTags ?? []).map(t => (
-                      <Badge key={`str-${t}`} bg="#1e3a5f" c="#93c5fd">{t}</Badge>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 flex flex-col gap-4">
-                    <div className="flex items-center gap-4 text-[12px] p-2.5 rounded-lg border border-border/50 bg-card/50 w-max flex-wrap backdrop-blur-sm shadow-sm">
-                      {player.email && (
-                        <>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium uppercase tracking-wider text-[10px] text-muted-foreground">Email</span>
-                            <span className="font-semibold text-foreground">{player.email}</span>
-                          </div>
-                          <div className="w-px h-4 bg-border hidden sm:block"></div>
-                        </>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <span className="uppercase font-bold tracking-wider text-[10px] text-muted-foreground">Win Rate</span>
-                        <span className="font-bold text-foreground">{(stats.totalMatches > 0 ? (stats.totalWins / stats.totalMatches) * 100 : 0).toFixed(0)}%</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-10 items-start">
-                      {/* Recent Form */}
-                      <div>
-                        <h4 className="text-[10px] uppercase tracking-wider font-bold mb-2 text-muted-foreground">Recent Form (Last 10)</h4>
-                        <div className="flex gap-1.5 flex-wrap">
-                          {(() => {
-                            const recent10 = historyEntries.slice(0, 10).reverse();
-                            if (recent10.length === 0) return <span className="text-[11px] text-muted-foreground">No matches yet</span>;
-                            return recent10.map((entry, i) => {
-                              const result = entry.result || 'draw';
-                              const isWin  = result === 'win';
-                              const isDraw = result === 'draw';
-                              const bg = isWin ? '#14532d' : isDraw ? '#78350f' : '#7f1d1d';
-                              const c  = isWin ? '#4ade80' : isDraw ? '#fcd34d' : '#f87171';
-                              return (
-                                <div
-                                  key={entry.id || i}
-                                  className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-[11px] shadow-sm cursor-default"
-                                  style={{ backgroundColor: bg, color: c }}
-                                  title={`${entry.date}: ${entry.goals ?? 0} goals • ${result.toUpperCase()}`}
-                                >
-                                  {result.charAt(0).toUpperCase()}
-                                </div>
-                              );
-                            });
-                          })()}
-                        </div>
-                      </div>
-
-                      {/* Overall Rank */}
-                      <div>
-                        <h4 className="text-[10px] uppercase tracking-wider font-bold mb-2 text-muted-foreground">Overall Rank</h4>
-                        <div className="flex items-center gap-2">
-                          <span className="bg-amber-400 text-amber-950 font-black text-[13px] px-2.5 py-0.5 rounded shadow-sm">
-                            #{currentRank || '-'}
-                          </span>
-                          <span className="text-[11px] font-medium text-muted-foreground">All Time</span>
-                        </div>
-                      </div>
-
-                      {/* Current Season Rank */}
-                      <div>
-                        <h4 className="text-[10px] uppercase tracking-wider font-bold mb-2 text-muted-foreground">Season Rank</h4>
-                        <div className="flex items-center gap-2">
-                          <span className="bg-blue-500 text-white font-black text-[13px] px-2.5 py-0.5 rounded shadow-sm">
-                            #{currentSeasonRank || '-'}
-                          </span>
-                          <span className="text-[11px] font-medium text-muted-foreground">{currentSeason?.name?.replace('Season ', '') || 'Current'}</span>
-                        </div>
-                      </div>
-                    </div>
+                  <h2
+                    className="font-black text-[30px] leading-tight"
+                    style={{
+                      color: '#fff',
+                      textShadow: '0 2px 12px rgba(0,0,0,0.7)',
+                      letterSpacing: '-0.5px',
+                    }}
+                  >
+                    {player.name}
+                  </h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    {player.jerseyNumber && (
+                      <span
+                        className="font-black text-[13px] px-2.5 py-0.5 rounded-full"
+                        style={{
+                          background: 'rgba(251,191,36,0.15)',
+                          color: '#fbbf24',
+                          border: '1px solid rgba(251,191,36,0.3)',
+                        }}
+                      >
+                        #{player.jerseyNumber}
+                      </span>
+                    )}
+                    {/* Rank badges */}
+                    {currentRank && (
+                      <span
+                        className="font-black text-[11px] px-2 py-0.5 rounded-full"
+                        style={{ background: 'rgba(251,191,36,0.85)', color: '#1c1917' }}
+                      >
+                        🏆 #{currentRank} All-Time
+                      </span>
+                    )}
+                    {currentSeasonRank && (
+                      <span
+                        className="font-black text-[11px] px-2 py-0.5 rounded-full"
+                        style={{ background: 'rgba(59,130,246,0.85)', color: '#fff' }}
+                      >
+                        📅 #{currentSeasonRank} Season
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex gap-2 flex-wrap h-fit self-start">
+                {/* Action buttons */}
+                <div className="flex gap-2 flex-wrap">
                   <Button size="sm" variant="secondary" onClick={() => setModal('edit')}>✎ Edit</Button>
                   <Button size="sm" variant="secondary" onClick={() => setModal('addEntry')}>+ Entry</Button>
-                  <Button size="sm" variant="secondary" onClick={() => { setRepairValues({}); setModal('repairStats'); }}>🔧 Repair Stats</Button>
+                  <Button size="sm" variant="secondary" onClick={() => { setRepairValues({}); setModal('repairStats'); }}>🔧 Repair</Button>
                   <Button
                     size="sm"
                     variant="secondary"
@@ -537,34 +517,125 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                       }
                     }}
                   >
-                    {recheckLoading ? '⏳ Checking…' : '🔔 Re-check Milestones'}
+                    {recheckLoading ? '⏳…' : '🔔 Milestones'}
                   </Button>
                   <Button size="sm" variant="danger" onClick={() => setModal('delete')}>Delete</Button>
                 </div>
-                {recheckResult && (
-                  <div className={`mt-2 text-[11px] font-medium px-3 py-1.5 rounded-lg border w-fit ${
-                    recheckResult.startsWith('✅')
-                      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-                      : 'text-red-400 bg-red-500/10 border-red-500/20'
-                  }`}>
-                    {recheckResult}
-                  </div>
-                )}
+              </div>
+            </div>
+
+            {recheckResult && (
+              <div className={`mt-3 text-[11px] font-medium px-3 py-1.5 rounded-lg border w-fit ${
+                recheckResult.startsWith('✅')
+                  ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                  : 'text-red-400 bg-red-500/10 border-red-500/20'
+              }`}>
+                {recheckResult}
+              </div>
+            )}
+
+            {/* ── Tags & email row ── */}
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              {(player.playerRoles ?? []).map(t => (
+                <span
+                  key={t}
+                  className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
+                  style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}
+                >
+                  {t}
+                </span>
+              ))}
+              {(player.customTags ?? []).map(t => (
+                <span
+                  key={t}
+                  className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
+                  style={{ background: 'rgba(75,85,99,0.3)', color: '#e5e7eb', border: '1px solid rgba(107,114,128,0.35)' }}
+                >
+                  {t}
+                </span>
+              ))}
+              {(player.customStringTags ?? []).map(t => (
+                <span
+                  key={`str-${t}`}
+                  className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
+                  style={{ background: 'rgba(30,58,95,0.4)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.3)' }}
+                >
+                  {t}
+                </span>
+              ))}
+              {player.email && (
+                <span className="text-[11px] text-muted-foreground font-medium ml-2">✉ {player.email}</span>
+              )}
+            </div>
+
+            {/* ── Key quick-stats strip ── */}
+            <div
+              className="mt-5 grid grid-cols-3 sm:grid-cols-5 gap-3 p-4 rounded-2xl"
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                backdropFilter: 'blur(10px)',
+              }}
+            >
+              {[
+                { label: 'Win Rate',      value: `${(stats.totalMatches > 0 ? (stats.totalWins / stats.totalMatches) * 100 : 0).toFixed(0)}%`, icon: '📈', color: '#34d399' },
+                { label: 'Matches',       value: stats.totalMatches,  icon: '🎮', color: '#818cf8' },
+                { label: 'Goals',         value: stats.totalGoals,    icon: '⚽', color: '#34d399' },
+                { label: 'MOTM',          value: stats.totalMOTM,     icon: '🏅', color: '#fbbf24' },
+                { label: 'Clean Sheets',  value: stats.totalCleanSheets, icon: '🧤', color: '#38bdf8' },
+              ].map(({ label, value, icon, color }) => (
+                <div key={label} className="flex flex-col items-center gap-0.5">
+                  <span className="text-[16px]">{icon}</span>
+                  <span className="font-black text-[20px]" style={{ color }}>{value}</span>
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Recent Form ── */}
+            <div className="mt-5">
+              <h4 className="text-[10px] uppercase tracking-widest font-bold mb-2.5 text-muted-foreground">Recent Form (Last 10)</h4>
+              <div className="flex gap-1.5 flex-wrap">
+                {(() => {
+                  const recent10 = historyEntries.slice(0, 10).reverse();
+                  if (recent10.length === 0) return <span className="text-[11px] text-muted-foreground">No matches yet</span>;
+                  return recent10.map((entry, i) => {
+                    const result = entry.result || 'draw';
+                    const isWin  = result === 'win';
+                    const isDraw = result === 'draw';
+                    const bg = isWin ? 'rgba(20,83,45,0.8)' : isDraw ? 'rgba(120,53,15,0.8)' : 'rgba(127,29,29,0.8)';
+                    const c  = isWin ? '#4ade80' : isDraw ? '#fcd34d' : '#f87171';
+                    const border = isWin ? '1px solid rgba(74,222,128,0.35)' : isDraw ? '1px solid rgba(252,211,77,0.35)' : '1px solid rgba(248,113,113,0.35)';
+                    return (
+                      <div
+                        key={entry.id || i}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-[12px] cursor-default transition-transform hover:scale-110"
+                        style={{ background: bg, color: c, border }}
+                        title={`${entry.date}: ${entry.goals ?? 0} goals • ${result.toUpperCase()}`}
+                      >
+                        {result.charAt(0).toUpperCase()}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Right Side: Radar Chart */}
-        <div className="lg:col-span-3 p-6 bg-card flex justify-center items-center border-t lg:border-t-0 lg:border-l border-border z-10">
-          <div className="w-full max-w-[280px]">
-            <PlayerRadarChart stats={{
-              goals: stats.totalGoals,
-              cleanSheets: stats.totalCleanSheets,
-              motm: stats.totalMOTM,
-              wins: stats.totalWins,
-              matches: stats.totalMatches
-            }} />
+          {/* RIGHT: Radar Chart */}
+          <div
+            className="lg:col-span-3 flex justify-center items-center p-6 border-t lg:border-t-0 lg:border-l"
+            style={{ borderColor: 'rgba(255,255,255,0.07)' }}
+          >
+            <div className="w-full max-w-[280px]">
+              <PlayerRadarChart stats={{
+                goals: stats.totalGoals,
+                cleanSheets: stats.totalCleanSheets,
+                motm: stats.totalMOTM,
+                wins: stats.totalWins,
+                matches: stats.totalMatches
+              }} />
+            </div>
           </div>
         </div>
       </div>
