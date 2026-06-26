@@ -398,203 +398,159 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       </div>
 
       {/* ── Player Overview Hero Card ─────────────────────────── */}
-      <div
-        className="mb-4 rounded-2xl overflow-hidden relative shadow-2xl border border-border"
-        style={
-          player.coverImageUrl
-            ? { backgroundImage: `url(${player.coverImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-            : {}
-        }
-      >
-        {/* Gradient overlay — always present, stronger when there's a cover image */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: player.coverImageUrl
-              ? 'linear-gradient(to bottom, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.72) 60%, rgba(0,0,0,0.92) 100%)'
-              : 'none',
-            backdropFilter: player.coverImageUrl ? 'blur(1px)' : 'none',
-          }}
-        />
+      <div className="mb-4 rounded-2xl overflow-hidden border border-border shadow-2xl bg-card">
 
-        {/* Card content */}
-        <div
-          className="relative z-10 p-6"
-          style={{ background: player.coverImageUrl ? 'transparent' : 'var(--card)' }}
-        >
-          <div className="flex flex-col lg:flex-row gap-8 items-start justify-between">
-            <div className="flex gap-5 items-center flex-wrap flex-1">
-              {/* Avatar with glowing ring when cover exists */}
-              <div
-                className="rounded-full overflow-hidden shrink-0"
-                style={{
-                  border: player.coverImageUrl ? '4px solid rgba(255,255,255,0.25)' : '4px solid var(--card)',
-                  boxShadow: player.coverImageUrl ? '0 0 24px rgba(255,255,255,0.15)' : 'none',
-                }}
-              >
-                <Avatar name={player.name} size={110} src={player.profileImageUrl} />
+        {/* Top: Player Info Panel */}
+        <div className="p-6 flex flex-col sm:flex-row gap-5 items-start justify-between border-b border-border">
+          <div className="flex gap-5 items-center flex-wrap flex-1">
+            <div className="rounded-full overflow-hidden shrink-0 border-4 border-border">
+              <Avatar name={player.name} size={100} src={player.profileImageUrl} />
+            </div>
+            <div className="flex-1">
+              <h2 className="font-bold text-[26px]">{player.name}</h2>
+              <p className="text-muted-foreground text-[14px] font-medium mt-0.5">#{player.jerseyNumber || '—'}</p>
+              <div className="flex gap-1.5 flex-wrap mt-2">
+                {(player.playerRoles ?? []).map(t => (
+                  <Badge key={t} bg="#1a1a1a" c="#e5e5e5">{t}</Badge>
+                ))}
+                {(player.customTags ?? []).map(t => (
+                  <Badge key={t} bg="#4b5563" c="#e5e7eb">{t}</Badge>
+                ))}
+                {(player.customStringTags ?? []).map(t => (
+                  <Badge key={`str-${t}`} bg="#1e3a5f" c="#93c5fd">{t}</Badge>
+                ))}
               </div>
-              <div className="flex-1">
-                <div className="flex justify-between flex-wrap gap-3">
-                  <div>
-                    <h2
-                      className="font-bold text-[26px]"
-                      style={{ color: player.coverImageUrl ? '#fff' : 'var(--foreground)', textShadow: player.coverImageUrl ? '0 2px 8px rgba(0,0,0,0.5)' : 'none' }}
-                    >{player.name}</h2>
-                    <p
-                      className="text-[14px] font-medium mt-0.5"
-                      style={{ color: player.coverImageUrl ? 'rgba(255,255,255,0.65)' : 'var(--muted-foreground)' }}
-                    >#{player.jerseyNumber || '—'}</p>
-                    <div className="flex gap-1.5 flex-wrap mt-2">
-                      {(player.playerRoles ?? []).map(t => (
-                        <Badge key={t} bg={player.coverImageUrl ? 'rgba(255,255,255,0.12)' : '#1a1a1a'} c={player.coverImageUrl ? '#fff' : '#e5e5e5'}>{t}</Badge>
-                      ))}
-                      {(player.customTags ?? []).map(t => (
-                        <Badge key={t} bg={player.coverImageUrl ? 'rgba(255,255,255,0.10)' : '#4b5563'} c={player.coverImageUrl ? '#e5e7eb' : '#e5e7eb'}>{t}</Badge>
-                      ))}
-                      {(player.customStringTags ?? []).map(t => (
-                        <Badge key={`str-${t}`} bg={player.coverImageUrl ? 'rgba(30,58,95,0.6)' : '#1e3a5f'} c="#93c5fd">{t}</Badge>
-                      ))}
+              <div className="mt-3 flex items-center gap-4 text-[12px] bg-muted/30 px-3 py-2 rounded-lg border border-border/50 w-max flex-wrap">
+                {player.email && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Email</span>
+                      <span className="text-foreground font-semibold">{player.email}</span>
                     </div>
-                  <div className="mt-4 flex flex-col gap-4">
-                    <div
-                      className="flex items-center gap-4 text-[12px] p-2.5 rounded-lg border w-max flex-wrap"
-                      style={{
-                        background: player.coverImageUrl ? 'rgba(255,255,255,0.08)' : 'var(--muted)/0.3',
-                        borderColor: player.coverImageUrl ? 'rgba(255,255,255,0.15)' : 'var(--border)/0.5',
-                      }}
-                    >
-                      {player.email && (
-                        <>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium uppercase tracking-wider text-[10px]" style={{ color: player.coverImageUrl ? 'rgba(255,255,255,0.5)' : 'var(--muted-foreground)' }}>Email</span>
-                            <span className="font-semibold" style={{ color: player.coverImageUrl ? '#fff' : 'var(--foreground)' }}>{player.email}</span>
-                          </div>
-                          <div className="w-px h-4 bg-white/20 hidden sm:block"></div>
-                        </>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <span className="uppercase font-bold tracking-wider text-[10px]" style={{ color: player.coverImageUrl ? 'rgba(255,255,255,0.5)' : 'var(--muted-foreground)' }}>Win Rate</span>
-                        <span className="font-bold" style={{ color: player.coverImageUrl ? '#fff' : 'var(--foreground)' }}>{(stats.totalMatches > 0 ? (stats.totalWins / stats.totalMatches) * 100 : 0).toFixed(0)}%</span>
-                      </div>
-                    </div>
-
-                    {/* New: Recent Form & Ranks block */}
-                    <div className="flex flex-wrap gap-10 items-start">
-                      {/* Recent Form */}
-                      <div>
-                        <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-2">Recent Form (Last 10)</h4>
-                        <div className="flex gap-1.5 flex-wrap">
-                          {(() => {
-                            const recent10 = historyEntries.slice(0, 10).reverse();
-                            if (recent10.length === 0) return <span className="text-[11px] text-muted-foreground">No matches yet</span>;
-                            return recent10.map((entry, i) => {
-                              const result = entry.result || 'draw';
-                              const isWin  = result === 'win';
-                              const isDraw = result === 'draw';
-                              const bg = isWin ? '#14532d' : isDraw ? '#78350f' : '#7f1d1d';
-                              const c  = isWin ? '#4ade80' : isDraw ? '#fcd34d' : '#f87171';
-                              return (
-                                <div
-                                  key={entry.id || i}
-                                  className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-[11px] shadow-sm cursor-default"
-                                  style={{ backgroundColor: bg, color: c }}
-                                  title={`${entry.date}: ${entry.goals ?? 0} goals • ${result.toUpperCase()}`}
-                                >
-                                  {result.charAt(0).toUpperCase()}
-                                </div>
-                              );
-                            });
-                          })()}
-                        </div>
-                      </div>
-
-                      {/* Overall Rank */}
-                      <div>
-                        <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-2">Overall Rank</h4>
-                        <div className="flex items-center gap-2">
-                          <span className="bg-amber-400 text-amber-950 font-black text-[13px] px-2.5 py-0.5 rounded shadow-sm">
-                            #{currentRank || '-'}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground font-medium">All Time</span>
-                        </div>
-                      </div>
-
-                      {/* Current Season Rank */}
-                      <div>
-                        <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-2">Season Rank</h4>
-                        <div className="flex items-center gap-2">
-                          <span className="bg-blue-500 text-white font-black text-[13px] px-2.5 py-0.5 rounded shadow-sm">
-                            #{currentSeasonRank || '-'}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground font-medium">{currentSeason?.name?.replace('Season ', '') || 'Current'}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-2 flex-wrap h-fit">
-                  <Button size="sm" variant="secondary" onClick={() => setModal('edit')}>✎ Edit</Button>
-                  <Button size="sm" variant="secondary" onClick={() => setModal('addEntry')}>+ Entry</Button>
-                  <Button size="sm" variant="secondary" onClick={() => { setRepairValues({}); setModal('repairStats'); }}>🔧 Repair Stats</Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={recheckLoading}
-                    onClick={async () => {
-                      setRecheckLoading(true);
-                      setRecheckResult(null);
-                      try {
-                        const { fired } = await recheckMilestones(player.id);
-                        setRecheckResult(fired ? '✅ New milestones fired! Check News.' : '✅ Done — no new milestones.');
-                      } catch (e) {
-                        setRecheckResult('❌ Error: ' + (e as any)?.message);
-                      } finally {
-                        setRecheckLoading(false);
-                        setTimeout(() => setRecheckResult(null), 5000);
-                      }
-                    }}
-                  >
-                    {recheckLoading ? '⏳ Checking…' : '🔔 Re-check Milestones'}
-                  </Button>
-                  <Button size="sm" variant="danger" onClick={() => setModal('delete')}>Delete</Button>
-                </div>
-                {recheckResult && (
-                  <div className={`mt-2 text-[11px] font-medium px-3 py-1.5 rounded-lg border w-fit ${
-                    recheckResult.startsWith('✅')
-                      ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-                      : 'text-red-400 bg-red-500/10 border-red-500/20'
-                  }`}>
-                    {recheckResult}
-                  </div>
+                    <div className="w-px h-4 bg-border hidden sm:block"></div>
+                  </>
                 )}
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground uppercase font-bold tracking-wider text-[10px]">Win Rate</span>
+                  <span className="font-bold">{(stats.totalMatches > 0 ? (stats.totalWins / stats.totalMatches) * 100 : 0).toFixed(0)}%</span>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-8 items-start">
+                <div>
+                  <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-2">Recent Form (Last 10)</h4>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {(() => {
+                      const recent10 = historyEntries.slice(0, 10).reverse();
+                      if (recent10.length === 0) return <span className="text-[11px] text-muted-foreground">No matches yet</span>;
+                      return recent10.map((entry, i) => {
+                        const result = entry.result || 'draw';
+                        const isWin  = result === 'win';
+                        const isDraw = result === 'draw';
+                        const bg = isWin ? '#14532d' : isDraw ? '#78350f' : '#7f1d1d';
+                        const c  = isWin ? '#4ade80' : isDraw ? '#fcd34d' : '#f87171';
+                        return (
+                          <div
+                            key={entry.id || i}
+                            className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-[11px] shadow-sm cursor-default"
+                            style={{ backgroundColor: bg, color: c }}
+                            title={`${entry.date}: ${entry.goals ?? 0} goals • ${result.toUpperCase()}`}
+                          >
+                            {result.charAt(0).toUpperCase()}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-2">Overall Rank</h4>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-amber-400 text-amber-950 font-black text-[13px] px-2.5 py-0.5 rounded shadow-sm">#{currentRank || '-'}</span>
+                    <span className="text-[11px] text-muted-foreground font-medium">All Time</span>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-2">Season Rank</h4>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-blue-500 text-white font-black text-[13px] px-2.5 py-0.5 rounded shadow-sm">#{currentSeasonRank || '-'}</span>
+                    <span className="text-[11px] text-muted-foreground font-medium">{currentSeason?.name?.replace('Season ', '') || 'Current'}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          
-          <div
-            className="w-full lg:w-auto lg:min-w-[250px] pt-4 lg:pt-0 lg:pl-8 flex justify-center items-center"
-          >
-            <div
-              className="rounded-xl p-4 flex items-center justify-center"
-              style={{
-                background: player.coverImageUrl ? 'rgba(0,0,0,0.55)' : 'transparent',
-                backdropFilter: player.coverImageUrl ? 'blur(8px)' : 'none',
-                border: player.coverImageUrl ? '1px solid rgba(255,255,255,0.10)' : 'none',
+          {/* Action Buttons */}
+          <div className="flex gap-2 flex-wrap h-fit shrink-0">
+            <Button size="sm" variant="secondary" onClick={() => setModal('edit')}>✎ Edit</Button>
+            <Button size="sm" variant="secondary" onClick={() => setModal('addEntry')}>+ Entry</Button>
+            <Button size="sm" variant="secondary" onClick={() => { setRepairValues({}); setModal('repairStats'); }}>🔧 Repair Stats</Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={recheckLoading}
+              onClick={async () => {
+                setRecheckLoading(true);
+                setRecheckResult(null);
+                try {
+                  const { fired } = await recheckMilestones(player.id);
+                  setRecheckResult(fired ? '✅ New milestones fired! Check News.' : '✅ Done — no new milestones.');
+                } catch (e) {
+                  setRecheckResult('❌ Error: ' + (e as any)?.message);
+                } finally {
+                  setRecheckLoading(false);
+                  setTimeout(() => setRecheckResult(null), 5000);
+                }
               }}
             >
-              <PlayerRadarChart stats={{
-                goals: stats.totalGoals,
-                cleanSheets: stats.totalCleanSheets,
-                motm: stats.totalMOTM,
-                wins: stats.totalWins,
-                matches: stats.totalMatches
-              }} />
+              {recheckLoading ? '⏳ Checking…' : '🔔 Re-check Milestones'}
+            </Button>
+            <Button size="sm" variant="danger" onClick={() => setModal('delete')}>Delete</Button>
+          </div>
+          {recheckResult && (
+            <div className={`mt-2 text-[11px] font-medium px-3 py-1.5 rounded-lg border w-fit ${
+              recheckResult.startsWith('✅')
+                ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                : 'text-red-400 bg-red-500/10 border-red-500/20'
+            }`}>
+              {recheckResult}
             </div>
+          )}
+        </div>
+
+        {/* Bottom: Cover Image (left) | Radar Chart (right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border">
+          {/* Left — Cover Image */}
+          <div className="relative overflow-hidden min-h-[240px] flex items-center justify-center bg-muted/20">
+            {player.coverImageUrl ? (
+              <img
+                src={player.coverImageUrl}
+                alt="Player cover"
+                className="w-full h-full object-cover absolute inset-0"
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-2 text-muted-foreground/40 py-10">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                <span className="text-[12px] font-medium">No cover image</span>
+              </div>
+            )}
+          </div>
+
+          {/* Right — Radar Chart */}
+          <div className="flex items-center justify-center p-6 bg-card">
+            <PlayerRadarChart stats={{
+              goals: stats.totalGoals,
+              cleanSheets: stats.totalCleanSheets,
+              motm: stats.totalMOTM,
+              wins: stats.totalWins,
+              matches: stats.totalMatches
+            }} />
           </div>
         </div>
-        </div>
+
       </div>
+
+
+
 
       <div className="bg-card border border-border rounded-xl p-5 mb-4 shadow-sm">
         <h3 className="font-semibold text-[14px] mb-4 border-b border-border pb-2">Career Stats</h3>
