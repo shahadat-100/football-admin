@@ -398,25 +398,20 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       </div>
 
       {/* ── Player Overview Hero Card ─────────────────────────── */}
-      <div className="mb-4 rounded-2xl overflow-hidden border border-border shadow-sm flex flex-col lg:flex-row bg-card">
+      <div className="mb-4 rounded-2xl overflow-hidden border border-border shadow-sm grid grid-cols-1 lg:grid-cols-10 bg-card">
         
         {/* Left Side: Player Info + Cover Image Background */}
         <div
-          className="flex-1 relative p-6 flex flex-col sm:flex-row gap-5 items-start"
+          className="lg:col-span-7 relative p-6 flex flex-col sm:flex-row gap-5 items-start"
           style={
             player.coverImageUrl
               ? { backgroundImage: `url(${player.coverImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
               : {}
           }
         >
-          {/* Gradient overlay for readability when cover image is present */}
+          {/* Frosted background overlay for readability */}
           {player.coverImageUrl && (
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: 'linear-gradient(to right, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.75) 40%, rgba(0,0,0,0.4) 100%)',
-              }}
-            />
+            <div className="absolute inset-0 bg-background/85 backdrop-blur-md pointer-events-none" />
           )}
 
           <div className="relative z-10 flex gap-5 items-center flex-wrap w-full">
@@ -424,8 +419,8 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
             <div
               className="rounded-full overflow-hidden shrink-0"
               style={{
-                border: player.coverImageUrl ? '4px solid rgba(255,255,255,0.2)' : '4px solid var(--border)',
-                boxShadow: player.coverImageUrl ? '0 0 20px rgba(0,0,0,0.5)' : 'none',
+                border: player.coverImageUrl ? '4px solid rgba(255,255,255,0.4)' : '4px solid var(--border)',
+                boxShadow: player.coverImageUrl ? '0 0 20px rgba(0,0,0,0.1)' : 'none',
               }}
             >
               <Avatar name={player.name} size={110} src={player.profileImageUrl} />
@@ -434,58 +429,46 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
             <div className="flex-1">
               <div className="flex justify-between flex-wrap gap-3">
                 <div>
-                  <h2
-                    className="font-bold text-[26px]"
-                    style={{ color: player.coverImageUrl ? '#fff' : 'var(--foreground)' }}
-                  >{player.name}</h2>
-                  <p
-                    className="text-[14px] font-medium mt-0.5"
-                    style={{ color: player.coverImageUrl ? 'rgba(255,255,255,0.7)' : 'var(--muted-foreground)' }}
-                  >#{player.jerseyNumber || '—'}</p>
+                  <h2 className="font-bold text-[26px] text-foreground">{player.name}</h2>
+                  <p className="text-[14px] font-medium mt-0.5 text-muted-foreground">#{player.jerseyNumber || '—'}</p>
                   
                   <div className="flex gap-1.5 flex-wrap mt-2">
                     {(player.playerRoles ?? []).map(t => (
-                      <Badge key={t} bg={player.coverImageUrl ? 'rgba(255,255,255,0.15)' : '#1a1a1a'} c={player.coverImageUrl ? '#fff' : '#e5e5e5'}>{t}</Badge>
+                      <Badge key={t} bg="#1a1a1a" c="#e5e5e5">{t}</Badge>
                     ))}
                     {(player.customTags ?? []).map(t => (
-                      <Badge key={t} bg={player.coverImageUrl ? 'rgba(255,255,255,0.1)' : '#4b5563'} c={player.coverImageUrl ? '#e5e7eb' : '#e5e7eb'}>{t}</Badge>
+                      <Badge key={t} bg="#4b5563" c="#e5e7eb">{t}</Badge>
                     ))}
                     {(player.customStringTags ?? []).map(t => (
-                      <Badge key={`str-${t}`} bg={player.coverImageUrl ? 'rgba(30,58,95,0.8)' : '#1e3a5f'} c="#93c5fd">{t}</Badge>
+                      <Badge key={`str-${t}`} bg="#1e3a5f" c="#93c5fd">{t}</Badge>
                     ))}
                   </div>
 
                   <div className="mt-4 flex flex-col gap-4">
-                    <div
-                      className="flex items-center gap-4 text-[12px] p-2.5 rounded-lg border w-max flex-wrap backdrop-blur-sm"
-                      style={{
-                        background: player.coverImageUrl ? 'rgba(0,0,0,0.3)' : 'var(--muted)/0.3',
-                        borderColor: player.coverImageUrl ? 'rgba(255,255,255,0.1)' : 'var(--border)/0.5',
-                      }}
-                    >
+                    <div className="flex items-center gap-4 text-[12px] p-2.5 rounded-lg border border-border/50 bg-card/50 w-max flex-wrap backdrop-blur-sm shadow-sm">
                       {player.email && (
                         <>
                           <div className="flex items-center gap-2">
-                            <span className="font-medium uppercase tracking-wider text-[10px]" style={{ color: player.coverImageUrl ? 'rgba(255,255,255,0.5)' : 'var(--muted-foreground)' }}>Email</span>
-                            <span className="font-semibold" style={{ color: player.coverImageUrl ? '#fff' : 'var(--foreground)' }}>{player.email}</span>
+                            <span className="font-medium uppercase tracking-wider text-[10px] text-muted-foreground">Email</span>
+                            <span className="font-semibold text-foreground">{player.email}</span>
                           </div>
-                          <div className="w-px h-4 bg-white/20 hidden sm:block"></div>
+                          <div className="w-px h-4 bg-border hidden sm:block"></div>
                         </>
                       )}
                       <div className="flex items-center gap-2">
-                        <span className="uppercase font-bold tracking-wider text-[10px]" style={{ color: player.coverImageUrl ? 'rgba(255,255,255,0.5)' : 'var(--muted-foreground)' }}>Win Rate</span>
-                        <span className="font-bold" style={{ color: player.coverImageUrl ? '#fff' : 'var(--foreground)' }}>{(stats.totalMatches > 0 ? (stats.totalWins / stats.totalMatches) * 100 : 0).toFixed(0)}%</span>
+                        <span className="uppercase font-bold tracking-wider text-[10px] text-muted-foreground">Win Rate</span>
+                        <span className="font-bold text-foreground">{(stats.totalMatches > 0 ? (stats.totalWins / stats.totalMatches) * 100 : 0).toFixed(0)}%</span>
                       </div>
                     </div>
 
                     <div className="flex flex-wrap gap-10 items-start">
                       {/* Recent Form */}
                       <div>
-                        <h4 className="text-[10px] uppercase tracking-wider font-bold mb-2" style={{ color: player.coverImageUrl ? 'rgba(255,255,255,0.6)' : 'var(--muted-foreground)' }}>Recent Form (Last 10)</h4>
+                        <h4 className="text-[10px] uppercase tracking-wider font-bold mb-2 text-muted-foreground">Recent Form (Last 10)</h4>
                         <div className="flex gap-1.5 flex-wrap">
                           {(() => {
                             const recent10 = historyEntries.slice(0, 10).reverse();
-                            if (recent10.length === 0) return <span className="text-[11px]" style={{ color: player.coverImageUrl ? 'rgba(255,255,255,0.5)' : 'var(--muted-foreground)' }}>No matches yet</span>;
+                            if (recent10.length === 0) return <span className="text-[11px] text-muted-foreground">No matches yet</span>;
                             return recent10.map((entry, i) => {
                               const result = entry.result || 'draw';
                               const isWin  = result === 'win';
@@ -509,23 +492,23 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
 
                       {/* Overall Rank */}
                       <div>
-                        <h4 className="text-[10px] uppercase tracking-wider font-bold mb-2" style={{ color: player.coverImageUrl ? 'rgba(255,255,255,0.6)' : 'var(--muted-foreground)' }}>Overall Rank</h4>
+                        <h4 className="text-[10px] uppercase tracking-wider font-bold mb-2 text-muted-foreground">Overall Rank</h4>
                         <div className="flex items-center gap-2">
                           <span className="bg-amber-400 text-amber-950 font-black text-[13px] px-2.5 py-0.5 rounded shadow-sm">
                             #{currentRank || '-'}
                           </span>
-                          <span className="text-[11px] font-medium" style={{ color: player.coverImageUrl ? 'rgba(255,255,255,0.7)' : 'var(--muted-foreground)' }}>All Time</span>
+                          <span className="text-[11px] font-medium text-muted-foreground">All Time</span>
                         </div>
                       </div>
 
                       {/* Current Season Rank */}
                       <div>
-                        <h4 className="text-[10px] uppercase tracking-wider font-bold mb-2" style={{ color: player.coverImageUrl ? 'rgba(255,255,255,0.6)' : 'var(--muted-foreground)' }}>Season Rank</h4>
+                        <h4 className="text-[10px] uppercase tracking-wider font-bold mb-2 text-muted-foreground">Season Rank</h4>
                         <div className="flex items-center gap-2">
                           <span className="bg-blue-500 text-white font-black text-[13px] px-2.5 py-0.5 rounded shadow-sm">
                             #{currentSeasonRank || '-'}
                           </span>
-                          <span className="text-[11px] font-medium" style={{ color: player.coverImageUrl ? 'rgba(255,255,255,0.7)' : 'var(--muted-foreground)' }}>{currentSeason?.name?.replace('Season ', '') || 'Current'}</span>
+                          <span className="text-[11px] font-medium text-muted-foreground">{currentSeason?.name?.replace('Season ', '') || 'Current'}</span>
                         </div>
                       </div>
                     </div>
@@ -533,12 +516,12 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
                 </div>
 
                 <div className="flex gap-2 flex-wrap h-fit self-start">
-                  <Button size="sm" variant={player.coverImageUrl ? "default" : "secondary"} onClick={() => setModal('edit')}>✎ Edit</Button>
-                  <Button size="sm" variant={player.coverImageUrl ? "default" : "secondary"} onClick={() => setModal('addEntry')}>+ Entry</Button>
-                  <Button size="sm" variant={player.coverImageUrl ? "default" : "secondary"} onClick={() => { setRepairValues({}); setModal('repairStats'); }}>🔧 Repair Stats</Button>
+                  <Button size="sm" variant="secondary" onClick={() => setModal('edit')}>✎ Edit</Button>
+                  <Button size="sm" variant="secondary" onClick={() => setModal('addEntry')}>+ Entry</Button>
+                  <Button size="sm" variant="secondary" onClick={() => { setRepairValues({}); setModal('repairStats'); }}>🔧 Repair Stats</Button>
                   <Button
                     size="sm"
-                    variant={player.coverImageUrl ? "default" : "secondary"}
+                    variant="secondary"
                     disabled={recheckLoading}
                     onClick={async () => {
                       setRecheckLoading(true);
@@ -573,14 +556,16 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
         </div>
 
         {/* Right Side: Radar Chart */}
-        <div className="w-full lg:w-auto lg:min-w-[280px] p-6 bg-card flex justify-center items-center border-t lg:border-t-0 lg:border-l border-border z-10">
-          <PlayerRadarChart stats={{
-            goals: stats.totalGoals,
-            cleanSheets: stats.totalCleanSheets,
-            motm: stats.totalMOTM,
-            wins: stats.totalWins,
-            matches: stats.totalMatches
-          }} />
+        <div className="lg:col-span-3 p-6 bg-card flex justify-center items-center border-t lg:border-t-0 lg:border-l border-border z-10">
+          <div className="w-full max-w-[280px]">
+            <PlayerRadarChart stats={{
+              goals: stats.totalGoals,
+              cleanSheets: stats.totalCleanSheets,
+              motm: stats.totalMOTM,
+              wins: stats.totalWins,
+              matches: stats.totalMatches
+            }} />
+          </div>
         </div>
       </div>
 
