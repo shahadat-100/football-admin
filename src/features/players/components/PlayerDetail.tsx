@@ -411,7 +411,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
         >
           {/* Frosted background overlay for readability */}
           {player.coverImageUrl && (
-            <div className="absolute inset-0 bg-background/85 backdrop-blur-md pointer-events-none" />
+            <div className="absolute inset-0 bg-background/40 backdrop-blur-sm pointer-events-none" />
           )}
 
           <div className="relative z-10 flex gap-5 items-center flex-wrap w-full">
