@@ -1,16 +1,16 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Player, MonthlyStat } from '../types';
-import { Avatar, Badge, Button, Modal, DeleteConfirm, PieChart } from '@/shared/components';
+import { Badge, Button, Modal, DeleteConfirm, PieChart } from '@/shared/components';
 import { usePlayerStats } from '../hooks/usePlayerStats';
 import { useFootballStore } from '@/store/footballStore';
 import { supabase } from '@/lib/supabase';
 import { PlayerForm } from './PlayerForm';
 import { MatchEntryForm } from '@/features/match-entries/components/MatchEntryForm';
 import { RESULT_BADGE } from '@/shared/lib/constants';
-import { PlayerRadarChart } from './PlayerRadarChart';
 import { SeasonPerformanceChart } from './SeasonPerformanceChart';
 import { RankTrendCard } from './RankTrendCard';
 import { SeasonTable } from './SeasonTable';
+import { PlayerHeroCard } from './PlayerHeroCard';
 
 interface PlayerDetailProps {
   playerId: string;
@@ -398,247 +398,33 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       </div>
 
       {/* ── Player Overview Hero Card ─────────────────────────── */}
-      <div className="mb-6 rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-card">
-
-        {/* ── COVER IMAGE BANNER ── */}
-        <div
-          className="relative w-full overflow-hidden"
-          style={{ height: player.coverImageUrl ? '260px' : '0px' }}
-        >
-          {player.coverImageUrl && (
-            <>
-              <img
-                src={player.coverImageUrl}
-                alt="cover"
-                className="w-full h-full object-cover object-center"
-                style={{ display: 'block' }}
-              />
-              {/* Bottom gradient so info panel blends in */}
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background: 'linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.55) 100%)'
-                }}
-              />
-            </>
-          )}
-        </div>
-
-        {/* ── MAIN CONTENT PANEL ── */}
-        <div className="relative grid grid-cols-1 lg:grid-cols-10">
-
-          {/* LEFT: Player info */}
-          <div className="lg:col-span-7 px-7 pb-7 pt-0">
-
-            {/* Avatar row — overlaps cover image */}
-            <div
-              className="flex items-end gap-5 flex-wrap"
-              style={{ marginTop: player.coverImageUrl ? '-52px' : '28px' }}
-            >
-              {/* Avatar with golden ring */}
-              <div
-                className="rounded-full overflow-hidden shrink-0 shadow-2xl"
-                style={{
-                  width: 104,
-                  height: 104,
-                  border: '3px solid rgba(251,191,36,0.7)',
-                  boxShadow: '0 0 0 4px rgba(251,191,36,0.18), 0 8px 32px rgba(0,0,0,0.45)',
-                }}
-              >
-                <Avatar name={player.name} size={104} src={player.profileImageUrl} />
-              </div>
-
-              {/* Name / jersey / action buttons row */}
-              <div className="flex flex-1 justify-between items-end flex-wrap gap-3 pb-1">
-                <div>
-                  <h2
-                    className="font-black text-[30px] leading-tight"
-                    style={{
-                      color: '#fff',
-                      textShadow: '0 2px 12px rgba(0,0,0,0.7)',
-                      letterSpacing: '-0.5px',
-                    }}
-                  >
-                    {player.name}
-                  </h2>
-                  <div className="flex items-center gap-2 mt-1">
-                    {player.jerseyNumber && (
-                      <span
-                        className="font-black text-[13px] px-2.5 py-0.5 rounded-full"
-                        style={{
-                          background: 'rgba(251,191,36,0.15)',
-                          color: '#fbbf24',
-                          border: '1px solid rgba(251,191,36,0.3)',
-                        }}
-                      >
-                        #{player.jerseyNumber}
-                      </span>
-                    )}
-                    {/* Rank badges */}
-                    {currentRank && (
-                      <span
-                        className="font-black text-[11px] px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(251,191,36,0.85)', color: '#1c1917' }}
-                      >
-                        🏆 #{currentRank} All-Time
-                      </span>
-                    )}
-                    {currentSeasonRank && (
-                      <span
-                        className="font-black text-[11px] px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(59,130,246,0.85)', color: '#fff' }}
-                      >
-                        📅 #{currentSeasonRank} Season
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Action buttons */}
-                <div className="flex gap-2 flex-wrap">
-                  <Button size="sm" variant="secondary" onClick={() => setModal('edit')}>✎ Edit</Button>
-                  <Button size="sm" variant="secondary" onClick={() => setModal('addEntry')}>+ Entry</Button>
-                  <Button size="sm" variant="secondary" onClick={() => { setRepairValues({}); setModal('repairStats'); }}>🔧 Repair</Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={recheckLoading}
-                    onClick={async () => {
-                      setRecheckLoading(true);
-                      setRecheckResult(null);
-                      try {
-                        const { fired } = await recheckMilestones(player.id);
-                        setRecheckResult(fired ? '✅ New milestones fired! Check News.' : '✅ Done — no new milestones.');
-                      } catch (e) {
-                        setRecheckResult('❌ Error: ' + (e as any)?.message);
-                      } finally {
-                        setRecheckLoading(false);
-                        setTimeout(() => setRecheckResult(null), 5000);
-                      }
-                    }}
-                  >
-                    {recheckLoading ? '⏳…' : '🔔 Milestones'}
-                  </Button>
-                  <Button size="sm" variant="danger" onClick={() => setModal('delete')}>Delete</Button>
-                </div>
-              </div>
-            </div>
-
-            {recheckResult && (
-              <div className={`mt-3 text-[11px] font-medium px-3 py-1.5 rounded-lg border w-fit ${
-                recheckResult.startsWith('✅')
-                  ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-                  : 'text-red-400 bg-red-500/10 border-red-500/20'
-              }`}>
-                {recheckResult}
-              </div>
-            )}
-
-            {/* ── Tags & email row ── */}
-            <div className="mt-5 flex flex-wrap items-center gap-2">
-              {(player.playerRoles ?? []).map(t => (
-                <span
-                  key={t}
-                  className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
-                  style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.3)' }}
-                >
-                  {t}
-                </span>
-              ))}
-              {(player.customTags ?? []).map(t => (
-                <span
-                  key={t}
-                  className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
-                  style={{ background: 'rgba(75,85,99,0.3)', color: '#e5e7eb', border: '1px solid rgba(107,114,128,0.35)' }}
-                >
-                  {t}
-                </span>
-              ))}
-              {(player.customStringTags ?? []).map(t => (
-                <span
-                  key={`str-${t}`}
-                  className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
-                  style={{ background: 'rgba(30,58,95,0.4)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.3)' }}
-                >
-                  {t}
-                </span>
-              ))}
-              {player.email && (
-                <span className="text-[11px] text-muted-foreground font-medium ml-2">✉ {player.email}</span>
-              )}
-            </div>
-
-            {/* ── Key quick-stats strip ── */}
-            <div
-              className="mt-5 grid grid-cols-3 sm:grid-cols-5 gap-3 p-4 rounded-2xl"
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                backdropFilter: 'blur(10px)',
-              }}
-            >
-              {[
-                { label: 'Win Rate',      value: `${(stats.totalMatches > 0 ? (stats.totalWins / stats.totalMatches) * 100 : 0).toFixed(0)}%`, icon: '📈', color: '#34d399' },
-                { label: 'Matches',       value: stats.totalMatches,  icon: '🎮', color: '#818cf8' },
-                { label: 'Goals',         value: stats.totalGoals,    icon: '⚽', color: '#34d399' },
-                { label: 'MOTM',          value: stats.totalMOTM,     icon: '🏅', color: '#fbbf24' },
-                { label: 'Clean Sheets',  value: stats.totalCleanSheets, icon: '🧤', color: '#38bdf8' },
-              ].map(({ label, value, icon, color }) => (
-                <div key={label} className="flex flex-col items-center gap-0.5">
-                  <span className="text-[16px]">{icon}</span>
-                  <span className="font-black text-[20px]" style={{ color }}>{value}</span>
-                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* ── Recent Form ── */}
-            <div className="mt-5">
-              <h4 className="text-[10px] uppercase tracking-widest font-bold mb-2.5 text-muted-foreground">Recent Form (Last 10)</h4>
-              <div className="flex gap-1.5 flex-wrap">
-                {(() => {
-                  const recent10 = historyEntries.slice(0, 10).reverse();
-                  if (recent10.length === 0) return <span className="text-[11px] text-muted-foreground">No matches yet</span>;
-                  return recent10.map((entry, i) => {
-                    const result = entry.result || 'draw';
-                    const isWin  = result === 'win';
-                    const isDraw = result === 'draw';
-                    const bg = isWin ? 'rgba(20,83,45,0.8)' : isDraw ? 'rgba(120,53,15,0.8)' : 'rgba(127,29,29,0.8)';
-                    const c  = isWin ? '#4ade80' : isDraw ? '#fcd34d' : '#f87171';
-                    const border = isWin ? '1px solid rgba(74,222,128,0.35)' : isDraw ? '1px solid rgba(252,211,77,0.35)' : '1px solid rgba(248,113,113,0.35)';
-                    return (
-                      <div
-                        key={entry.id || i}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-[12px] cursor-default transition-transform hover:scale-110"
-                        style={{ background: bg, color: c, border }}
-                        title={`${entry.date}: ${entry.goals ?? 0} goals • ${result.toUpperCase()}`}
-                      >
-                        {result.charAt(0).toUpperCase()}
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT: Radar Chart */}
-          <div
-            className="lg:col-span-3 flex justify-center items-center p-6 border-t lg:border-t-0 lg:border-l"
-            style={{ borderColor: 'rgba(255,255,255,0.07)' }}
-          >
-            <div className="w-full max-w-[280px]">
-              <PlayerRadarChart stats={{
-                goals: stats.totalGoals,
-                cleanSheets: stats.totalCleanSheets,
-                motm: stats.totalMOTM,
-                wins: stats.totalWins,
-                matches: stats.totalMatches
-              }} />
-            </div>
-          </div>
-        </div>
-      </div>
+      <PlayerHeroCard
+        player={player}
+        stats={stats}
+        historyEntries={historyEntries}
+        currentRank={currentRank}
+        currentSeasonRank={currentSeasonRank}
+        currentSeason={currentSeason}
+        onEdit={() => setModal('edit')}
+        onAddEntry={() => setModal('addEntry')}
+        onRepair={() => { setRepairValues({}); setModal('repairStats'); }}
+        onMilestones={async () => {
+          setRecheckLoading(true);
+          setRecheckResult(null);
+          try {
+            const { fired } = await recheckMilestones(player.id);
+            setRecheckResult(fired ? '✅ New milestones fired! Check News.' : '✅ Done — no new milestones.');
+          } catch (e) {
+            setRecheckResult('❌ Error: ' + (e as any)?.message);
+          } finally {
+            setRecheckLoading(false);
+            setTimeout(() => setRecheckResult(null), 5000);
+          }
+        }}
+        onDelete={() => setModal('delete')}
+        recheckLoading={recheckLoading}
+        recheckResult={recheckResult}
+      />
 
       <div className="bg-card border border-border rounded-xl p-5 mb-4 shadow-sm">
         <h3 className="font-semibold text-[14px] mb-4 border-b border-border pb-2">Career Stats</h3>
