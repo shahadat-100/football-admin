@@ -397,52 +397,85 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
         <span className="text-[12px] font-semibold">{player.name}</span>
       </div>
 
-      <div className="bg-card border border-border rounded-xl mb-4 shadow-sm overflow-hidden relative">
-        {/* Cover Image Banner */}
-        {player.coverImageUrl ? (
-          <div 
-            className="h-40 w-full bg-cover bg-center" 
-            style={{ backgroundImage: `url(${player.coverImageUrl})` }}
-          />
-        ) : (
-          <div className="h-24 w-full bg-muted" />
-        )}
+      {/* ── Player Overview Hero Card ─────────────────────────── */}
+      <div
+        className="mb-4 rounded-2xl overflow-hidden relative shadow-2xl border border-border"
+        style={
+          player.coverImageUrl
+            ? { backgroundImage: `url(${player.coverImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+            : {}
+        }
+      >
+        {/* Gradient overlay — always present, stronger when there's a cover image */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: player.coverImageUrl
+              ? 'linear-gradient(to bottom, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.72) 60%, rgba(0,0,0,0.92) 100%)'
+              : 'none',
+            backdropFilter: player.coverImageUrl ? 'blur(1px)' : 'none',
+          }}
+        />
 
-        <div className="p-5 flex flex-col lg:flex-row gap-8 items-start justify-between">
-          <div className="flex gap-5 items-end flex-wrap flex-1 -mt-16 relative z-10">
-            <div className="rounded-full border-4 border-card bg-card overflow-hidden shrink-0">
-              <Avatar name={player.name} size={110} src={player.profileImageUrl} />
-            </div>
-            <div className="flex-1 pb-1">
-              <div className="flex justify-between flex-wrap gap-3">
-                <div>
-                  <h2 className="font-bold text-[26px]">{player.name}</h2>
-                  <p className="text-muted-foreground text-[14px] font-medium">#{player.jerseyNumber || '—'}</p>
-                  <div className="flex gap-1.5 flex-wrap mt-2">
-                    {(player.playerRoles ?? []).map(t => (
-                      <Badge key={t} bg="#1a1a1a" c="#e5e5e5">{t}</Badge>
-                    ))}
-                    {(player.customTags ?? []).map(t => (
-                      <Badge key={t} bg="#4b5563" c="#e5e7eb">{t}</Badge>
-                    ))}
-                    {(player.customStringTags ?? []).map(t => (
-                      <Badge key={`str-${t}`} bg="#1e3a5f" c="#93c5fd">{t}</Badge>
-                    ))}
-                  </div>
+        {/* Card content */}
+        <div
+          className="relative z-10 p-6"
+          style={{ background: player.coverImageUrl ? 'transparent' : 'var(--card)' }}
+        >
+          <div className="flex flex-col lg:flex-row gap-8 items-start justify-between">
+            <div className="flex gap-5 items-center flex-wrap flex-1">
+              {/* Avatar with glowing ring when cover exists */}
+              <div
+                className="rounded-full overflow-hidden shrink-0"
+                style={{
+                  border: player.coverImageUrl ? '4px solid rgba(255,255,255,0.25)' : '4px solid var(--card)',
+                  boxShadow: player.coverImageUrl ? '0 0 24px rgba(255,255,255,0.15)' : 'none',
+                }}
+              >
+                <Avatar name={player.name} size={110} src={player.profileImageUrl} />
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between flex-wrap gap-3">
+                  <div>
+                    <h2
+                      className="font-bold text-[26px]"
+                      style={{ color: player.coverImageUrl ? '#fff' : 'var(--foreground)', textShadow: player.coverImageUrl ? '0 2px 8px rgba(0,0,0,0.5)' : 'none' }}
+                    >{player.name}</h2>
+                    <p
+                      className="text-[14px] font-medium mt-0.5"
+                      style={{ color: player.coverImageUrl ? 'rgba(255,255,255,0.65)' : 'var(--muted-foreground)' }}
+                    >#{player.jerseyNumber || '—'}</p>
+                    <div className="flex gap-1.5 flex-wrap mt-2">
+                      {(player.playerRoles ?? []).map(t => (
+                        <Badge key={t} bg={player.coverImageUrl ? 'rgba(255,255,255,0.12)' : '#1a1a1a'} c={player.coverImageUrl ? '#fff' : '#e5e5e5'}>{t}</Badge>
+                      ))}
+                      {(player.customTags ?? []).map(t => (
+                        <Badge key={t} bg={player.coverImageUrl ? 'rgba(255,255,255,0.10)' : '#4b5563'} c={player.coverImageUrl ? '#e5e7eb' : '#e5e7eb'}>{t}</Badge>
+                      ))}
+                      {(player.customStringTags ?? []).map(t => (
+                        <Badge key={`str-${t}`} bg={player.coverImageUrl ? 'rgba(30,58,95,0.6)' : '#1e3a5f'} c="#93c5fd">{t}</Badge>
+                      ))}
+                    </div>
                   <div className="mt-4 flex flex-col gap-4">
-                    <div className="flex items-center gap-4 text-[12px] bg-muted/30 p-2.5 rounded-lg border border-border/50 w-max flex-wrap">
+                    <div
+                      className="flex items-center gap-4 text-[12px] p-2.5 rounded-lg border w-max flex-wrap"
+                      style={{
+                        background: player.coverImageUrl ? 'rgba(255,255,255,0.08)' : 'var(--muted)/0.3',
+                        borderColor: player.coverImageUrl ? 'rgba(255,255,255,0.15)' : 'var(--border)/0.5',
+                      }}
+                    >
                       {player.email && (
                         <>
                           <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground font-medium uppercase tracking-wider text-[10px]">Email</span>
-                              <span className="text-foreground font-semibold">{player.email}</span>
+                            <span className="font-medium uppercase tracking-wider text-[10px]" style={{ color: player.coverImageUrl ? 'rgba(255,255,255,0.5)' : 'var(--muted-foreground)' }}>Email</span>
+                            <span className="font-semibold" style={{ color: player.coverImageUrl ? '#fff' : 'var(--foreground)' }}>{player.email}</span>
                           </div>
-                          <div className="w-px h-4 bg-border hidden sm:block"></div>
+                          <div className="w-px h-4 bg-white/20 hidden sm:block"></div>
                         </>
                       )}
                       <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground uppercase font-bold tracking-wider text-[10px]">Win Rate</span>
-                        <span className="font-bold">{(stats.totalMatches > 0 ? (stats.totalWins / stats.totalMatches) * 100 : 0).toFixed(0)}%</span>
+                        <span className="uppercase font-bold tracking-wider text-[10px]" style={{ color: player.coverImageUrl ? 'rgba(255,255,255,0.5)' : 'var(--muted-foreground)' }}>Win Rate</span>
+                        <span className="font-bold" style={{ color: player.coverImageUrl ? '#fff' : 'var(--foreground)' }}>{(stats.totalMatches > 0 ? (stats.totalWins / stats.totalMatches) * 100 : 0).toFixed(0)}%</span>
                       </div>
                     </div>
 
@@ -539,15 +572,19 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
             </div>
           </div>
           
-          <div className="w-full lg:w-auto lg:min-w-[250px] border-t lg:border-t-0 lg:border-l border-border pt-4 lg:pt-0 lg:pl-8 flex justify-center">
-             <PlayerRadarChart stats={{
-               goals: stats.totalGoals,
-               cleanSheets: stats.totalCleanSheets,
-               motm: stats.totalMOTM,
-               wins: stats.totalWins,
-               matches: stats.totalMatches
-             }} />
+          <div
+            className="w-full lg:w-auto lg:min-w-[250px] pt-4 lg:pt-0 lg:pl-8 flex justify-center"
+            style={{ borderColor: player.coverImageUrl ? 'rgba(255,255,255,0.12)' : undefined }}
+          >
+            <PlayerRadarChart stats={{
+              goals: stats.totalGoals,
+              cleanSheets: stats.totalCleanSheets,
+              motm: stats.totalMOTM,
+              wins: stats.totalWins,
+              matches: stats.totalMatches
+            }} />
           </div>
+        </div>
         </div>
       </div>
 
@@ -678,6 +715,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       })()}
 
       <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+        <div>
         <p className="font-semibold mb-3 text-[13px]">Match Entries & History (Recent 30)</p>
         {loadingEntries ? (
           <p className="text-muted-foreground text-[12px] bg-muted/30 p-4 rounded-lg border border-border/50 text-center animate-pulse">Loading history entries...</p>
@@ -717,6 +755,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
             </table>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
