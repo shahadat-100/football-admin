@@ -573,16 +573,24 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
           </div>
           
           <div
-            className="w-full lg:w-auto lg:min-w-[250px] pt-4 lg:pt-0 lg:pl-8 flex justify-center"
-            style={{ borderColor: player.coverImageUrl ? 'rgba(255,255,255,0.12)' : undefined }}
+            className="w-full lg:w-auto lg:min-w-[250px] pt-4 lg:pt-0 lg:pl-8 flex justify-center items-center"
           >
-            <PlayerRadarChart stats={{
-              goals: stats.totalGoals,
-              cleanSheets: stats.totalCleanSheets,
-              motm: stats.totalMOTM,
-              wins: stats.totalWins,
-              matches: stats.totalMatches
-            }} />
+            <div
+              className="rounded-xl p-4 flex items-center justify-center"
+              style={{
+                background: player.coverImageUrl ? 'rgba(0,0,0,0.55)' : 'transparent',
+                backdropFilter: player.coverImageUrl ? 'blur(8px)' : 'none',
+                border: player.coverImageUrl ? '1px solid rgba(255,255,255,0.10)' : 'none',
+              }}
+            >
+              <PlayerRadarChart stats={{
+                goals: stats.totalGoals,
+                cleanSheets: stats.totalCleanSheets,
+                motm: stats.totalMOTM,
+                wins: stats.totalWins,
+                matches: stats.totalMatches
+              }} />
+            </div>
           </div>
         </div>
         </div>
