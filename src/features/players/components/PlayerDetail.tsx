@@ -409,9 +409,9 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
               : {}
           }
         >
-          {/* Frosted background overlay for readability */}
+          {/* Transparent/dimming overlay without blur to keep cover image clear */}
           {player.coverImageUrl && (
-            <div className="absolute inset-0 bg-background/40 backdrop-blur-sm pointer-events-none" />
+            <div className="absolute inset-0 bg-black/45 pointer-events-none" />
           )}
 
           <div className="relative z-10 flex gap-5 items-center flex-wrap w-full">
@@ -426,7 +426,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
               <Avatar name={player.name} size={110} src={player.profileImageUrl} />
             </div>
 
-            <div className="flex-1">
+            <div className={`flex-1 p-5 rounded-2xl ${player.coverImageUrl ? 'backdrop-blur-md bg-background/70 border border-border/40 shadow-lg' : ''}`}>
               <div className="flex justify-between flex-wrap gap-3">
                 <div>
                   <h2 className="font-bold text-[26px] text-foreground">{player.name}</h2>
