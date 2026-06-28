@@ -1719,13 +1719,13 @@ export const useFootballStore = create<FootballStore>()(
       },
 
       fetchClubAchievements: async () => {
-        const { data, error } = await supabase.from('club_achievements').select('id, title, description, date, type, created_at').order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('club_achievements').select('id, image_url, title, subtitle, description, created_at').order('created_at', { ascending: false });
         if (data) set({ clubAchievements: data.map(mapClubAchievementFromDb) });
         if (error) console.error('Error fetching club achievements:', error);
       },
       addClubAchievement: async (achievement) => {
         const dbData = mapClubAchievementToDb(achievement);
-        const { data, error } = await supabase.from('club_achievements').insert([dbData]).select('id, title, description, date, type, created_at').single();
+        const { data, error } = await supabase.from('club_achievements').insert([dbData]).select('id, image_url, title, subtitle, description, created_at').single();
         if (data) {
           set((state) => ({ clubAchievements: [mapClubAchievementFromDb(data), ...state.clubAchievements] }));
         }
@@ -1736,7 +1736,7 @@ export const useFootballStore = create<FootballStore>()(
       },
       updateClubAchievement: async (achievement) => {
         const dbData = mapClubAchievementToDb(achievement);
-        const { data, error } = await supabase.from('club_achievements').update(dbData).eq('id', achievement.id).select('id, title, description, date, type, created_at').single();
+        const { data, error } = await supabase.from('club_achievements').update(dbData).eq('id', achievement.id).select('id, image_url, title, subtitle, description, created_at').single();
         if (data) {
           set((state) => ({ clubAchievements: state.clubAchievements.map(x => x.id === achievement.id ? mapClubAchievementFromDb(data) : x) }));
         }
