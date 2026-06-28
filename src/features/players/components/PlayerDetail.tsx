@@ -34,6 +34,8 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
 
   const [playerAllEntries, setPlayerAllEntries] = useState<any[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(true);
+  const [historyPage, setHistoryPage] = useState(1);
+  const ITEMS_PER_PAGE = 30;
 
   useEffect(() => {
     let active = true;
@@ -221,7 +223,7 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
     }
   };
 
-  const historyEntries = [...entries]
+  const allSortedEntries = [...entries]
     .sort((a, b) => {
       const dateTimeA = a.time ? `${a.date}T${a.time}` : (a.date ? `${a.date}T00:00:00` : '');
       const dateTimeB = b.time ? `${b.date}T${b.time}` : (b.date ? `${b.date}T00:00:00` : '');
@@ -234,8 +236,10 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
       const numB = Number(b.id);
       if (!isNaN(numA) && !isNaN(numB)) return numB - numA;
       return String(b.id).localeCompare(String(a.id));
-    })
-    .slice(0, 30); // Requested to show 30 instead of 50
+    });
+
+  const totalPages = Math.max(1, Math.ceil(allSortedEntries.length / ITEMS_PER_PAGE));
+  const historyEntries = allSortedEntries.slice((historyPage - 1) * ITEMS_PER_PAGE, historyPage * ITEMS_PER_PAGE);
 
 
 
@@ -554,7 +558,28 @@ export function PlayerDetail({ playerId, onBack }: PlayerDetailProps) {
 
       <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
         <div>
-        <p className="font-semibold mb-3 text-[13px]">Match Entries & History (Recent 30)</p>
+        <div className="flex justify-between items-center mb-3">
+          <p className="font-semibold text-[13px]">Match Entries & History</p>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                disabled={historyPage === 1}
+                className="px-2 py-1 bg-muted hover:bg-muted/80 disabled:opacity-50 text-[11px] rounded"
+              >
+                Prev
+              </button>
+              <span className="text-[11px] text-muted-foreground">Page {historyPage} of {totalPages}</span>
+              <button
+                onClick={() => setHistoryPage(p => Math.min(totalPages, p + 1))}
+                disabled={historyPage === totalPages}
+                className="px-2 py-1 bg-muted hover:bg-muted/80 disabled:opacity-50 text-[11px] rounded"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
         {loadingEntries ? (
           <p className="text-muted-foreground text-[12px] bg-muted/30 p-4 rounded-lg border border-border/50 text-center animate-pulse">Loading history entries...</p>
         ) : historyEntries.length === 0 ? (
