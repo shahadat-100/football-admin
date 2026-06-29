@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { parseMatchResult, ParsedMatchData, ParsedMatchEntry } from '@/shared/lib/parseMatchResult';
 import { useFootballStore } from '@/store/footballStore';
 import { Button, Input, Select, Textarea, SearchableSelect, Toggle } from '@/shared/components';
@@ -16,6 +16,13 @@ export function MatchImport() {
   const addMatch = useFootballStore(state => state.addMatch);
   const addMatchEntry = useFootballStore(state => state.addMatchEntry);
   const competitions = useFootballStore(state => state.competitions);
+  const fetchPlayers = useFootballStore(state => state.fetchPlayers);
+  const fetchCompetitions = useFootballStore(state => state.fetchCompetitions);
+
+  useEffect(() => {
+    fetchPlayers();
+    fetchCompetitions();
+  }, [fetchPlayers, fetchCompetitions]);
 
   // Extend player lookup for fuzzy match
   const handleParse = () => {

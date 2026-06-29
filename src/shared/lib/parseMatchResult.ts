@@ -31,18 +31,26 @@ function hasMotm(name: string): boolean {
 }
 
 function parseDateTime(dateStr: string): { date: string; time: string } {
-  // Attempt to parse '29 Jun 2026 12:00 AM'
-  // Or fallback to current date
   try {
-    const d = new Date(dateStr);
+    const cleaned = dateStr.replace(/\u00a0/g, ' ').trim();
+    const d = new Date(cleaned);
     if (isNaN(d.getTime())) throw new Error();
-    const date = d.toISOString().split('T')[0];
+    
+    const year = d.getFullYear();
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const dateNum = d.getDate().toString().padStart(2, '0');
+    const date = `${year}-${month}-${dateNum}`;
+    
     const hours = d.getHours().toString().padStart(2, '0');
     const mins = d.getMinutes().toString().padStart(2, '0');
     return { date, time: `${hours}:${mins}` };
   } catch {
     const now = new Date();
-    return { date: now.toISOString().split('T')[0], time: '' };
+    const year = now.getFullYear();
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const dateNum = now.getDate().toString().padStart(2, '0');
+    const date = `${year}-${month}-${dateNum}`;
+    return { date, time: '' };
   }
 }
 
