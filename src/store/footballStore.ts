@@ -250,13 +250,13 @@ interface FootballStore {
   
   fetchMatches: () => Promise<void>;
   setMatches: (m: Match[]) => void;
-  addMatch: (m: Match) => Promise<void>;
+  addMatch: (m: Match | Omit<Match, 'id'>) => Promise<string | undefined>;
   updateMatch: (m: Match) => Promise<void>;
   removeMatch: (id: string) => Promise<void>;
   
   fetchMatchEntries: (force?: boolean) => Promise<void>;
   setMatchEntries: (e: MatchEntry[]) => void;
-  addMatchEntry: (e: MatchEntry) => Promise<void>;
+  addMatchEntry: (e: MatchEntry | Omit<MatchEntry, 'id'>) => Promise<void>;
   updateMatchEntry: (e: MatchEntry) => Promise<void>;
   removeMatchEntry: (id: string) => Promise<void>;
   
@@ -1013,6 +1013,7 @@ export const useFootballStore = create<FootballStore>()(
         const { data, error } = await supabase.from('matches').insert([matchData]).select('id, season_id, hometeam, awayteam, homescore, awayscore, date, time, status, competition_id, competitions(name)').single();
         if (data) {
           set((state) => ({ matches: [...state.matches, mapMatchFromDb(data)] }));
+          return data.id;
         }
         if (error) {
           console.error('Error adding match:', error);
