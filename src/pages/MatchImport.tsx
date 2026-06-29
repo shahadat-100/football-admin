@@ -30,9 +30,10 @@ export function MatchImport() {
   };
 
   const fuzzyMatchPlayer = (rawName: string) => {
-    const normalizedRaw = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const normalizedRaw = rawName.toLowerCase().replace(/\s+/g, '');
     const match = players.find(p => {
-      const normalizedPName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const normalizedPName = p.name.toLowerCase().replace(/\s+/g, '');
+      if (!normalizedPName || !normalizedRaw) return false;
       return normalizedPName.includes(normalizedRaw) || normalizedRaw.includes(normalizedPName);
     });
     return match?.id || '';

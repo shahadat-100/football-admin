@@ -115,14 +115,18 @@ export function parseMatchResult(rawText: string): ParsedMatchData {
 
     // Check Match Points
     if (line.toUpperCase().includes('MATCH POINTS') || line.toUpperCase().includes('MATCH P')) {
-      const scoreMatch = line.match(/(\d+)\s*🆚\s*(\d+)/);
-      if (scoreMatch) {
+      // Look for two numbers separated by a VS-like character or just non-digits
+      // Extract all numbers from the line, assuming the last two are the scores if there are more
+      const numbersMatch = line.match(/\d+/g);
+      if (numbersMatch && numbersMatch.length >= 2) {
+        const score1 = parseInt(numbersMatch[numbersMatch.length - 2], 10);
+        const score2 = parseInt(numbersMatch[numbersMatch.length - 1], 10);
         if (data.teeSide === 'left') {
-          data.homeScore = parseInt(scoreMatch[1], 10);
-          data.awayScore = parseInt(scoreMatch[2], 10);
+          data.homeScore = score1;
+          data.awayScore = score2;
         } else {
-          data.homeScore = parseInt(scoreMatch[2], 10);
-          data.awayScore = parseInt(scoreMatch[1], 10);
+          data.homeScore = score2;
+          data.awayScore = score1;
         }
       }
       continue;
