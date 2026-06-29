@@ -1,13 +1,15 @@
 import { useState, useMemo, useEffect } from 'react';
 import { parseMatchResult, ParsedMatchData, ParsedMatchEntry } from '@/shared/lib/parseMatchResult';
+import { COMMUNITIES, CommunityId } from '@/shared/lib/communityConfigs';
 import { useFootballStore } from '@/store/footballStore';
 import { Button, Input, Select, Textarea, SearchableSelect, Toggle } from '@/shared/components';
 import { calcHattricks } from '@/shared/lib/utils';
-import { COMPETITIONS, MATCH_STATUSES, RESULTS } from '@/shared/lib/constants';
+import { RESULTS } from '@/shared/lib/constants';
 
 export function MatchImport() {
   const [step, setStep] = useState<1 | 2>(1);
   const [rawText, setRawText] = useState('');
+  const [communityId, setCommunityId] = useState<CommunityId>('auto');
   const [parsedData, setParsedData] = useState<ParsedMatchData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -24,9 +26,8 @@ export function MatchImport() {
     fetchCompetitions();
   }, [fetchPlayers, fetchCompetitions]);
 
-  // Extend player lookup for fuzzy match
   const handleParse = () => {
-    const data = parseMatchResult(rawText);
+    const data = parseMatchResult(rawText, communityId);
     if (data.errors.length > 0) {
       setErrors(data.errors);
       return;
@@ -151,22 +152,47 @@ export function MatchImport() {
       )}
 
       {step === 1 && (
-        <div className="bg-[#1a1f3c] border border-white/5 rounded-xl p-6 shadow-xl">
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <label className="text-sm font-medium text-gray-300">Raw Announcement Text</label>
-              <Textarea 
-                rows={15} 
-                value={rawText} 
-                onChange={e => setRawText(e.target.value)}
-                placeholder="Paste the raw Messenger/WhatsApp text here..."
-                className="font-mono text-sm"
-              />
+        <div className="space-y-4">
+          {/* Community Selector */}
+          <div className="bg-[#1a1f3c] border border-white/5 rounded-xl p-6 shadow-xl">
+            <h2 className="text-sm font-semibold text-gray-300 mb-4">Select Community</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+              {COMMUNITIES.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => setCommunityId(c.id)}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all text-center ${
+                    communityId === c.id
+                      ? 'border-primary bg-primary/10 text-white'
+                      : 'border-white/10 bg-white/5 text-gray-400 hover:border-white/20 hover:text-gray-200'
+                  }`}
+                >
+                  <span className="text-2xl">{c.emoji}</span>
+                  <span className="text-xs font-semibold">{c.name}</span>
+                  <span className="text-[10px] text-gray-500 leading-tight">{c.description}</span>
+                </button>
+              ))}
             </div>
-            <div className="flex justify-end">
-              <Button onClick={handleParse} disabled={rawText.trim().length === 0}>
-                Parse Content
-              </Button>
+          </div>
+
+          {/* Text Input */}
+          <div className="bg-[#1a1f3c] border border-white/5 rounded-xl p-6 shadow-xl">
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-gray-300">Raw Announcement Text</label>
+                <Textarea 
+                  rows={14} 
+                  value={rawText} 
+                  onChange={e => setRawText(e.target.value)}
+                  placeholder="Paste the raw Messenger/WhatsApp text here..."
+                  className="font-mono text-sm"
+                />
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={handleParse} disabled={rawText.trim().length === 0}>
+                  Parse Content →
+                </Button>
+              </div>
             </div>
           </div>
         </div>
