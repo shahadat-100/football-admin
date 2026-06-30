@@ -584,7 +584,7 @@ export function MatchImport() {
               <div className="min-w-[1100px] space-y-3">
                 <div className="grid grid-cols-[minmax(260px,1.45fr)_minmax(220px,1fr)_70px_70px_120px_58px_70px_154px] gap-3 px-4 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                   <span>Player</span>
-                  <span>Opponent</span>
+                  <span>Opponent / Club</span>
                   <span>GS</span>
                   <span>GC</span>
                   <span>Result</span>
@@ -609,7 +609,12 @@ export function MatchImport() {
                   </div>
 
                   <div className="min-w-0">
-                    <p className="text-xs text-gray-400 mb-1">Opponent</p>
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <p className="text-xs text-gray-400">Opponent</p>
+                      <span className="max-w-[110px] truncate rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-[10px] text-gray-400" title={parsedData.opponentClub}>
+                        {parsedData.opponentClub || 'Club'}
+                      </span>
+                    </div>
                     <Input value={entry.opponentPlayerRawName} onChange={e => updateMappedEntry(idx, { opponentPlayerRawName: e.target.value })} />
                   </div>
 
