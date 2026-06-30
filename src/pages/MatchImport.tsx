@@ -368,6 +368,12 @@ export function MatchImport() {
       const nw = [...prev];
       nw[index] = { ...nw[index], ...updates };
 
+      if (updates.motm === true) {
+        for (let i = 0; i < nw.length; i++) {
+          if (i !== index) nw[i] = { ...nw[i], motm: false };
+        }
+      }
+
       // Auto calc result
       if (updates.goals !== undefined || updates.goalsConceded !== undefined) {
         const goals = nw[index].goals ?? 0;
@@ -446,6 +452,7 @@ export function MatchImport() {
 
   const ambiguousCount = mappedEntries.filter(e => e.ambiguousScore).length;
   const unparsedCount = parsedData?.unparsedLines.length ?? 0;
+  const selectedMotmIndex = mappedEntries.findIndex(e => e.motm);
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10 animate-in fade-in">
@@ -566,15 +573,18 @@ export function MatchImport() {
                 <h2 className="font-bold text-lg text-white">Player Entries ({mappedEntries.length})</h2>
                 <p className="text-xs text-gray-500">Review player mapping, score, result, and timing before saving.</p>
               </div>
-              <div className="flex gap-2 text-[11px] text-gray-400">
+              <div className="flex flex-wrap gap-2 text-[11px] text-gray-400">
                 <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1">{mappedEntries.filter(e => e.playerId).length} mapped</span>
                 <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1">{mappedEntries.filter(e => !e.playerId).length} unmatched</span>
+                <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1">
+                  MOTM: {selectedMotmIndex >= 0 ? mappedEntries[selectedMotmIndex].teePlayerRawName : 'none'}
+                </span>
               </div>
             </div>
 
             <div className="overflow-x-auto pb-2">
-              <div className="min-w-[1040px] space-y-3">
-                <div className="grid grid-cols-[minmax(230px,1.4fr)_minmax(190px,1fr)_72px_72px_120px_72px_72px_154px] gap-3 px-4 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+              <div className="min-w-[1100px] space-y-3">
+                <div className="grid grid-cols-[minmax(260px,1.45fr)_minmax(220px,1fr)_70px_70px_120px_58px_70px_154px] gap-3 px-4 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                   <span>Player</span>
                   <span>Opponent</span>
                   <span>GS</span>
@@ -587,7 +597,7 @@ export function MatchImport() {
               {mappedEntries.map((entry, idx) => (
                 <div
                   key={idx}
-                  className={`rounded-lg p-4 grid grid-cols-[minmax(230px,1.4fr)_minmax(190px,1fr)_72px_72px_120px_72px_72px_154px] gap-3 items-start ${entry.ambiguousScore ? 'bg-amber-500/10 border border-amber-500/40' : 'bg-white/5 border border-white/5'
+                  className={`rounded-lg p-4 grid grid-cols-[minmax(260px,1.45fr)_minmax(220px,1fr)_70px_70px_120px_58px_70px_154px] gap-3 items-start ${entry.ambiguousScore ? 'bg-amber-500/10 border border-amber-500/40' : 'bg-white/5 border border-white/5'
                     }`}
                 >
                   <div className="min-w-0">
@@ -627,13 +637,26 @@ export function MatchImport() {
                   <div className="flex justify-center pt-1">
                     <div className="flex flex-col items-center">
                       <p className="text-[10px] text-gray-400 mb-1">CS</p>
-                      <Toggle label="Clean Sheet" checked={entry.cleanSheet} onChange={v => updateMappedEntry(idx, { cleanSheet: v })} />
+                      <Toggle
+                        label="Clean Sheet"
+                        checked={entry.cleanSheet}
+                        onChange={v => updateMappedEntry(idx, { cleanSheet: v })}
+                        showLabel={false}
+                        className="w-[46px] justify-center px-1.5 py-2"
+                      />
                     </div>
                   </div>
                   <div className="flex justify-center pt-1">
                     <div className="flex flex-col items-center">
                       <p className="text-[10px] text-gray-400 mb-1">MOTM</p>
-                      <Toggle label="MOTM" checked={entry.motm} onChange={v => updateMappedEntry(idx, { motm: v })} />
+                      <Toggle
+                        label="MOTM"
+                        checked={entry.motm}
+                        disabled={selectedMotmIndex >= 0 && selectedMotmIndex !== idx}
+                        onChange={v => updateMappedEntry(idx, { motm: v })}
+                        showLabel={false}
+                        className="w-[46px] justify-center px-1.5 py-2"
+                      />
                     </div>
                   </div>
 

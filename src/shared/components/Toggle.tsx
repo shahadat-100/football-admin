@@ -1,20 +1,23 @@
 import { cn } from '../lib/cn';
 
 interface ToggleProps {
-  label: string;
+  label?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
   className?: string;
+  showLabel?: boolean;
 }
 
-export function Toggle({ label, checked, onChange, disabled, className }: ToggleProps) {
+export function Toggle({ label, checked, onChange, disabled, className, showLabel = true }: ToggleProps) {
   return (
-    <div className={cn("flex items-center justify-between bg-muted border border-border rounded-lg px-3 py-2", className)}>
-      <span className="text-[12px] text-gray-400">{label}</span>
+    <div className={cn("flex items-center justify-between gap-2 bg-muted border border-border rounded-lg px-3 py-2", className)}>
+      {showLabel && label && <span className="text-[12px] text-gray-400">{label}</span>}
       <button
         type="button"
         disabled={disabled}
+        aria-label={label}
+        aria-pressed={checked}
         onClick={() => onChange(!checked)}
         className={cn(
           "relative inline-flex h-5 w-[38px] shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
