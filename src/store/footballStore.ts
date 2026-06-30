@@ -24,6 +24,12 @@ export interface Competition {
   createdAt: string;
 }
 
+export interface Team {
+  id: number;
+  name: string;
+  createdAt: string;
+}
+
 export interface PlayerRole {
   id: number;
   name: string;
@@ -142,7 +148,8 @@ export const mapMatchFromDb = (m: any): Match => ({
   id: m.id,
   seasonId: m.season_id,
   homeTeam: m.hometeam,
-  awayTeam: m.awayteam,
+  awayTeam: m.teams?.name || m.awayteam || '',
+  awayTeamId: m.awayteam_id ?? null,
   homeScore: m.homescore,
   awayScore: m.awayscore,
   date: m.date,
@@ -156,6 +163,7 @@ export const mapMatchToDb = (m: any) => ({
   season_id: m.seasonId,
   hometeam: m.homeTeam,
   awayteam: m.awayTeam,
+  awayteam_id: m.awayTeamId ?? null,
   homescore: m.homeScore,
   awayscore: m.awayScore,
   date: m.date,
@@ -221,6 +229,7 @@ interface FootballStore {
   seasons: SeasonDb[];
   playerSeasonStats: PlayerSeasonStat[];
   competitions: Competition[];
+  teams: Team[];
   hallOfFame: HallOfFameEntry[];
   availableRoles: PlayerRole[];
   availableTags: CustomTag[];
@@ -275,6 +284,7 @@ interface FootballStore {
   repairPlayerMonthlyStats: (playerId: string, seasonId: number, year: number, month: number, target: MonthlyStat) => Promise<void>;
   recheckMilestones: (playerId: string) => Promise<{ fired: boolean }>;
   fetchCompetitions: () => Promise<void>;
+  fetchTeams: () => Promise<void>;
   fetchAvailableRoles: () => Promise<void>;
   fetchAvailableTags: () => Promise<void>;
 
@@ -567,6 +577,7 @@ export const useFootballStore = create<FootballStore>()(
       seasons: [],
       playerSeasonStats: [],
       competitions: [],
+      teams: [],
       hallOfFame: [],
       availableRoles: [],
       availableTags: [],
@@ -941,7 +952,7 @@ export const useFootballStore = create<FootballStore>()(
       
       fetchMatches: async () => {
         if (get().matches.length > 0) return;
-        const { data, error } = await supabase.from('matches').select('id, season_id, hometeam, awayteam, homescore, awayscore, date, time, status, competition_id, competitions(name)');
+        const { data, error } = await supabase.from('matches').select('id, season_id, hometeam, awayteam, awayteam_id, homescore, awayscore, date, time, status, competition_id, competitions(name), teams(name)');
         if (data) {
           set({ matches: data.map(mapMatchFromDb) });
         }
@@ -950,7 +961,7 @@ export const useFootballStore = create<FootballStore>()(
       setMatches: (matches) => set({ matches }),
       
       addMatch: async (m) => {
-        // Resolve competition name to competition ID
+        // Resolve competition name to competition ID (upsert to avoid duplicates)
         let competitionId: number | null = null;
         if (m.competition) {
           const existingComp = get().competitions.find(c => c.name.toLowerCase() === m.competition.toLowerCase());
@@ -959,18 +970,42 @@ export const useFootballStore = create<FootballStore>()(
           } else {
             const { data: newComp } = await supabase
               .from('competitions')
-              .insert({ name: m.competition })
-              .select('id')
+              .upsert({ name: m.competition }, { onConflict: 'name' })
+              .select('id, name, is_active, created_at')
               .single();
             if (newComp) {
               competitionId = newComp.id;
               const fullNewComp = {
                 id: newComp.id,
-                name: m.competition,
-                isActive: true,
-                createdAt: new Date().toISOString()
+                name: newComp.name,
+                isActive: newComp.is_active,
+                createdAt: newComp.created_at
               };
-              set(state => ({ competitions: [...state.competitions, fullNewComp] }));
+              set(state => ({ competitions: [...state.competitions.filter(c => c.id !== newComp.id), fullNewComp] }));
+            }
+          }
+        }
+
+        // Resolve away team name to team ID (upsert to avoid duplicates)
+        let awayTeamId: number | null = null;
+        if (m.awayTeam) {
+          const existingTeam = get().teams.find(t => t.name.toLowerCase() === m.awayTeam.toLowerCase());
+          if (existingTeam) {
+            awayTeamId = existingTeam.id;
+          } else {
+            const { data: newTeam } = await supabase
+              .from('teams')
+              .upsert({ name: m.awayTeam }, { onConflict: 'name' })
+              .select('id, name, created_at')
+              .single();
+            if (newTeam) {
+              awayTeamId = newTeam.id;
+              const fullNewTeam: Team = {
+                id: newTeam.id,
+                name: newTeam.name,
+                createdAt: newTeam.created_at
+              };
+              set(state => ({ teams: [...state.teams.filter(t => t.id !== newTeam.id), fullNewTeam] }));
             }
           }
         }
@@ -1008,9 +1043,10 @@ export const useFootballStore = create<FootballStore>()(
           ...m,
           seasonId,
           competitionId,
+          awayTeamId,
         });
 
-        const { data, error } = await supabase.from('matches').insert([matchData]).select('id, season_id, hometeam, awayteam, homescore, awayscore, date, time, status, competition_id, competitions(name)').single();
+        const { data, error } = await supabase.from('matches').insert([matchData]).select('id, season_id, hometeam, awayteam, awayteam_id, homescore, awayscore, date, time, status, competition_id, competitions(name), teams(name)').single();
         if (data) {
           set((state) => ({ matches: [...state.matches, mapMatchFromDb(data)] }));
           return data.id;
@@ -1022,6 +1058,7 @@ export const useFootballStore = create<FootballStore>()(
       },
       
       updateMatch: async (m) => {
+        // Resolve competition name to competition ID (upsert to avoid duplicates)
         let competitionId: number | null = null;
         if (m.competition) {
           const existingComp = get().competitions.find(c => c.name.toLowerCase() === m.competition.toLowerCase());
@@ -1030,18 +1067,42 @@ export const useFootballStore = create<FootballStore>()(
           } else {
             const { data: newComp } = await supabase
               .from('competitions')
-              .insert({ name: m.competition })
-              .select('id')
+              .upsert({ name: m.competition }, { onConflict: 'name' })
+              .select('id, name, is_active, created_at')
               .single();
             if (newComp) {
               competitionId = newComp.id;
               const fullNewComp = {
                 id: newComp.id,
-                name: m.competition,
-                isActive: true,
-                createdAt: new Date().toISOString()
+                name: newComp.name,
+                isActive: newComp.is_active,
+                createdAt: newComp.created_at
               };
-              set(state => ({ competitions: [...state.competitions, fullNewComp] }));
+              set(state => ({ competitions: [...state.competitions.filter(c => c.id !== newComp.id), fullNewComp] }));
+            }
+          }
+        }
+
+        // Resolve away team name to team ID (upsert to avoid duplicates)
+        let awayTeamId: number | null = null;
+        if (m.awayTeam) {
+          const existingTeam = get().teams.find(t => t.name.toLowerCase() === m.awayTeam.toLowerCase());
+          if (existingTeam) {
+            awayTeamId = existingTeam.id;
+          } else {
+            const { data: newTeam } = await supabase
+              .from('teams')
+              .upsert({ name: m.awayTeam }, { onConflict: 'name' })
+              .select('id, name, created_at')
+              .single();
+            if (newTeam) {
+              awayTeamId = newTeam.id;
+              const fullNewTeam: Team = {
+                id: newTeam.id,
+                name: newTeam.name,
+                createdAt: newTeam.created_at
+              };
+              set(state => ({ teams: [...state.teams.filter(t => t.id !== newTeam.id), fullNewTeam] }));
             }
           }
         }
@@ -1079,9 +1140,10 @@ export const useFootballStore = create<FootballStore>()(
           ...m,
           seasonId,
           competitionId,
+          awayTeamId,
         });
 
-        const { data, error } = await supabase.from('matches').update(matchData).eq('id', m.id).select('id, season_id, hometeam, awayteam, homescore, awayscore, date, time, status, competition_id, competitions(name)').single();
+        const { data, error } = await supabase.from('matches').update(matchData).eq('id', m.id).select('id, season_id, hometeam, awayteam, awayteam_id, homescore, awayscore, date, time, status, competition_id, competitions(name), teams(name)').single();
         if (data) {
           set((state) => ({ matches: state.matches.map(x => x.id === m.id ? mapMatchFromDb(data) : x) }));
         }
@@ -1557,6 +1619,21 @@ export const useFootballStore = create<FootballStore>()(
           });
         }
         if (error) console.error('Error fetching competitions:', error);
+      },
+
+      fetchTeams: async () => {
+        if (get().teams.length > 0) return;
+        const { data, error } = await supabase.from('teams').select('id, name, created_at').order('name', { ascending: true });
+        if (data) {
+          set({
+            teams: data.map(t => ({
+              id: t.id,
+              name: t.name,
+              createdAt: t.created_at
+            }))
+          });
+        }
+        if (error) console.error('Error fetching teams:', error);
       },
 
       fetchAvailableRoles: async () => {

@@ -5,6 +5,7 @@ export const matchSchema = z.object({
   id: z.string(),
   homeTeam: z.literal(HOME_TEAM).default(HOME_TEAM),
   awayTeam: z.string().min(1, "Away team required"),
+  awayTeamId: z.number().optional().nullable(),
   homeScore: z.number().optional().nullable(),
   awayScore: z.number().optional().nullable(),
   date: z.string().min(1),
