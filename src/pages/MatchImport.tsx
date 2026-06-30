@@ -395,6 +395,14 @@ export function MatchImport() {
     });
   };
 
+  const formatOpponentNote = (opponentName: string, opponentClub: string) => {
+    const name = opponentName.trim();
+    const club = opponentClub.trim();
+    if (!name || !club) return name;
+    if (name.toLowerCase().includes(club.toLowerCase())) return name;
+    return `${name} (${club})`;
+  };
+
   const handleConfirm = async () => {
     if (!parsedData) return;
     setIsSaving(true);
@@ -432,7 +440,7 @@ export function MatchImport() {
           motm: e.motm,
           date: e.date,
           time: e.time,
-          notes: e.opponentPlayerRawName,
+          notes: formatOpponentNote(e.opponentPlayerRawName, parsedData.opponentClub),
           hattricks: calcHattricks(e.goals ?? 0),
         });
       }
@@ -616,6 +624,9 @@ export function MatchImport() {
                       </span>
                     </div>
                     <Input value={entry.opponentPlayerRawName} onChange={e => updateMappedEntry(idx, { opponentPlayerRawName: e.target.value })} />
+                    <p className="mt-1 truncate text-[10px] text-gray-500" title={formatOpponentNote(entry.opponentPlayerRawName, parsedData.opponentClub)}>
+                      Note: {formatOpponentNote(entry.opponentPlayerRawName, parsedData.opponentClub)}
+                    </p>
                   </div>
 
                   <div>
