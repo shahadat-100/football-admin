@@ -473,21 +473,19 @@ export function MatchImport() {
       {step === 1 && (
         <div className="space-y-4">
           {/* Community Selector */}
-          <div className="bg-[#1a1f3c] border border-white/5 rounded-xl p-6 shadow-xl">
-            <h2 className="text-sm font-semibold text-gray-300 mb-4">Select Community</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+          <div className="bg-[#1a1f3c] border border-white/5 rounded-xl p-4 shadow-xl">
+            <h2 className="text-sm font-semibold text-gray-300 mb-3">Select Community</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
               {COMMUNITIES.map(c => (
                 <button
                   key={c.id}
                   onClick={() => setCommunityId(c.id)}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all text-center ${communityId === c.id
+                  className={`h-10 rounded-lg border px-3 text-center text-xs font-semibold transition-all ${communityId === c.id
                       ? 'border-primary bg-primary/10 text-white'
                       : 'border-white/10 bg-white/5 text-gray-400 hover:border-white/20 hover:text-gray-200'
                     }`}
                 >
-                  <span className="text-2xl">{c.emoji}</span>
-                  <span className="text-xs font-semibold">{c.name}</span>
-                  <span className="text-[10px] text-gray-500 leading-tight">{c.description}</span>
+                  {c.name}
                 </button>
               ))}
             </div>
@@ -496,21 +494,21 @@ export function MatchImport() {
           {/* Year + Text Input */}
           <div className="bg-[#1a1f3c] border border-white/5 rounded-xl p-6 shadow-xl">
             <div className="grid gap-4">
-              <div className="grid gap-2 max-w-[160px]">
-                <label className="text-sm font-medium text-gray-300">Match Year</label>
-                <Input
-                  type="number"
-                  value={year}
-                  onChange={e => setYear(parseInt(e.target.value, 10) || new Date().getFullYear())}
-                />
-                <p className="text-[10px] text-gray-500">
-                  Used for dates that don't carry a year in the raw text (e.g. "Jun 28"). Set this to the actual match year.
-                </p>
-              </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-gray-300">Raw Announcement Text</label>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <label className="text-sm font-medium text-gray-300">Raw Announcement Text</label>
+                  <div className="grid gap-1 sm:w-[150px]">
+                    <label className="text-[11px] font-medium text-gray-500">Match Year</label>
+                    <Input
+                      type="number"
+                      value={year}
+                      onChange={e => setYear(parseInt(e.target.value, 10) || new Date().getFullYear())}
+                      className="h-8"
+                    />
+                  </div>
+                </div>
                 <Textarea
-                  rows={14}
+                  rows={20}
                   value={rawText}
                   onChange={e => setRawText(e.target.value)}
                   placeholder="Paste the raw Messenger/WhatsApp text here..."
