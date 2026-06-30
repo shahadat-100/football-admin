@@ -318,7 +318,6 @@ export function MatchImport() {
   const players = useFootballStore(state => state.players);
   const addMatch = useFootballStore(state => state.addMatch);
   const addMatchEntry = useFootballStore(state => state.addMatchEntry);
-  const competitions = useFootballStore(state => state.competitions);
   const fetchPlayers = useFootballStore(state => state.fetchPlayers);
   const fetchCompetitions = useFootballStore(state => state.fetchCompetitions);
 
@@ -449,7 +448,7 @@ export function MatchImport() {
   const unparsedCount = parsedData?.unparsedLines.length ?? 0;
 
   return (
-    <div className="flex flex-col gap-6 max-w-5xl mx-auto pb-10 animate-in fade-in">
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10 animate-in fade-in">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-white mb-1">Import Match Result</h1>
         <p className="text-sm text-gray-400">Paste announcement text to auto-generate matches and player stats.</p>
@@ -525,7 +524,7 @@ export function MatchImport() {
         <div className="space-y-6">
           <div className="bg-[#1a1f3c] border border-white/5 rounded-xl p-6 shadow-xl space-y-4">
             <h2 className="font-bold text-lg text-white border-b border-white/5 pb-2">Match Overview</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
               <div>
                 <p className="text-xs text-gray-400 mb-1">Competition</p>
                 <Input value={parsedData.competition} onChange={e => setParsedData({ ...parsedData, competition: e.target.value })} />
@@ -562,41 +561,61 @@ export function MatchImport() {
           )}
 
           <div className="bg-[#1a1f3c] border border-white/5 rounded-xl p-6 shadow-xl">
-            <h2 className="font-bold text-lg text-white border-b border-white/5 pb-4 mb-4">Player Entries ({mappedEntries.length})</h2>
+            <div className="flex flex-col gap-2 border-b border-white/5 pb-4 mb-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="font-bold text-lg text-white">Player Entries ({mappedEntries.length})</h2>
+                <p className="text-xs text-gray-500">Review player mapping, score, result, and timing before saving.</p>
+              </div>
+              <div className="flex gap-2 text-[11px] text-gray-400">
+                <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1">{mappedEntries.filter(e => e.playerId).length} mapped</span>
+                <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1">{mappedEntries.filter(e => !e.playerId).length} unmatched</span>
+              </div>
+            </div>
 
-            <div className="space-y-4">
+            <div className="overflow-x-auto pb-2">
+              <div className="min-w-[1040px] space-y-3">
+                <div className="grid grid-cols-[minmax(230px,1.4fr)_minmax(190px,1fr)_72px_72px_120px_72px_72px_154px] gap-3 px-4 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                  <span>Player</span>
+                  <span>Opponent</span>
+                  <span>GS</span>
+                  <span>GC</span>
+                  <span>Result</span>
+                  <span className="text-center">CS</span>
+                  <span className="text-center">MOTM</span>
+                  <span>Date / Time</span>
+                </div>
               {mappedEntries.map((entry, idx) => (
                 <div
                   key={idx}
-                  className={`rounded-lg p-4 grid gap-4 grid-cols-1 md:grid-cols-12 items-center ${entry.ambiguousScore ? 'bg-amber-500/10 border border-amber-500/40' : 'bg-white/5'
+                  className={`rounded-lg p-4 grid grid-cols-[minmax(230px,1.4fr)_minmax(190px,1fr)_72px_72px_120px_72px_72px_154px] gap-3 items-start ${entry.ambiguousScore ? 'bg-amber-500/10 border border-amber-500/40' : 'bg-white/5 border border-white/5'
                     }`}
                 >
-                  <div className="md:col-span-3">
+                  <div className="min-w-0">
                     <p className="text-xs text-gray-400 mb-1">Player {entry.playerId ? '' : <span className="text-red-400">(Unmatched)</span>}</p>
                     <SearchableSelect
                       options={players.map(p => ({ label: p.name, value: p.id }))}
                       value={entry.playerId}
                       onChange={v => updateMappedEntry(idx, { playerId: v })}
                     />
-                    <p className="text-[10px] text-gray-500 mt-1 truncate">Raw: {entry.teePlayerRawName}</p>
+                    <p className="text-[10px] text-gray-500 mt-1 truncate" title={entry.teePlayerRawName}>Raw: {entry.teePlayerRawName}</p>
                   </div>
 
-                  <div className="md:col-span-2">
+                  <div className="min-w-0">
                     <p className="text-xs text-gray-400 mb-1">Opponent</p>
                     <Input value={entry.opponentPlayerRawName} onChange={e => updateMappedEntry(idx, { opponentPlayerRawName: e.target.value })} />
                   </div>
 
-                  <div className="md:col-span-1">
+                  <div>
                     <p className="text-xs text-gray-400 mb-1">GS {entry.ambiguousScore && <span className="text-amber-400">?</span>}</p>
                     <Input type="number" value={entry.goals ?? ''} onChange={e => updateMappedEntry(idx, { goals: parseInt(e.target.value) || 0 })} />
                   </div>
 
-                  <div className="md:col-span-1">
+                  <div>
                     <p className="text-xs text-gray-400 mb-1">GC {entry.ambiguousScore && <span className="text-amber-400">?</span>}</p>
                     <Input type="number" value={entry.goalsConceded ?? ''} onChange={e => updateMappedEntry(idx, { goalsConceded: parseInt(e.target.value) || 0 })} />
                   </div>
 
-                  <div className="md:col-span-2">
+                  <div>
                     <p className="text-xs text-gray-400 mb-1">Result</p>
                     <Select
                       value={entry.result || 'win'}
@@ -605,20 +624,20 @@ export function MatchImport() {
                     />
                   </div>
 
-                  <div className="md:col-span-1 flex justify-center">
+                  <div className="flex justify-center pt-1">
                     <div className="flex flex-col items-center">
                       <p className="text-[10px] text-gray-400 mb-1">CS</p>
                       <Toggle label="Clean Sheet" checked={entry.cleanSheet} onChange={v => updateMappedEntry(idx, { cleanSheet: v })} />
                     </div>
                   </div>
-                  <div className="md:col-span-1 flex justify-center">
+                  <div className="flex justify-center pt-1">
                     <div className="flex flex-col items-center">
                       <p className="text-[10px] text-gray-400 mb-1">MOTM</p>
                       <Toggle label="MOTM" checked={entry.motm} onChange={v => updateMappedEntry(idx, { motm: v })} />
                     </div>
                   </div>
 
-                  <div className="md:col-span-1 flex flex-col justify-center items-end h-full gap-1">
+                  <div className="flex flex-col gap-1">
                     <Input
                       type="date"
                       value={entry.date}
@@ -634,6 +653,7 @@ export function MatchImport() {
                   </div>
                 </div>
               ))}
+              </div>
             </div>
 
             <div className="flex justify-between mt-6 pt-4 border-t border-white/5">

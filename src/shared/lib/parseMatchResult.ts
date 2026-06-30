@@ -602,21 +602,29 @@ const BANNER_RE = /RESULT|DEADLINE|POINT|WINS?\s*:|MATCH\s*WIN|ROUND|GROUP\s*STA
 // ─────────────────────────────────────────────────────────
 function cleanPlayerName(name: string): string {
   return name
-    .replace(/[🔑🟨⭐@]/g, '')
-    .replace(/👑/g, '')
+    .replace(/👑/gu, '')
+    .replace(/[🔑🟨⭐@]/gu, '')
+    .replace(/\uFE0F/g, '')
+    .replace(/\uFFFD/g, '')
     .replace(/[()]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 function cleanTeamName(name: string): string {
-  return cleanPlayerName(name)
+  return cleanPlayerName(name.replace(/\s*\([A-Za-z0-9]{2,6}\)\s*$/, ''))
+    .replace(/[🅰🅱]/g, '')
     .replace(/\s*\([A-Za-z0-9]{2,6}\)\s*$/, '') // strip trailing "(TEE)"-style abbreviation
     .trim();
 }
 
 function hasMotm(name: string): boolean {
   return name.includes('👑');
+}
+
+/** Strips leading emoji "keycap" list markers like 1️⃣ 2️⃣ ... 1️⃣0️⃣ (=10), 1️⃣1️⃣ (=11). */
+function stripLeadingNumberMarkers(line: string): string {
+  return line.replace(/^(?:[0-9]\uFE0F?\u20E3\s*)+/, '').trim();
 }
 
 // ─────────────────────────────────────────────────────────
@@ -706,9 +714,15 @@ function parseDate(raw: string, docYear: number): string | null {
 // ─────────────────────────────────────────────────────────
 function isGenericSectionHeader(line: string): boolean {
   if (line.includes('🆚')) return false;
-  const hasMonthName = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/i.test(line);
+  const hasMonthName = /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i.test(line);
   const hasDMY = /\d{1,2}\/\d{2}\/\d{4}/.test(line);
   return hasMonthName || hasDMY;
+}
+
+function findDateSegment(line: string, docYear: number): string {
+  if (!line.includes('|')) return line;
+  const match = line.split('|').find(segment => parseDate(segment, docYear));
+  return match ?? line;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -804,9 +818,8 @@ function findMatchup(lines: string[]): MatchupResult | null {
     } else if (/\bVS\b/i.test(line) && !/\d/.test(line)) {
       const parts = line.split(/\bVS\b/i);
       if (parts.length === 2) { left = parts[0]; right = parts[1]; matched = true; }
-    } else if (/[⚔️⚒️]/.test(line)) {
-      const sep = line.match(/[⚔️⚒️]/)![0];
-      const parts = line.split(sep);
+    } else if (/⚔️?|⚒️?/.test(line)) {
+      const parts = line.split(/\s*(?:⚔️?|⚒️?)\s*/);
       if (parts.length === 2) { left = parts[0]; right = parts[1]; matched = true; }
     } else if (/\s{2,}/.test(line) && !/\d/.test(line)) {
       const parts = line.split(/\s{2,}/).filter(Boolean);
@@ -859,9 +872,21 @@ function splitAmbiguousDigits(digits: string): [number, number, boolean] {
 }
 
 function parsePlayerLine(line: string): PlayerLineResult | null {
+  const normalizedLine = stripLeadingNumberMarkers(line);
+
+  // B) parenthesised: Name1 (N) 🆚 (M) Name2 / Name1 (N)  (M) Name2
+  let m = normalizedLine.match(/^(.+?)\(\s*(\d{1,3})\s*\)\s*(?:🆚\s*)?\(\s*(\d{1,3})\s*\)\s+(.+)$/);
+  if (m) {
+    return {
+      leftName: m[1].trim(), rightName: m[4].trim(),
+      leftGoals: parseInt(m[2], 10), rightGoals: parseInt(m[3], 10),
+      ambiguous: false,
+    };
+  }
+
   // A) explicit 🆚
-  if (line.includes('🆚')) {
-    const parts = line.split('🆚');
+  if (normalizedLine.includes('🆚')) {
+    const parts = normalizedLine.split('🆚');
     if (parts.length !== 2) return null;
     let leftPart = parts[0].trim();
     let rightPart = parts[1].trim();
@@ -878,21 +903,11 @@ function parsePlayerLine(line: string): PlayerLineResult | null {
     return { leftName: leftPart, rightName: rightPart, leftGoals, rightGoals, ambiguous: false };
   }
 
-  if (!/[A-Za-z\u0980-\u09FF].*\d.*[A-Za-z\u0980-\u09FF]/.test(line)) return null;
-  if (BANNER_RE.test(line)) return null;
-
-  // B) parenthesised: Name1 (N)  (M) Name2
-  let m = line.match(/^(.+?)\(\s*(\d{1,3})\s*\)\s+\(\s*(\d{1,3})\s*\)\s+(.+)$/);
-  if (m) {
-    return {
-      leftName: m[1].trim(), rightName: m[4].trim(),
-      leftGoals: parseInt(m[2], 10), rightGoals: parseInt(m[3], 10),
-      ambiguous: false,
-    };
-  }
+  if (!/[A-Za-z\u0980-\u09FF].*\d.*[A-Za-z\u0980-\u09FF]/.test(normalizedLine)) return null;
+  if (BANNER_RE.test(normalizedLine)) return null;
 
   // C) double-space separated: Name1 N  M Name2
-  m = line.match(/^(.+?)\s+(\d{1,3})\s{2,}(\d{1,3})\s+(.+)$/);
+  m = normalizedLine.match(/^(.+?)\s+(\d{1,3})\s{2,}(\d{1,3})\s+(.+)$/);
   if (m) {
     return {
       leftName: m[1].trim(), rightName: m[4].trim(),
@@ -902,7 +917,7 @@ function parsePlayerLine(line: string): PlayerLineResult | null {
   }
 
   // C2) two clearly separate single-space-bounded numbers: Name1 N M Name2
-  m = line.match(/^(.+?)\s+(\d{1,3})\s+(\d{1,3})\s+(.+)$/);
+  m = normalizedLine.match(/^(.+?)\s+(\d{1,3})\s+(\d{1,3})\s+(.+)$/);
   if (m) {
     return {
       leftName: m[1].trim(), rightName: m[4].trim(),
@@ -912,7 +927,7 @@ function parsePlayerLine(line: string): PlayerLineResult | null {
   }
 
   // D) glued digits, ambiguous: Name1 NM Name2
-  m = line.match(/^(.+?)\s+(\d{2,4})\s+(.+)$/);
+  m = normalizedLine.match(/^(.+?)\s+(\d{2,4})\s+(.+)$/);
   if (m) {
     const [g1, g2, ambiguous] = splitAmbiguousDigits(m[2]);
     return { leftName: m[1].trim(), rightName: m[3].trim(), leftGoals: g1, rightGoals: g2, ambiguous };
@@ -961,6 +976,7 @@ export function parseMatchResult(
   // ── Matchup detection ────────────────────────────────
   const matchup = findMatchup(lines);
   const consumed = new Set<number>();
+  consumed.add(0);
   if (!matchup) {
     data.errors.push("Could not determine matchup sides (no recognizable 'Enigmatic Elite' vs opponent pattern found).");
   } else {
@@ -972,10 +988,12 @@ export function parseMatchResult(
   // ── Global "DATE:" header line (any format that has one) ──
   let currentDate = todayString();
   let currentTime = '';
+  let hasExplicitDateContext = false;
+  let lastDateBoundaryEntryIndex = 0;
   for (let i = 0; i < Math.min(4, lines.length); i++) {
     if (/DATE:/i.test(lines[i])) {
       const d = parseDate(lines[i], docYear);
-      if (d) { currentDate = d; break; }
+      if (d) { currentDate = d; hasExplicitDateContext = true; break; }
     }
   }
 
@@ -1014,24 +1032,34 @@ export function parseMatchResult(
     if (consumed.has(i)) continue;
     const line = lines[i];
 
-    if (/deadline/i.test(line)) continue;
-    if (/[🟣🟡🔴⏰🛑⏳🎖️⭐🌃]/.test(line) && !line.includes('🆚')) continue;
+    if (/deadline/i.test(line)) {
+      const d = parseDate(line, docYear);
+      const t = extractTime(line);
+      if (d && !hasExplicitDateContext) {
+        for (let entryIdx = lastDateBoundaryEntryIndex; entryIdx < data.entries.length; entryIdx++) {
+          data.entries[entryIdx].date = d;
+        }
+        currentDate = d;
+        lastDateBoundaryEntryIndex = data.entries.length;
+      }
+      if (t && !currentTime) currentTime = t;
+      continue;
+    }
 
     // Section header → update date/time
     if (isGenericSectionHeader(line)) {
-      let datePart = line;
-      let timePart = line;
-      if (line.includes('|')) {
-        const segments = line.split('|');
-        datePart = segments[0];
-        timePart = segments[segments.length - 1];
-      }
+      const datePart = findDateSegment(line, docYear);
+      const timePart = line.includes('|') ? line.split('|').at(-1) ?? line : line;
       const d = parseDate(datePart, docYear) || parseDate(line, docYear);
       const t = extractTime(timePart) || extractTime(line);
       if (d) currentDate = d;
       currentTime = t;
+      hasExplicitDateContext = true;
+      lastDateBoundaryEntryIndex = data.entries.length;
       continue;
     }
+
+    if (/[🟣🟡🔴⏰🛑⏳🎖️⭐🌃]/.test(line) && !line.includes('🆚')) continue;
 
     // Player result line
     const parsed = parsePlayerLine(line);
