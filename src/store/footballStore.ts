@@ -124,6 +124,9 @@ export const mapPlayerFromDb = (p: any): Player => ({
   profileImageUrl: p.profileimageurl || '',
   coverImageUrl: (p as any).coverimageurl || '',
   jerseyNumber: p.jerseynumber ?? undefined,
+  dateOfBirth: p.dateOFbirth || undefined,
+  education: p.education || '',
+  location: p.location || '',
   email: p.email || '',
   // Extract role names from the joined junction table data
   playerRoles: (p.player_player_roles ?? []).map((r: any) => r.player_role?.name).filter(Boolean),
@@ -140,6 +143,9 @@ export const mapPlayerToDb = (p: any) => ({
   profileimageurl: p.profileImageUrl || '',
   coverimageurl: p.coverImageUrl || '',
   jerseynumber: p.jerseyNumber ?? null,
+  dateOFbirth: p.dateOfBirth || null,
+  education: p.education || null,
+  location: p.location || null,
   email: p.email || null,
   custom_string_tags: Array.isArray(p.customStringTags) ? p.customStringTags : [],
 });
@@ -688,7 +694,7 @@ export const useFootballStore = create<FootballStore>()(
           // Future uploads are resized so they won't bloat the payload.
           // Issue 7 fix: project only needed columns on junction/lookup tables
           const [playersRes, junctionRolesRes, rolesRes, junctionTagsRes, tagsRes] = await Promise.all([
-            supabase.from('players').select('id, name, jerseynumber, email, custom_string_tags, createdat, profileimageurl, coverimageurl'),
+            supabase.from('players').select('id, name, jerseynumber, dateOFbirth, education, location, email, custom_string_tags, createdat, profileimageurl, coverimageurl'),
             supabase.from('player_player_roles').select('player_id, role_id'),
             supabase.from('player_role').select('id, name'),
             supabase.from('player_custom_tags').select('player_id, tag_id'),
@@ -733,6 +739,9 @@ export const useFootballStore = create<FootballStore>()(
             profileImageUrl: (p as any).profileimageurl || '',
             coverImageUrl: (p as any).coverimageurl || '',
             jerseyNumber: p.jerseynumber ?? undefined,
+            dateOfBirth: p.dateOFbirth || undefined,
+            education: p.education || '',
+            location: p.location || '',
             email: p.email || '',
             playerRoles: playerRolesMap.get(p.id) || [],
             customTags: playerTagsMap.get(p.id) || [],
@@ -752,7 +761,7 @@ export const useFootballStore = create<FootballStore>()(
         const { seasons, ...profileData } = p as any;
         const playerData = mapPlayerToDb(profileData);
         
-        const { data, error } = await supabase.from('players').insert([playerData]).select('id, name, jerseynumber, email, custom_string_tags, createdat, profileimageurl, coverimageurl').single();
+        const { data, error } = await supabase.from('players').insert([playerData]).select('id, name, jerseynumber, dateOFbirth, education, location, email, custom_string_tags, createdat, profileimageurl, coverimageurl').single();
         if (error) {
           console.error('Error adding player:', error);
           alert('Failed to save player: ' + error.message);
@@ -776,6 +785,9 @@ export const useFootballStore = create<FootballStore>()(
             profileImageUrl: (data as any).profileimageurl || '',
             coverImageUrl: (data as any).coverimageurl || '',
             jerseyNumber: (data as any).jerseynumber ?? undefined,
+            dateOfBirth: (data as any).dateOFbirth || undefined,
+            education: (data as any).education || '',
+            location: (data as any).location || '',
             email: data.email || '',
             playerRoles,
             customTags,
@@ -907,7 +919,7 @@ export const useFootballStore = create<FootballStore>()(
       
       updatePlayer: async (p) => {
         const playerData = mapPlayerToDb(p);
-        const { data, error } = await supabase.from('players').update(playerData).eq('id', p.id).select('id, name, jerseynumber, email, custom_string_tags, createdat, profileimageurl, coverimageurl').single();
+        const { data, error } = await supabase.from('players').update(playerData).eq('id', p.id).select('id, name, jerseynumber, dateOFbirth, education, location, email, custom_string_tags, createdat, profileimageurl, coverimageurl').single();
         if (error) {
           console.error('Error updating player:', error);
           alert('Failed to update player: ' + error.message);
@@ -925,6 +937,9 @@ export const useFootballStore = create<FootballStore>()(
             profileImageUrl: (data as any).profileimageurl || '',
             coverImageUrl: (data as any).coverimageurl || '',
             jerseyNumber: (data as any).jerseynumber ?? undefined,
+            dateOfBirth: (data as any).dateOFbirth || undefined,
+            education: (data as any).education || '',
+            location: (data as any).location || '',
             email: data.email || '',
             playerRoles: p.playerRoles || [],
             customTags: p.customTags || [],
@@ -1836,4 +1851,3 @@ export const useFootballStore = create<FootballStore>()(
     { enabled: process.env.NODE_ENV !== 'production' }
   )
 );
-

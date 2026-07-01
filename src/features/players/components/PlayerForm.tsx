@@ -46,6 +46,9 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
       profileImageUrl: initial?.profileImageUrl ?? '',
       coverImageUrl: initial?.coverImageUrl ?? '',
       jerseyNumber: initial?.jerseyNumber ?? '',
+      dateOfBirth: initial?.dateOfBirth ?? '',
+      education: initial?.education ?? '',
+      location: initial?.location ?? '',
       email: initial?.email ?? '',
       playerRoles: initial?.playerRoles ?? [],
       customTags: initial?.customTags ?? [],
@@ -130,6 +133,21 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
       <div className="grid gap-2">
         <label className="text-[12px] font-medium text-gray-400">Jersey Number</label>
         <Input type="number" {...register('jerseyNumber')} error={errors.jerseyNumber?.message} />
+      </div>
+
+      <div className="grid gap-2">
+        <label className="text-[12px] font-medium text-gray-400">Date of Birth</label>
+        <Input type="date" {...register('dateOfBirth')} />
+      </div>
+
+      <div className="grid gap-2">
+        <label className="text-[12px] font-medium text-gray-400">Education</label>
+        <Input {...register('education')} placeholder="High School / College / University" />
+      </div>
+
+      <div className="grid gap-2">
+        <label className="text-[12px] font-medium text-gray-400">Location</label>
+        <Input {...register('location')} placeholder="City, Country" />
       </div>
 
       <div className="grid gap-2">

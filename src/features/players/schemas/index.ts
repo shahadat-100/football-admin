@@ -50,6 +50,9 @@ export const playerSchema = z.object({
   profileImageUrl: z.string().optional(),
   coverImageUrl: z.string().optional(),
   jerseyNumber: z.number().optional(),
+  dateOfBirth: z.string().optional(),
+  education: z.string().optional(),
+  location: z.string().optional(),
   playerRoles: z.array(z.string()).default([]),
   customTags: z.array(z.string()).default([]),
   customStringTags: z.array(z.string()).default([]),
@@ -71,4 +74,3 @@ export const playerFormSchema = playerSchema.omit({ id: true, createdAt: true, s
     goals: z.number(),
   })).default([]),
 });
-
