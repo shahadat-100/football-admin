@@ -279,7 +279,6 @@ export function MatchEntries() {
                   {paginatedMatchEntries.map(me => {
                     const p = getPlayer(me.playerId);
                     const rb = RESULT_BADGE[me.result as keyof typeof RESULT_BADGE] ?? RESULT_BADGE.draw;
-                    const isBulk = (me as any).source === 'bulk' || me.notes?.startsWith('Generated from');
                     return (
                       <tr key={me.id} className="hover:bg-muted/30 transition-colors">
                         <td className="px-4 py-3">
@@ -297,13 +296,12 @@ export function MatchEntries() {
                             {me.hattricks > 0 && <Badge bg="#1a1a1a" c="#e5e5e5" className="border border-gray-500/30 text-[10px] px-1.5 py-0">HT×{me.hattricks}</Badge>}
                             {me.motm && <Badge bg="#78350f" c="#fcd34d" className="border border-amber-500/30 text-[10px] px-1.5 py-0">MOTM</Badge>}
                             {me.cleanSheet && <Badge bg="#111827" c="#67e8f9" className="border border-cyan-500/30 text-[10px] px-1.5 py-0">CS</Badge>}
-                            {isBulk && <Badge bg="#1e1b4b" c="#a5b4fc" className="border border-indigo-500/30 text-[10px] px-1.5 py-0">Bulk</Badge>}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-muted-foreground max-w-[180px] truncate">{(me as any).notes || '—'}</td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2">
-                            {!isBulk && <Button size="sm" variant="secondary" onClick={() => setModal({ type: 'edit', data: me })}>✎</Button>}
+                            <Button size="sm" variant="secondary" onClick={() => setModal({ type: 'edit', data: me })}>✎</Button>
                             <Button size="sm" variant="danger" onClick={() => setModal({ type: 'delete', data: me })}>✕</Button>
                           </div>
                         </td>

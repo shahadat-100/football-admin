@@ -1275,11 +1275,29 @@ export const useFootballStore = create<FootballStore>()(
       },
       
       updateMatchEntry: async (e) => {
-        // Use the entry's own seasonId — never fall back to an arbitrary season
-        const seasonId = e.seasonId;
+        // Prefer the entry's own seasonId, but recover it for imported rows when possible.
+        let seasonId = e.seasonId;
         if (!seasonId) {
-          console.error('updateMatchEntry: entry has no seasonId, aborting stats update', e);
-          return;
+          const year = e.date ? e.date.split('-')[0] : null;
+          if (year) {
+            const seasonName = `Season ${year}`;
+            const existingSeason = get().seasons.find(s => s.name === seasonName);
+            if (existingSeason) {
+              seasonId = existingSeason.id;
+            } else {
+              const { data: seasonRow, error: seasonError } = await supabase
+                .from('season')
+                .select('id, name, is_current, start_date')
+                .eq('name', seasonName)
+                .maybeSingle();
+              if (seasonError) {
+                console.error('updateMatchEntry: failed to look up season for entry', seasonError);
+              } else if (seasonRow?.id) {
+                seasonId = seasonRow.id;
+                set(state => ({ seasons: state.seasons.some(s => s.id === seasonRow.id) ? state.seasons : [...state.seasons, seasonRow] }));
+              }
+            }
+          }
         }
         const entryData = mapMatchEntryToDb({
           ...e,
