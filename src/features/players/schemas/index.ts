@@ -53,6 +53,8 @@ export const playerSchema = z.object({
   dateOfBirth: z.string().optional(),
   education: z.string().optional(),
   location: z.string().optional(),
+  aboutMe: z.string().optional(),
+  openionAboutClub: z.string().optional(),
   playerRoles: z.array(z.string()).default([]),
   customTags: z.array(z.string()).default([]),
   customStringTags: z.array(z.string()).default([]),

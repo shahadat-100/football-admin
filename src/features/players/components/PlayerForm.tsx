@@ -49,6 +49,8 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
       dateOfBirth: initial?.dateOfBirth ?? '',
       education: initial?.education ?? '',
       location: initial?.location ?? '',
+      aboutMe: initial?.aboutMe ?? '',
+      openionAboutClub: initial?.openionAboutClub ?? '',
       email: initial?.email ?? '',
       playerRoles: initial?.playerRoles ?? [],
       customTags: initial?.customTags ?? [],
@@ -148,6 +150,16 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
       <div className="grid gap-2">
         <label className="text-[12px] font-medium text-gray-400">Location</label>
         <Input {...register('location')} placeholder="City, Country" />
+      </div>
+
+      <div className="grid gap-2">
+        <label className="text-[12px] font-medium text-gray-400">About Me</label>
+        <Input {...register('aboutMe')} placeholder="Short bio or player intro" />
+      </div>
+
+      <div className="grid gap-2">
+        <label className="text-[12px] font-medium text-gray-400">Opinion About Club</label>
+        <Input {...register('openionAboutClub')} placeholder="Player's opinion about the club" />
       </div>
 
       <div className="grid gap-2">
