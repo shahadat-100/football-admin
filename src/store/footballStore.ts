@@ -59,6 +59,7 @@ export interface ClubRank {
   title: string;
   subtitle: string;
   description: string;
+  themeColor?: string | null;
 }
 
 export interface ClubAchievement {
@@ -93,6 +94,7 @@ export const mapClubRankFromDb = (r: any): ClubRank => ({
   title: r.title,
   subtitle: r.subtitle || '',
   description: r.description || '',
+  themeColor: r.theme_color || null,
 });
 
 export const mapClubRankToDb = (r: any) => ({
@@ -100,6 +102,7 @@ export const mapClubRankToDb = (r: any) => ({
   title: r.title,
   subtitle: r.subtitle || null,
   description: r.description || null,
+  theme_color: r.themeColor || null,
 });
 
 export const mapClubAchievementFromDb = (a: any): ClubAchievement => ({

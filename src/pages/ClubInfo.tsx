@@ -43,7 +43,7 @@ export function ClubInfo() {
 
   // Form states
   const [ruleForm, setRuleForm] = useState({ title: '', subtitle: '', description: '' });
-  const [rankForm, setRankForm] = useState({ imageUrl: '', title: '', subtitle: '', description: '' });
+  const [rankForm, setRankForm] = useState({ imageUrl: '', title: '', subtitle: '', description: '', themeColor: '#000000' });
   const [achievementForm, setAchievementForm] = useState({ imageUrl: '', title: '', subtitle: '', description: '' });
 
   useEffect(() => {
@@ -63,11 +63,11 @@ export function ClubInfo() {
   };
 
   const openAddRank = () => {
-    setRankForm({ imageUrl: '', title: '', subtitle: '', description: '' });
+    setRankForm({ imageUrl: '', title: '', subtitle: '', description: '', themeColor: '#000000' });
     setModal({ type: 'add_rank' });
   };
   const openEditRank = (rank: ClubRank) => {
-    setRankForm({ imageUrl: rank.imageUrl, title: rank.title, subtitle: rank.subtitle, description: rank.description });
+    setRankForm({ imageUrl: rank.imageUrl, title: rank.title, subtitle: rank.subtitle, description: rank.description, themeColor: rank.themeColor || '#000000' });
     setModal({ type: 'edit_rank', data: rank });
   };
 
@@ -231,11 +231,17 @@ export function ClubInfo() {
           {filteredRanks.map(rank => (
             <div key={rank.id} className="bg-card border border-border rounded-xl p-6 flex flex-col items-center text-center shadow-sm hover:border-primary/40 transition-all group relative">
               {rank.imageUrl ? (
-                <div className="w-24 h-24 rounded-full bg-muted/20 border-2 border-border overflow-hidden mb-4 shadow-md flex-shrink-0">
+                <div 
+                  className="w-24 h-24 rounded-full border-2 overflow-hidden mb-4 shadow-md flex-shrink-0"
+                  style={{ borderColor: rank.themeColor || 'var(--border)', backgroundColor: rank.themeColor ? `${rank.themeColor}33` : 'var(--muted)' }}
+                >
                   <img src={rank.imageUrl} alt={rank.title} className="w-full h-full object-cover" />
                 </div>
               ) : (
-                <div className="w-24 h-24 rounded-full bg-muted/20 border-2 border-border flex items-center justify-center mb-4 text-muted-foreground flex-shrink-0">
+                <div 
+                  className="w-24 h-24 rounded-full border-2 flex items-center justify-center mb-4 text-muted-foreground flex-shrink-0"
+                  style={{ borderColor: rank.themeColor || 'var(--border)', backgroundColor: rank.themeColor ? `${rank.themeColor}33` : 'var(--muted)' }}
+                >
                   <Trophy className="w-8 h-8 opacity-40" />
                 </div>
               )}
@@ -374,6 +380,24 @@ export function ClubInfo() {
                 onChange={e => setRankForm({ ...rankForm, subtitle: e.target.value })} 
                 placeholder="e.g. Division A"
               />
+            </div>
+            <div>
+              <label className="block text-[12px] font-medium mb-1 text-foreground">Theme Color</label>
+              <div className="flex items-center gap-3">
+                <input 
+                  type="color"
+                  value={rankForm.themeColor} 
+                  onChange={e => setRankForm({ ...rankForm, themeColor: e.target.value })} 
+                  className="w-10 h-10 rounded cursor-pointer border-0 p-0"
+                />
+                <Input 
+                  value={rankForm.themeColor} 
+                  onChange={e => setRankForm({ ...rankForm, themeColor: e.target.value })} 
+                  placeholder="#000000"
+                  className="flex-1 font-mono uppercase"
+                  maxLength={7}
+                />
+              </div>
             </div>
             <div>
               <label className="block text-[12px] font-medium mb-1 text-foreground">Description</label>
