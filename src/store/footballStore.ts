@@ -442,14 +442,14 @@ const updatePlayerSeasonStats = async (playerId: string, seasonId: number) => {
 
 // ── Milestone System ──────────────────────────────────────────────────
 
-const GOAL_MILESTONES        = Array.from({ length: 50 }, (_, i) => (i + 1) * 100); // 100..5000
-const MOTM_MILESTONES        = [10, 25, 50, 100, 200, 500, 1000];
-const CLEAN_SHEET_MILESTONES = [100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
-const HATTRICK_MILESTONES    = [100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
-const APPEARANCE_MILESTONES  = [50, 100, 200, 300, 500, 1000, 1500, 2000, 3000];
-const WIN_MILESTONES         = [50, ...Array.from({ length: 49 }, (_, i) => (i + 1) * 100)]; // 50,100..5000
-const WIN_STREAK_MILESTONES  = [5, 10, 15, 20];
-const UNBEATEN_MILESTONES    = [10, 15, 20];
+const GOAL_MILESTONES        = [10, 25, 50, ...Array.from({ length: 50 }, (_, i) => (i + 1) * 100)]; // 10, 25, 50, 100..5000
+const MOTM_MILESTONES        = [5, 10, 25, 50, 100, 200, 500, 1000];
+const CLEAN_SHEET_MILESTONES = [10, 25, 50, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+const HATTRICK_MILESTONES    = [1, 5, 10, 25, 50, 100, 150, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+const APPEARANCE_MILESTONES  = [10, 25, 50, 100, 200, 300, 500, 1000, 1500, 2000, 3000];
+const WIN_MILESTONES         = [10, 25, 50, ...Array.from({ length: 49 }, (_, i) => (i + 1) * 100)]; // 10, 25, 50, 100..5000
+const WIN_STREAK_MILESTONES  = [3, 5, 10, 15, 20, 25, 30];
+const UNBEATEN_MILESTONES    = [5, 10, 15, 20, 25, 30];
 
 const _milestoneTitle = (name: string, key: string, n: number, emoji: string): string => {
   if (key.startsWith('goals'))       return `${emoji} ${name} Scores ${n} Career Goals!`;
@@ -519,13 +519,18 @@ const checkAndFireMilestones = async (playerId: string): Promise<boolean> => {
       if (e.cleansheet) rCleansheets++;
       if (e.motm) rMotm++;
       
-      if (e.result === 'win') { rWins++; }
+      const res = String(e.result || '').trim().toLowerCase();
+      if (res === 'win') { rWins++; }
       
-      const isGeneratedMatch = e.notes && e.notes.startsWith('Historical - Season');
-      if (!isGeneratedMatch) {
-        if (e.result === 'win') { currentWinStreak++; currentUnbeatenStreak++; }
-        else if (e.result === 'draw') { currentWinStreak = 0; currentUnbeatenStreak++; }
-        else { currentWinStreak = 0; currentUnbeatenStreak = 0; }
+      if (res === 'win') { 
+        currentWinStreak++; 
+        currentUnbeatenStreak++; 
+      } else if (res === 'draw') { 
+        currentWinStreak = 0; 
+        currentUnbeatenStreak++; 
+      } else if (res === 'loss') { 
+        currentWinStreak = 0; 
+        currentUnbeatenStreak = 0; 
       }
 
       checkThresholds(GOAL_MILESTONES,        rGoals,                'goals',       d, '⚽');
