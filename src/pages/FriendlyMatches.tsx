@@ -1,11 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useFootballStore } from '@/store/footballStore';
-import { Input } from '@/shared/components';
+import { FriendlyMatch } from '@/features/friendly-matches/types';
+import { FriendlyMatchForm } from '@/features/friendly-matches/components/FriendlyMatchForm';
+import { Button, Input, Modal, DeleteConfirm } from '@/shared/components';
 import { fuzzyFilter } from '@/shared/lib/utils';
-import { Search, Swords } from 'lucide-react';
+import { Search, Swords, Plus, Pencil, Trash2 } from 'lucide-react';
 
 export function FriendlyMatches() {
-  const { friendlyMatches, fetchFriendlyMatches, players, fetchPlayers } = useFootballStore();
+  const { friendlyMatches, fetchFriendlyMatches, addFriendlyMatch, updateFriendlyMatch, removeFriendlyMatch, players, fetchPlayers } = useFootballStore();
+  const [modal, setModal] = useState<{ type: 'add' | 'edit' | 'delete', data?: FriendlyMatch } | null>(null);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -58,6 +61,46 @@ export function FriendlyMatches() {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {/* Add Modal */}
+      {modal?.type === 'add' && (
+        <Modal title="Add friendly match" onClose={() => setModal(null)} isOpen>
+          <FriendlyMatchForm
+            players={players}
+            onSave={(d) => {
+              addFriendlyMatch(d);
+              setModal(null);
+            }}
+            onClose={() => setModal(null)}
+          />
+        </Modal>
+      )}
+
+      {/* Edit Modal */}
+      {modal?.type === 'edit' && modal.data && (
+        <Modal title="Edit friendly match" onClose={() => setModal(null)} isOpen>
+          <FriendlyMatchForm
+            initial={modal.data}
+            players={players}
+            onSave={(d) => {
+              updateFriendlyMatch({ ...d, id: modal.data!.id });
+              setModal(null);
+            }}
+            onClose={() => setModal(null)}
+          />
+        </Modal>
+      )}
+
+      {/* Delete Confirmation */}
+      <DeleteConfirm
+        isOpen={modal?.type === 'delete'}
+        label={modal?.data ? `${playerMap.get(modal.data.player1Id) ?? 'Player 1'} vs ${playerMap.get(modal.data.player2Id) ?? 'Player 2'} (${modal.data.date})` : 'Friendly Match'}
+        onConfirm={() => {
+          if (modal?.data) removeFriendlyMatch(modal.data.id);
+          setModal(null);
+        }}
+        onClose={() => setModal(null)}
+      />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between mb-6 gap-4">
         <div>
@@ -77,6 +120,10 @@ export function FriendlyMatches() {
               className="pl-9 w-full sm:w-[220px]"
             />
           </div>
+          <Button onClick={() => setModal({ type: 'add' })}>
+            <Plus className="w-4 h-4 mr-1.5" />
+            Add Friendly Match
+          </Button>
         </div>
       </div>
 
@@ -120,10 +167,28 @@ export function FriendlyMatches() {
               {/* Actions */}
               <div className="flex gap-2 items-center sm:ml-auto w-full sm:w-auto justify-center sm:justify-end border-t sm:border-none border-border pt-3 sm:pt-0 mt-1 sm:mt-0">
                 {m.notes && (
-                  <span className="text-[11px] text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border/50 max-w-[180px] truncate" title={m.notes}>
+                  <span className="text-[11px] text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border/50 max-w-[180px] truncate mr-2" title={m.notes}>
                     {m.notes}
                   </span>
                 )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => setModal({ type: 'edit', data: m })}
+                  title="Edit friendly match"
+                >
+                  <Pencil className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-red-400"
+                  onClick={() => setModal({ type: 'delete', data: m })}
+                  title="Delete friendly match"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </div>
             </div>
           );
