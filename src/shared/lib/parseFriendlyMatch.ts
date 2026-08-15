@@ -105,11 +105,7 @@ export function parseFriendlyMatchBlock(rawText: string, defaultYear: number = n
   let currentDate = `${defaultYear}-${(new Date().getMonth()+1).toString().padStart(2,'0')}-${new Date().getDate().toString().padStart(2,'0')}`;
 
   for (const line of lines) {
-    // Check if line is header metadata
     const lower = line.toLowerCase();
-    if (lower.includes('warmup') || lower.includes('update') || lower.includes('result') || /^[\-_=]{3,}$/.test(line)) {
-      continue;
-    }
 
     // Check if line is a Date line (e.g. "Date - 15/08/2026")
     if (lower.includes('date')) {
@@ -120,25 +116,38 @@ export function parseFriendlyMatchBlock(rawText: string, defaultYear: number = n
       continue;
     }
 
-    // Match patterns like "-istiack shanto 3-1 abdur rahman" or "Istiack shanto 3-2 taz islam"
-    // Regex matches: [optional dash][Name 1] [goals 1]-[goals 2] [Name 2]
-    const matchRegex = /^-?\s*([A-Za-z\u0980-\u09FF\s.'👑🔑🟨⭐]+?)\s+(\d{1,2})\s*-\s*(\d{1,2})\s+([A-Za-z\u0980-\u09FF\s.'👑🔑🟨⭐]+)$/;
-    const parts = line.match(matchRegex);
+    // Skip metadata / header lines that contain no score
+    if (lower.includes('warmup') || lower.includes('update') || lower.includes('result') || /^[\-_=]{3,}$/.test(line)) {
+      continue;
+    }
+
+    // Strip leading dashes or bullets like "- -Tauhidul Rifat 0-2 Alamin Munna" -> "Tauhidul Rifat 0-2 Alamin Munna"
+    const cleanedLine = line.replace(/^[-\s–—]+/, '').trim();
+    if (!cleanedLine) continue;
+
+    // Match patterns like "istiack shanto 3-1 abdur rahman" or "Nahid 2- 1 abdur rahman rimon" or "Tauhidul Rifat 0-2 Alamin Munna"
+    const matchRegex = /^(.+?)\s+(\d{1,2})\s*[-–—]\s*(\d{1,2})\s+(.+)$/;
+    const parts = cleanedLine.match(matchRegex);
 
     if (parts) {
-      matches.push({
-        rawLine: line,
-        player1RawName: cleanPlayerName(parts[1]),
-        player2RawName: cleanPlayerName(parts[4]),
-        player1Goals: parseInt(parts[2], 10),
-        player2Goals: parseInt(parts[3], 10),
-        date: currentDate,
-      });
-    } else {
-      // If line contains digit-digit pattern but didn't match perfectly, flag it as unparsed or bad line
-      if (/\d\s*-\s*\d/.test(line)) {
-        errors.push(`Could not parse match line: "${line}"`);
+      const p1Raw = cleanPlayerName(parts[1]);
+      const p2Raw = cleanPlayerName(parts[4]);
+      if (p1Raw && p2Raw) {
+        matches.push({
+          rawLine: line,
+          player1RawName: p1Raw,
+          player2RawName: p2Raw,
+          player1Goals: parseInt(parts[2], 10),
+          player2Goals: parseInt(parts[3], 10),
+          date: currentDate,
+        });
+        continue;
       }
+    }
+
+    // If line contains digit-digit pattern but didn't match, record error
+    if (/\d\s*[-–—]\s*\d/.test(cleanedLine)) {
+      errors.push(`Could not parse match line: "${line}"`);
     }
   }
 

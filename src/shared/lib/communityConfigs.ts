@@ -54,7 +54,7 @@
 // ];
 
 
-export type CommunityId = 'auto' | 'cobeg' | 'pesbd' | 'gkec' | 'ecob' | 'efob' | 'efcob';
+export type CommunityId = 'auto' | 'friendly' | 'cobeg' | 'pesbd' | 'gkec' | 'ecob' | 'efob' | 'efcob';
 
 export interface CommunityMeta {
   id: CommunityId;
@@ -71,6 +71,13 @@ export const COMMUNITIES: CommunityMeta[] = [
     emoji: '🔧',
     description: 'Tries to detect format automatically',
     exampleScore: 'MATCH POINTS / WINS: / Match Win:',
+  },
+  {
+    id: 'friendly',
+    name: 'Friendly (TEE Internal)',
+    emoji: '🤝',
+    description: 'Internal Club Training Matches',
+    exampleScore: '-Player1 3-1 Player2',
   },
   {
     id: 'cobeg',

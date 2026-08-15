@@ -328,8 +328,8 @@ export function MatchImport() {
   }, [fetchPlayers, fetchCompetitions]);
 
   const isFriendlyInput = useMemo(() => {
-    return rawText.toLowerCase().includes('warmup') || rawText.toLowerCase().includes('friendly');
-  }, [rawText]);
+    return communityId === 'friendly' || rawText.toLowerCase().includes('warmup') || rawText.toLowerCase().includes('friendly');
+  }, [communityId, rawText]);
 
   const [parsedFriendlyMatches, setParsedFriendlyMatches] = useState<(ParsedFriendlyMatch & { player1Id: string; player2Id: string })[]>([]);
   const addFriendlyMatch = useFootballStore(state => state.addFriendlyMatch);
