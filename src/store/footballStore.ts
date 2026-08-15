@@ -4,6 +4,7 @@ import { Player, SeasonDb, PlayerSeasonStat, MonthlyStat } from '@/features/play
 import { Match } from '@/features/matches/types';
 import { MatchEntry } from '@/features/match-entries/types';
 import { NewsArticle } from '@/features/news/types';
+import { FriendlyMatch } from '@/features/friendly-matches/types';
 import { supabase } from '@/lib/supabase';
 
 
@@ -234,6 +235,28 @@ export const mapHallOfFameToDb = (h: any) => ({
   descriptions: h.descriptions,
 });
 
+export const mapFriendlyMatchFromDb = (m: any): FriendlyMatch => ({
+  id: m.id,
+  player1Id: m.player1_id,
+  player2Id: m.player2_id,
+  player1Goals: m.player1_goals ?? 0,
+  player2Goals: m.player2_goals ?? 0,
+  date: m.date,
+  time: m.time ?? null,
+  notes: m.notes ?? null,
+  createdAt: m.created_at ?? null,
+});
+
+export const mapFriendlyMatchToDb = (m: Omit<FriendlyMatch, 'id' | 'createdAt'>) => ({
+  player1_id: m.player1Id,
+  player2_id: m.player2Id,
+  player1_goals: m.player1Goals,
+  player2_goals: m.player2Goals,
+  date: m.date,
+  time: m.time || null,
+  notes: m.notes || null,
+});
+
 interface FootballStore {
   players: Player[];
   matches: Match[];
@@ -320,6 +343,13 @@ interface FootballStore {
   addClubAchievement: (achievement: Omit<ClubAchievement, 'id' | 'createdAt'>) => Promise<void>;
   updateClubAchievement: (achievement: ClubAchievement) => Promise<void>;
   removeClubAchievement: (id: number) => Promise<void>;
+
+  // Friendly Matches
+  friendlyMatches: FriendlyMatch[];
+  fetchFriendlyMatches: () => Promise<void>;
+  addFriendlyMatch: (m: Omit<FriendlyMatch, 'id' | 'createdAt'>) => Promise<void>;
+  updateFriendlyMatch: (m: FriendlyMatch) => Promise<void>;
+  removeFriendlyMatch: (id: string) => Promise<void>;
 }
 
 
@@ -602,6 +632,7 @@ export const useFootballStore = create<FootballStore>()(
       clubRules: [],
       clubRanks: [],
       clubAchievements: [],
+      friendlyMatches: [],
 
       paginatedMatchEntries: [],
       totalMatchEntriesCount: 0,
@@ -1881,6 +1912,57 @@ export const useFootballStore = create<FootballStore>()(
         } else {
           console.error('Error removing club achievement:', error);
           alert('Failed to delete achievement: ' + error.message);
+        }
+      },
+
+      // ── Friendly Matches ─────────────────────────────────────────────
+      fetchFriendlyMatches: async () => {
+        const { data, error } = await supabase
+          .from('friendly_matches')
+          .select('*')
+          .order('date', { ascending: false });
+        if (data) set({ friendlyMatches: data.map(mapFriendlyMatchFromDb) });
+        if (error) console.error('Error fetching friendly matches:', error);
+      },
+
+      addFriendlyMatch: async (m) => {
+        const { data, error } = await supabase
+          .from('friendly_matches')
+          .insert([mapFriendlyMatchToDb(m)])
+          .select('*')
+          .single();
+        if (data) {
+          set((state) => ({ friendlyMatches: [mapFriendlyMatchFromDb(data), ...state.friendlyMatches] }));
+        }
+        if (error) {
+          console.error('Error adding friendly match:', error);
+          alert('Failed to save friendly match: ' + error.message);
+        }
+      },
+
+      updateFriendlyMatch: async (m) => {
+        const { data, error } = await supabase
+          .from('friendly_matches')
+          .update(mapFriendlyMatchToDb(m))
+          .eq('id', m.id)
+          .select('*')
+          .single();
+        if (data) {
+          set((state) => ({ friendlyMatches: state.friendlyMatches.map(x => x.id === m.id ? mapFriendlyMatchFromDb(data) : x) }));
+        }
+        if (error) {
+          console.error('Error updating friendly match:', error);
+          alert('Failed to update friendly match: ' + error.message);
+        }
+      },
+
+      removeFriendlyMatch: async (id) => {
+        const { error } = await supabase.from('friendly_matches').delete().eq('id', id);
+        if (!error) {
+          set((state) => ({ friendlyMatches: state.friendlyMatches.filter(x => x.id !== id) }));
+        } else {
+          console.error('Error removing friendly match:', error);
+          alert('Failed to delete friendly match: ' + error.message);
         }
       },
     }),

@@ -300,6 +300,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { parseMatchResult, ParsedMatchData, ParsedMatchEntry } from '@/shared/lib/parseMatchResult';
+import { parseFriendlyMatchBlock, ParsedFriendlyMatch } from '@/shared/lib/parseFriendlyMatch';
 import { COMMUNITIES, CommunityId } from '@/shared/lib/communityConfigs';
 import { useFootballStore } from '@/store/footballStore';
 import { Button, Input, Select, Textarea, SearchableSelect, Toggle } from '@/shared/components';
@@ -326,18 +327,41 @@ export function MatchImport() {
     fetchCompetitions();
   }, [fetchPlayers, fetchCompetitions]);
 
+  const isFriendlyInput = useMemo(() => {
+    return rawText.toLowerCase().includes('warmup') || rawText.toLowerCase().includes('friendly');
+  }, [rawText]);
+
+  const [parsedFriendlyMatches, setParsedFriendlyMatches] = useState<(ParsedFriendlyMatch & { player1Id: string; player2Id: string })[]>([]);
+  const addFriendlyMatch = useFootballStore(state => state.addFriendlyMatch);
+
   const handleParse = () => {
-    const data = parseMatchResult(rawText, communityId, year);
-    if (data.errors.length > 0) {
-      setErrors(data.errors);
-      // Still allow continuing if at least some entries were parsed —
-      // matchup/score errors shouldn't block manual fix-up in step 2.
-      if (data.entries.length === 0) return;
+    if (isFriendlyInput) {
+      const res = parseFriendlyMatchBlock(rawText, year);
+      if (res.errors.length > 0) {
+        setErrors(res.errors);
+        if (res.matches.length === 0) return;
+      } else {
+        setErrors([]);
+      }
+      
+      const mapped = res.matches.map((m: ParsedFriendlyMatch) => ({
+        ...m,
+        player1Id: fuzzyMatchPlayer(m.player1RawName),
+        player2Id: fuzzyMatchPlayer(m.player2RawName),
+      }));
+      setParsedFriendlyMatches(mapped);
+      setStep(2);
     } else {
-      setErrors([]);
+      const data = parseMatchResult(rawText, communityId, year);
+      if (data.errors.length > 0) {
+        setErrors(data.errors);
+        if (data.entries.length === 0) return;
+      } else {
+        setErrors([]);
+      }
+      setParsedData(data);
+      setStep(2);
     }
-    setParsedData(data);
-    setStep(2);
   };
 
   const fuzzyMatchPlayer = (rawName: string) => {
@@ -353,7 +377,7 @@ export function MatchImport() {
   const [mappedEntries, setMappedEntries] = useState<(ParsedMatchEntry & { playerId: string })[]>([]);
 
   useMemo(() => {
-    if (parsedData && step === 2) {
+    if (parsedData && step === 2 && !isFriendlyInput) {
       setMappedEntries(
         parsedData.entries.map(e => ({
           ...e,
@@ -361,7 +385,7 @@ export function MatchImport() {
         }))
       );
     }
-  }, [parsedData, step, players]);
+  }, [parsedData, step, players, isFriendlyInput]);
 
   const updateMappedEntry = (index: number, updates: Partial<typeof mappedEntries[0]>) => {
     setMappedEntries(prev => {
@@ -395,6 +419,14 @@ export function MatchImport() {
     });
   };
 
+  const updateFriendlyEntry = (index: number, updates: Partial<typeof parsedFriendlyMatches[0]>) => {
+    setParsedFriendlyMatches(prev => {
+      const nw = [...prev];
+      nw[index] = { ...nw[index], ...updates };
+      return nw;
+    });
+  };
+
   const formatOpponentNote = (opponentName: string, opponentClub: string) => {
     const name = opponentName.trim();
     const club = opponentClub.trim();
@@ -404,53 +436,72 @@ export function MatchImport() {
   };
 
   const handleConfirm = async () => {
-    if (!parsedData) return;
     setIsSaving(true);
     setErrors([]);
     try {
-      // 1. Create Match
-      const matchId = await addMatch({
-        homeTeam: 'The Enigmatic Elite',
-        awayTeam: parsedData.opponentClub,
-        homeScore: parsedData.homeScore,
-        awayScore: parsedData.awayScore,
-        date: mappedEntries[0]?.date || new Date().toISOString().split('T')[0],
-        time: '',
-        competition: parsedData.competition,
-        status: 'finished',
-      });
+      if (isFriendlyInput) {
+        for (const m of parsedFriendlyMatches) {
+          if (!m.player1Id || !m.player2Id) {
+            throw new Error(`Please map all players before saving. Missing map for: ${!m.player1Id ? m.player1RawName : m.player2RawName}`);
+          }
+          await addFriendlyMatch({
+            player1Id: m.player1Id,
+            player2Id: m.player2Id,
+            player1Goals: m.player1Goals,
+            player2Goals: m.player2Goals,
+            date: m.date,
+            time: null,
+            notes: 'Bulk parsed',
+          });
+        }
+        alert('Friendly matches successfully imported!');
+      } else {
+        if (!parsedData) return;
+        // 1. Create Match
+        const matchId = await addMatch({
+          homeTeam: 'The Enigmatic Elite',
+          awayTeam: parsedData.opponentClub,
+          homeScore: parsedData.homeScore,
+          awayScore: parsedData.awayScore,
+          date: mappedEntries[0]?.date || new Date().toISOString().split('T')[0],
+          time: '',
+          competition: parsedData.competition,
+          status: 'finished',
+        });
 
-      if (!matchId) {
-        throw new Error('Failed to create parent match. Match ID was null.');
-      }
-
-      // 2. Loop and Create Entries
-      for (const e of mappedEntries) {
-        if (!e.playerId) {
-          throw new Error(`Player not mapped for ${e.teePlayerRawName}`);
+        if (!matchId) {
+          throw new Error('Failed to create parent match. Match ID was null.');
         }
 
-        await addMatchEntry({
-          playerId: e.playerId,
-          matchId: matchId,
-          goals: e.goals ?? 0,
-          goalsConceded: e.goalsConceded ?? 0,
-          result: e.result ?? 'draw',
-          cleanSheet: e.cleanSheet,
-          motm: e.motm,
-          date: e.date,
-          time: e.time,
-          notes: formatOpponentNote(e.opponentPlayerRawName, parsedData.opponentClub),
-          hattricks: calcHattricks(e.goals ?? 0),
-        });
-      }
+        // 2. Loop and Create Entries
+        for (const e of mappedEntries) {
+          if (!e.playerId) {
+            throw new Error(`Player not mapped for ${e.teePlayerRawName}`);
+          }
 
-      alert('Match successfully imported!');
+          await addMatchEntry({
+            playerId: e.playerId,
+            matchId: matchId,
+            goals: e.goals ?? 0,
+            goalsConceded: e.goalsConceded ?? 0,
+            result: e.result ?? 'draw',
+            cleanSheet: e.cleanSheet,
+            motm: e.motm,
+            date: e.date,
+            time: e.time,
+            notes: formatOpponentNote(e.opponentPlayerRawName, parsedData.opponentClub),
+            hattricks: calcHattricks(e.goals ?? 0),
+          });
+        }
+
+        alert('Match successfully imported!');
+      }
       // Reset
       setStep(1);
       setRawText('');
       setParsedData(null);
       setMappedEntries([]);
+      setParsedFriendlyMatches([]);
     } catch (err: any) {
       setErrors([err.message || 'Unknown error during save']);
     } finally {
@@ -533,7 +584,63 @@ export function MatchImport() {
         </div>
       )}
 
-      {step === 2 && parsedData && (
+      {step === 2 && isFriendlyInput && (
+        <div className="space-y-6">
+          <div className="bg-[#1a1f3c] border border-white/5 rounded-xl p-6 shadow-xl">
+            <div className="flex flex-col gap-2 border-b border-white/5 pb-4 mb-4">
+              <h2 className="font-bold text-lg text-white">Friendly Matches ({parsedFriendlyMatches.length})</h2>
+              <p className="text-xs text-gray-500">Map the raw training match names to system players before saving.</p>
+            </div>
+
+            <div className="space-y-4">
+              {parsedFriendlyMatches.map((match, idx) => (
+                <div key={idx} className="bg-white/5 border border-white/5 rounded-lg p-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                  <div className="md:col-span-4">
+                    <p className="text-xs text-gray-400 mb-1">Player 1 ({match.player1RawName}) {match.player1Id ? '' : <span className="text-red-400">(Unmatched)</span>}</p>
+                    <SearchableSelect
+                      options={players.map(p => ({ label: p.name, value: p.id }))}
+                      value={match.player1Id}
+                      onChange={v => updateFriendlyEntry(idx, { player1Id: v })}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-xs text-gray-400 mb-1">Goals</p>
+                    <Input type="number" min={0} value={match.player1Goals} onChange={e => updateFriendlyEntry(idx, { player1Goals: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div className="md:col-span-4">
+                    <p className="text-xs text-gray-400 mb-1">Player 2 ({match.player2RawName}) {match.player2Id ? '' : <span className="text-red-400">(Unmatched)</span>}</p>
+                    <SearchableSelect
+                      options={players.map(p => ({ label: p.name, value: p.id }))}
+                      value={match.player2Id}
+                      onChange={v => updateFriendlyEntry(idx, { player2Id: v })}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-xs text-gray-400 mb-1">Goals</p>
+                    <Input type="number" min={0} value={match.player2Goals} onChange={e => updateFriendlyEntry(idx, { player2Goals: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div className="md:col-span-12 text-[10px] text-gray-500 flex justify-between border-t border-white/5 pt-2">
+                    <span>Date: {match.date}</span>
+                    <span>Raw: {match.rawLine}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-between mt-6 pt-4 border-t border-white/5">
+              <Button variant="secondary" onClick={() => setStep(1)}>Back</Button>
+              <Button 
+                onClick={handleConfirm} 
+                disabled={isSaving || parsedFriendlyMatches.some(m => !m.player1Id || !m.player2Id)}
+              >
+                {isSaving ? 'Saving...' : 'Confirm & Save All'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === 2 && !isFriendlyInput && parsedData && (
         <div className="space-y-6">
           <div className="bg-[#1a1f3c] border border-white/5 rounded-xl p-6 shadow-xl space-y-4">
             <h2 className="font-bold text-lg text-white border-b border-white/5 pb-2">Match Overview</h2>
