@@ -54,7 +54,7 @@
 // ];
 
 
-export type CommunityId = 'auto' | 'friendly' | 'cobeg' | 'pesbd' | 'gkec' | 'ecob' | 'efob' | 'efcob';
+export type CommunityId = 'auto' | 'friendly' | 'cobeg' | 'pesbd' | 'gkec' | 'befa' | 'ecob' | 'efob' | 'efcob';
 
 export interface CommunityMeta {
   id: CommunityId;
@@ -69,56 +69,63 @@ export const COMMUNITIES: CommunityMeta[] = [
     id: 'auto',
     name: 'Auto-detect',
     emoji: '🔧',
-    description: 'Tries to detect format automatically',
+    description: 'Auto-detect format',
     exampleScore: 'MATCH POINTS / WINS: / Match Win:',
   },
   {
     id: 'friendly',
     name: 'Friendly (TEE Internal)',
     emoji: '🤝',
-    description: 'Internal Club Training Matches',
+    description: 'Internal friendly matches',
     exampleScore: '-Player1 3-1 Player2',
   },
   {
     id: 'cobeg',
     name: 'COBEG',
     emoji: '⚒️',
-    description: 'COBEG eFootball League',
+    description: 'COBEG matches',
     exampleScore: 'WINS: 🆃🅴🅴 10 | OPP 01',
   },
   {
     id: 'pesbd',
     name: 'PESBD',
     emoji: '⚔️',
-    description: 'PESBD Classic Showdown',
+    description: 'PESBD matches',
     exampleScore: 'Match Win: OPP 01 | 09 🆃🅴🅴',
   },
   {
     id: 'gkec',
     name: 'GKEC',
     emoji: '🏆',
-    description: 'GKEC Club World Cup',
+    description: 'GKEC matches',
     exampleScore: '🏆 POINTS - 📁Team : XX',
+  },
+  {
+    id: 'befa',
+    name: 'BeFA',
+    emoji: '🏆',
+    description: 'BeFA matches',
+    exampleScore: 'POINTS:\n🔹The Glitcher : 7\n🔹The Enigmatic Elite : 25',
   },
   {
     id: 'ecob',
     name: 'ECOB',
     emoji: '🛡️',
-    description: 'ECOB Elite Cup',
+    description: 'ECOB matches',
     exampleScore: 'POINT:\n🆃🅴🅴: 22',
   },
   {
     id: 'efob',
     name: 'eFOB',
     emoji: '🏅',
-    description: 'eFOB Copa Cup',
+    description: 'eFOB matches',
     exampleScore: 'MATCH POINTS: TEE : 14 ║ OPP : 20',
   },
   {
     id: 'efcob',
     name: 'eFCOB',
     emoji: '🌍',
-    description: 'eFCOB World Cup',
+    description: 'eFCOB matches',
     exampleScore: 'POINTS - Team Name (TEE) - 23',
   },
 ];

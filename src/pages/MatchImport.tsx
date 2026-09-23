@@ -301,6 +301,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { parseMatchResult, ParsedMatchData, ParsedMatchEntry } from '@/shared/lib/parseMatchResult';
 import { parseFriendlyMatchBlock, ParsedFriendlyMatch } from '@/shared/lib/parseFriendlyMatch';
+import { parseBefaMatchResult } from '@/shared/lib/parseBefaMatch';
 import { COMMUNITIES, CommunityId } from '@/shared/lib/communityConfigs';
 import { useFootballStore } from '@/store/footballStore';
 import { Button, Input, Select, Textarea, SearchableSelect, Toggle } from '@/shared/components';
@@ -331,6 +332,10 @@ export function MatchImport() {
     return communityId === 'friendly' || rawText.toLowerCase().includes('warmup') || rawText.toLowerCase().includes('friendly');
   }, [communityId, rawText]);
 
+  const isBefaInput = useMemo(() => {
+    return communityId === 'befa' || (communityId === 'auto' && /\bbefa\b/i.test(rawText));
+  }, [communityId, rawText]);
+
   const [parsedFriendlyMatches, setParsedFriendlyMatches] = useState<(ParsedFriendlyMatch & { player1Id: string; player2Id: string })[]>([]);
   const addFriendlyMatch = useFootballStore(state => state.addFriendlyMatch);
 
@@ -350,6 +355,16 @@ export function MatchImport() {
         player2Id: fuzzyMatchPlayer(m.player2RawName),
       }));
       setParsedFriendlyMatches(mapped);
+      setStep(2);
+    } else if (isBefaInput) {
+      const data = parseBefaMatchResult(rawText, year);
+      if (data.errors.length > 0) {
+        setErrors(data.errors);
+        if (data.entries.length === 0) return;
+      } else {
+        setErrors([]);
+      }
+      setParsedData(data);
       setStep(2);
     } else {
       const data = parseMatchResult(rawText, communityId, year);
@@ -534,11 +549,12 @@ export function MatchImport() {
           {/* Community Selector */}
           <div className="bg-[#1a1f3c] border border-white/5 rounded-xl p-4 shadow-xl">
             <h2 className="text-sm font-semibold text-gray-300 mb-3">Select Community</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2">
               {COMMUNITIES.map(c => (
                 <button
                   key={c.id}
                   onClick={() => setCommunityId(c.id)}
+                  title={c.description}
                   className={`h-10 rounded-lg border px-3 text-center text-xs font-semibold transition-all ${communityId === c.id
                       ? 'border-primary bg-primary/10 text-white'
                       : 'border-white/10 bg-white/5 text-gray-400 hover:border-white/20 hover:text-gray-200'
