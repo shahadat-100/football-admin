@@ -101,6 +101,14 @@ export const SocialMatchPoster = forwardRef<HTMLDivElement, SocialMatchPosterPro
       const c = RC[res] || RC.draw;
       const isMotm = !!m.isMotm;
       const cleanSheet = !!(m.cleanSheet || goalsConceded === 0);
+      const isHattrick = goals >= 3 && goals < 6;
+      const isDoubleHattrick = goals >= 6;
+
+      const badges: string[] = [];
+      if (isMotm) badges.push('👑 MOTM');
+      if (isDoubleHattrick) badges.push('🔥 DOUBLE HATTRICK');
+      else if (isHattrick) badges.push('⚡ HATTRICK');
+      if (cleanSheet) badges.push('🛡️ CS');
 
       return {
         teePlayerName: pName,
@@ -111,6 +119,10 @@ export const SocialMatchPoster = forwardRef<HTMLDivElement, SocialMatchPosterPro
         result: res,
         isMotm,
         cleanSheet,
+        isHattrick,
+        isDoubleHattrick,
+        badges,
+        hasBadges: badges.length > 0,
         teeInitials: getInitials(pName, 2),
         oppInitials: getInitials(oppName, 2),
         ring: isMotm
@@ -120,7 +132,6 @@ export const SocialMatchPoster = forwardRef<HTMLDivElement, SocialMatchPosterPro
         pillBg: c.bg,
         pillBorder: c.b,
         pillGlow: c.g,
-        hasBadges: isMotm || cleanSheet,
       };
     });
 
@@ -404,68 +415,47 @@ export const SocialMatchPoster = forwardRef<HTMLDivElement, SocialMatchPosterPro
           >
             {/* HOME CLUB */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
-              <div style={{ position: 'relative', width: '150px', height: '170px' }}>
+              <div style={{ position: 'relative', width: '150px', height: '150px' }}>
                 <div
                   style={{
                     position: 'absolute',
-                    inset: '-40px',
-                    background: 'radial-gradient(circle,rgba(34,211,238,0.45) 0%,rgba(47,123,255,0.18) 40%,transparent 70%)',
+                    inset: '-20px',
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle,rgba(212,167,60,0.4) 0%,rgba(47,123,255,0.2) 40%,transparent 70%)',
                   }}
                 />
                 <div
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    clipPath: 'polygon(50% 0, 100% 13%, 100% 58%, 50% 100%, 0 58%, 0 13%)',
-                    background: 'linear-gradient(160deg,#7DE8F7 0%,#2F7BFF 50%,#0E2A66 100%)',
-                  }}
-                />
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: '4px',
-                    clipPath: 'polygon(50% 0, 100% 13%, 100% 58%, 50% 100%, 0 58%, 0 13%)',
-                    background: 'linear-gradient(170deg,#12264D 0%,#0A1328 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
+                    borderRadius: '50%',
+                    padding: '3px',
+                    background: 'linear-gradient(135deg,#F7E7A6 0%,#D4A73C 45%,#B8862B 80%,#6B4E1B 100%)',
+                    boxShadow: '0 0 25px rgba(212,167,60,0.5), inset 0 0 15px rgba(212,167,60,0.3)',
                   }}
                 >
-                  {homeLogoUrl ? (
-                    <img src={homeLogoUrl} alt={homeClub} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    /* Elegant Home Championship Crest SVG instead of initials */
-                    <svg viewBox="0 0 100 100" width="82" height="82" fill="none" style={{ filter: 'drop-shadow(0 0 14px rgba(34,211,238,0.7))' }}>
-                      <defs>
-                        <linearGradient id="homeCrestGold" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#FFF1C1" />
-                          <stop offset="50%" stopColor="#F7E7A6" />
-                          <stop offset="100%" stopColor="#D4A73C" />
-                        </linearGradient>
-                        <linearGradient id="homeCrestCyan" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#E8FBFF" />
-                          <stop offset="50%" stopColor="#22D3EE" />
-                          <stop offset="100%" stopColor="#2F7BFF" />
-                        </linearGradient>
-                      </defs>
-                      {/* Crown */}
-                      <path d="M30 32 L36 44 L50 26 L64 44 L70 32 L66 50 L34 50 Z" fill="url(#homeCrestGold)" />
-                      <circle cx="30" cy="30" r="3" fill="#FFF" />
-                      <circle cx="50" cy="24" r="3.5" fill="#FFF" />
-                      <circle cx="70" cy="30" r="3" fill="#FFF" />
-                      {/* Shield Outline */}
-                      <path d="M50 48 L74 54 C74 72 50 86 50 86 C50 86 26 72 26 54 Z" stroke="url(#homeCrestCyan)" strokeWidth="3" fill="rgba(34,211,238,0.08)" />
-                      {/* Stylized Soccer Ball inside shield */}
-                      <circle cx="50" cy="65" r="12" fill="#0B1428" stroke="url(#homeCrestCyan)" strokeWidth="2" />
-                      <polygon points="50,58 55,62 53,68 47,68 45,62" fill="url(#homeCrestGold)" />
-                      <line x1="50" y1="58" x2="50" y2="53" stroke="url(#homeCrestCyan)" strokeWidth="1.5" />
-                      <line x1="55" y1="62" x2="60" y2="60" stroke="url(#homeCrestCyan)" strokeWidth="1.5" />
-                      <line x1="53" y1="68" x2="57" y2="74" stroke="url(#homeCrestCyan)" strokeWidth="1.5" />
-                      <line x1="47" y1="68" x2="43" y2="74" stroke="url(#homeCrestCyan)" strokeWidth="1.5" />
-                      <line x1="45" y1="62" x2="40" y2="60" stroke="url(#homeCrestCyan)" strokeWidth="1.5" />
-                    </svg>
-                  )}
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      background: '#120D08',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <img
+                      src={homeLogoUrl || '/tee-logo.jpg'}
+                      alt={homeClub}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        // Fallback if image fails to load
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
               <div
@@ -486,7 +476,7 @@ export const SocialMatchPoster = forwardRef<HTMLDivElement, SocialMatchPosterPro
                   fontFamily: "'JetBrains Mono', monospace",
                   fontSize: '11px',
                   letterSpacing: '3px',
-                  color: '#22D3EE',
+                  color: '#D4A73C',
                   fontWeight: 700,
                 }}
               >
@@ -562,62 +552,45 @@ export const SocialMatchPoster = forwardRef<HTMLDivElement, SocialMatchPosterPro
 
             {/* AWAY CLUB */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
-              <div style={{ position: 'relative', width: '150px', height: '170px' }}>
+              <div style={{ position: 'relative', width: '150px', height: '150px' }}>
                 <div
                   style={{
                     position: 'absolute',
-                    inset: '-40px',
-                    background: 'radial-gradient(circle,rgba(244,63,122,0.32) 0%,transparent 65%)',
+                    inset: '-20px',
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle,rgba(244,63,122,0.3) 0%,rgba(255,255,255,0.05) 50%,transparent 70%)',
                   }}
                 />
                 <div
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    clipPath: 'polygon(50% 0, 100% 13%, 100% 58%, 50% 100%, 0 58%, 0 13%)',
-                    background: 'linear-gradient(160deg,#FDA4C4 0%,#C0265E 55%,#4A0F2A 100%)',
-                  }}
-                />
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: '4px',
-                    clipPath: 'polygon(50% 0, 100% 13%, 100% 58%, 50% 100%, 0 58%, 0 13%)',
-                    background: 'linear-gradient(170deg,#2A1224 0%,#140A16 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
+                    borderRadius: '50%',
+                    padding: '3px',
+                    background: 'linear-gradient(135deg,#FDA4C4 0%,#C0265E 60%,#4A0F2A 100%)',
+                    boxShadow: '0 0 25px rgba(192,38,94,0.45)',
                   }}
                 >
-                  {awayLogoUrl ? (
-                    <img src={awayLogoUrl} alt={finalOpponent} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    /* Elegant Away Challenger Swords & Shield Crest SVG instead of initials */
-                    <svg viewBox="0 0 100 100" width="82" height="82" fill="none" style={{ filter: 'drop-shadow(0 0 14px rgba(244,63,122,0.7))' }}>
-                      <defs>
-                        <linearGradient id="awayCrestPink" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#FFE4EE" />
-                          <stop offset="50%" stopColor="#FB7185" />
-                          <stop offset="100%" stopColor="#C0265E" />
-                        </linearGradient>
-                      </defs>
-                      {/* Crossed Swords */}
-                      <path d="M26 26 L74 74 M74 26 L26 74" stroke="url(#awayCrestPink)" strokeWidth="3.5" strokeLinecap="round" />
-                      <line x1="22" y1="30" x2="30" y2="22" stroke="#FFE4EE" strokeWidth="3" strokeLinecap="round" />
-                      <line x1="78" y1="30" x2="70" y2="22" stroke="#FFE4EE" strokeWidth="3" strokeLinecap="round" />
-                      {/* Shield Outline */}
-                      <path d="M50 38 L72 44 C72 64 50 82 50 82 C50 82 28 64 28 44 Z" stroke="url(#awayCrestPink)" strokeWidth="3" fill="#180A16" />
-                      {/* Stylized Soccer Ball inside shield */}
-                      <circle cx="50" cy="58" r="11" fill="#240D1E" stroke="url(#awayCrestPink)" strokeWidth="2" />
-                      <polygon points="50,52 54,56 52,61 48,61 46,56" fill="url(#awayCrestPink)" />
-                      <line x1="50" y1="52" x2="50" y2="47" stroke="#FFE4EE" strokeWidth="1.2" />
-                      <line x1="54" y1="56" x2="59" y2="54" stroke="#FFE4EE" strokeWidth="1.2" />
-                      <line x1="52" y1="61" x2="56" y2="67" stroke="#FFE4EE" strokeWidth="1.2" />
-                      <line x1="48" y1="61" x2="44" y2="67" stroke="#FFE4EE" strokeWidth="1.2" />
-                      <line x1="46" y1="56" x2="41" y2="54" stroke="#FFE4EE" strokeWidth="1.2" />
-                    </svg>
-                  )}
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      background: 'linear-gradient(145deg,#24101A 0%,#12080D 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {awayLogoUrl ? (
+                      <img src={awayLogoUrl} alt={finalOpponent} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <span style={{ fontSize: '72px', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.5))', userSelect: 'none' }} role="img" aria-label="football">
+                        ⚽
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div
@@ -1027,53 +1000,55 @@ export const SocialMatchPoster = forwardRef<HTMLDivElement, SocialMatchPosterPro
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 }}>
                     <div
                       style={{
-                        fontSize: '15.5px',
+                        fontSize: '16px',
                         fontWeight: 700,
-                        color: '#F2F6FC',
+                        color: '#FFFFFF',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
+                        letterSpacing: '0.3px',
                       }}
+                      title={m.teePlayerName}
                     >
                       {m.teePlayerName}
                     </div>
                     {m.hasBadges && (
-                      <div style={{ display: 'flex', gap: '5px' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '7px',
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          letterSpacing: '0.5px',
+                          lineHeight: 1.1,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
                         {m.isMotm && (
-                          <div
-                            style={{
-                              padding: '2px 7px',
-                              borderRadius: '999px',
-                              background: 'linear-gradient(135deg,#F7E7A6,#C9962F)',
-                              color: '#1A1204',
-                              fontSize: '10.5px',
-                              fontWeight: 800,
-                              letterSpacing: '0.5px',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
+                          <span style={{ color: '#FCE082', textShadow: '0 0 8px rgba(252,224,130,0.5)' }}>
                             👑 MOTM
-                          </div>
+                          </span>
+                        )}
+                        {m.isDoubleHattrick && (
+                          <span style={{ color: '#FB923C', textShadow: '0 0 8px rgba(251,146,60,0.4)' }}>
+                            🔥 DOUBLE HATTRICK
+                          </span>
+                        )}
+                        {!m.isDoubleHattrick && m.isHattrick && (
+                          <span style={{ color: '#38BDF8', textShadow: '0 0 8px rgba(56,189,248,0.4)' }}>
+                            ⚡ HATTRICK
+                          </span>
                         )}
                         {m.cleanSheet && (
-                          <div
-                            style={{
-                              padding: '2px 7px',
-                              borderRadius: '999px',
-                              border: '1px solid rgba(34,211,238,0.45)',
-                              background: 'rgba(34,211,238,0.12)',
-                              color: '#9FEFFB',
-                              fontSize: '10.5px',
-                              fontWeight: 800,
-                              letterSpacing: '0.5px',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
+                          <span style={{ color: '#34D399', textShadow: '0 0 8px rgba(52,211,153,0.4)' }}>
                             🛡️ CS
-                          </div>
+                          </span>
                         )}
                       </div>
                     )}
@@ -1109,14 +1084,16 @@ export const SocialMatchPoster = forwardRef<HTMLDivElement, SocialMatchPosterPro
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', minWidth: 0 }}>
                   <div
                     style={{
-                      fontSize: '14.5px',
+                      fontSize: '15.5px',
                       fontWeight: 600,
-                      color: '#A7B1C2',
+                      color: '#E2E8F0',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       textAlign: 'right',
+                      letterSpacing: '0.2px',
                     }}
+                    title={m.opponentName}
                   >
                     {m.opponentName}
                   </div>
