@@ -302,6 +302,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { parseMatchResult, ParsedMatchData, ParsedMatchEntry } from '@/shared/lib/parseMatchResult';
 import { parseFriendlyMatchBlock, ParsedFriendlyMatch } from '@/shared/lib/parseFriendlyMatch';
 import { parseBefaMatchResult } from '@/shared/lib/parseBefaMatch';
+import { MatchPosterModal } from '@/features/matches/components/MatchPosterModal';
+import type { MatchDuel } from '@/features/matches/components/SocialMatchPoster';
 import { COMMUNITIES, CommunityId } from '@/shared/lib/communityConfigs';
 import { useFootballStore } from '@/store/footballStore';
 import { Button, Input, Select, Textarea, SearchableSelect, Toggle } from '@/shared/components';
@@ -316,6 +318,18 @@ export function MatchImport() {
   const [parsedData, setParsedData] = useState<ParsedMatchData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [posterModalOpen, setPosterModalOpen] = useState(false);
+  const [posterData, setPosterData] = useState<{
+    matchId?: string | number;
+    competition: string;
+    date: string;
+    homeClub: string;
+    awayClub: string;
+    homeScore: number;
+    awayScore: number;
+    matches: MatchDuel[];
+  } | null>(null);
+  const [shouldResetAfterPoster, setShouldResetAfterPoster] = useState(false);
 
   const players = useFootballStore(state => state.players);
   const addMatch = useFootballStore(state => state.addMatch);
@@ -509,6 +523,14 @@ export function MatchImport() {
           });
         }
 
+        const dataForPoster = buildPosterData(matchId);
+        if (dataForPoster) {
+          setPosterData(dataForPoster);
+          setShouldResetAfterPoster(true);
+          setPosterModalOpen(true);
+          return;
+        }
+
         alert('Match successfully imported!');
       }
       // Reset
@@ -521,6 +543,60 @@ export function MatchImport() {
       setErrors([err.message || 'Unknown error during save']);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const buildPosterData = (matchId?: string | number) => {
+    if (!parsedData) return null;
+    const playerMap = new Map(players.map(p => [p.id, p]));
+    const duels: MatchDuel[] = mappedEntries.map((e, idx) => {
+      const regPlayer = playerMap.get(e.playerId);
+      return {
+        matchNumber: idx + 1,
+        leftPlayerName: regPlayer?.name || e.teePlayerRawName || `Player ${idx + 1}`,
+        leftPlayerAvatar: regPlayer?.profileImageUrl || undefined,
+        rightPlayerName: e.opponentPlayerRawName || 'Opponent',
+        leftGoals: e.goals ?? 0,
+        rightGoals: e.goalsConceded ?? 0,
+        result: e.result ?? 'draw',
+        isMotm: !!e.motm,
+        cleanSheet: !!e.cleanSheet,
+      };
+    });
+
+    const calcHome = parsedData.homeScore ?? mappedEntries.reduce((s, m) => s + (m.goals ?? 0), 0);
+    const calcAway = parsedData.awayScore ?? mappedEntries.reduce((s, m) => s + (m.goalsConceded ?? 0), 0);
+
+    return {
+      matchId: matchId ? String(matchId).slice(0, 8) : Math.floor(10000 + Math.random() * 90000),
+      competition: parsedData.competition || 'OFFICIAL MATCH',
+      date: mappedEntries[0]?.date || new Date().toISOString().split('T')[0],
+      homeClub: 'The Enigmatic Elite',
+      awayClub: parsedData.opponentClub || 'Opponent Club',
+      homeScore: calcHome,
+      awayScore: calcAway,
+      matches: duels,
+    };
+  };
+
+  const handlePreviewPoster = () => {
+    const dataForPoster = buildPosterData();
+    if (dataForPoster) {
+      setPosterData(dataForPoster);
+      setShouldResetAfterPoster(false);
+      setPosterModalOpen(true);
+    }
+  };
+
+  const handleClosePosterModal = () => {
+    setPosterModalOpen(false);
+    if (shouldResetAfterPoster) {
+      setStep(1);
+      setRawText('');
+      setParsedData(null);
+      setMappedEntries([]);
+      setPosterData(null);
+      setShouldResetAfterPoster(false);
     }
   };
 
@@ -816,14 +892,39 @@ export function MatchImport() {
               </div>
             </div>
 
-            <div className="flex justify-between mt-6 pt-4 border-t border-white/5">
+            <div className="flex justify-between items-center mt-6 pt-4 border-t border-white/5">
               <Button variant="secondary" onClick={() => setStep(1)}>Back</Button>
-              <Button onClick={handleConfirm} disabled={isSaving || mappedEntries.some(e => !e.playerId)}>
-                {isSaving ? 'Saving...' : 'Confirm & Save All'}
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={handlePreviewPoster}
+                  className="flex items-center gap-1.5"
+                >
+                  <span>🖼️</span> Preview Poster
+                </Button>
+                <Button onClick={handleConfirm} disabled={isSaving || mappedEntries.some(e => !e.playerId)}>
+                  {isSaving ? 'Saving...' : 'Confirm & Save All'}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
+      )}
+
+      {posterData && (
+        <MatchPosterModal
+          isOpen={posterModalOpen}
+          onClose={handleClosePosterModal}
+          matchId={posterData.matchId}
+          competition={posterData.competition}
+          date={posterData.date}
+          homeClub={posterData.homeClub}
+          awayClub={posterData.awayClub}
+          homeScore={posterData.homeScore}
+          awayScore={posterData.awayScore}
+          matches={posterData.matches}
+        />
       )}
     </div>
   );
