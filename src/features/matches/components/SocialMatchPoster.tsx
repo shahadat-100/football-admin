@@ -55,6 +55,24 @@ function getInitials(name: string, max = 2): string {
     .toUpperCase() || '??';
 }
 
+function getClubAbbreviation(name: string): string {
+  if (!name) return 'OPP';
+  const words = name
+    .trim()
+    .split(/[\s\-_]+/)
+    .filter(Boolean);
+
+  // Exclude common stop words like 'of', 'and', '&' so they do not appear in the short form acronym (e.g. United Warriors Pro -> UWP)
+  const filtered = words.filter(w => !/^(of|and|&)$/i.test(w));
+  const targetWords = filtered.length > 0 ? filtered : words;
+
+  if (targetWords.length >= 2) {
+    return targetWords.map(w => w[0]).join('').slice(0, 4).toUpperCase();
+  }
+  // Single word: take first 3 letters
+  return targetWords[0].slice(0, 3).toUpperCase();
+}
+
 export const SocialMatchPoster = forwardRef<HTMLDivElement, SocialMatchPosterProps>(
   (
     {
@@ -76,6 +94,7 @@ export const SocialMatchPoster = forwardRef<HTMLDivElement, SocialMatchPosterPro
     ref
   ) => {
     const finalOpponent = opponentClub || awayClub || 'The Glitcher';
+    const opponentAbbr = getClubAbbreviation(finalOpponent);
 
     const dateUpper = date.toUpperCase();
 
@@ -586,9 +605,46 @@ export const SocialMatchPoster = forwardRef<HTMLDivElement, SocialMatchPosterPro
                     {awayLogoUrl ? (
                       <img src={awayLogoUrl} alt={finalOpponent} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <span style={{ fontSize: '72px', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.5))', userSelect: 'none' }} role="img" aria-label="football">
-                        ⚽
-                      </span>
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '100%',
+                          height: '100%',
+                          background: 'radial-gradient(circle at 50% 35%,#350E22 0%,#160710 100%)',
+                          userSelect: 'none',
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontFamily: "'Bebas Neue', sans-serif",
+                            fontSize: opponentAbbr.length > 3 ? '44px' : '52px',
+                            lineHeight: 0.95,
+                            letterSpacing: '2.5px',
+                            background: 'linear-gradient(180deg,#FFFFFF 0%,#FDA4C4 50%,#F43F5E 100%)',
+                            WebkitBackgroundClip: 'text',
+                            color: 'transparent',
+                            filter: 'drop-shadow(0 2px 14px rgba(244,63,94,0.6))',
+                          }}
+                        >
+                          {opponentAbbr}
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: '9px',
+                            letterSpacing: '2.5px',
+                            color: '#F47BA3',
+                            fontWeight: 700,
+                            opacity: 0.85,
+                            marginTop: '2px',
+                          }}
+                        >
+                          CLUB
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1000,58 +1056,24 @@ export const SocialMatchPoster = forwardRef<HTMLDivElement, SocialMatchPosterPro
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 }}>
+                  <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center' }}>
                     <div
                       style={{
-                        fontSize: '16px',
+                        fontSize: '15px',
                         fontWeight: 700,
                         color: '#FFFFFF',
-                        whiteSpace: 'nowrap',
+                        lineHeight: 1.18,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
                         overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        letterSpacing: '0.3px',
+                        wordBreak: 'break-word',
+                        letterSpacing: '0.2px',
                       }}
                       title={m.teePlayerName}
                     >
                       {m.teePlayerName}
                     </div>
-                    {m.hasBadges && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '7px',
-                          fontSize: '11px',
-                          fontWeight: 800,
-                          letterSpacing: '0.5px',
-                          lineHeight: 1.1,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {m.isMotm && (
-                          <span style={{ color: '#FCE082', textShadow: '0 0 8px rgba(252,224,130,0.5)' }}>
-                            👑 MOTM
-                          </span>
-                        )}
-                        {m.isDoubleHattrick && (
-                          <span style={{ color: '#FB923C', textShadow: '0 0 8px rgba(251,146,60,0.4)' }}>
-                            🔥 DOUBLE HATTRICK
-                          </span>
-                        )}
-                        {!m.isDoubleHattrick && m.isHattrick && (
-                          <span style={{ color: '#38BDF8', textShadow: '0 0 8px rgba(56,189,248,0.4)' }}>
-                            ⚡ HATTRICK
-                          </span>
-                        )}
-                        {m.cleanSheet && (
-                          <span style={{ color: '#34D399', textShadow: '0 0 8px rgba(52,211,153,0.4)' }}>
-                            🛡️ CS
-                          </span>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -1082,20 +1104,25 @@ export const SocialMatchPoster = forwardRef<HTMLDivElement, SocialMatchPosterPro
 
                 {/* RIGHT OPPONENT */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontSize: '15.5px',
-                      fontWeight: 600,
-                      color: '#E2E8F0',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      textAlign: 'right',
-                      letterSpacing: '0.2px',
-                    }}
-                    title={m.opponentName}
-                  >
-                    {m.opponentName}
+                  <div style={{ minWidth: 0, flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                    <div
+                      style={{
+                        fontSize: '15px',
+                        fontWeight: 600,
+                        color: '#E2E8F0',
+                        lineHeight: 1.18,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        wordBreak: 'break-word',
+                        textAlign: 'right',
+                        letterSpacing: '0.2px',
+                      }}
+                      title={m.opponentName}
+                    >
+                      {m.opponentName}
+                    </div>
                   </div>
                   <div
                     style={{
