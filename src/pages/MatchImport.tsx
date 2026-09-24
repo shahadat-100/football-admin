@@ -303,7 +303,7 @@ import { parseMatchResult, ParsedMatchData, ParsedMatchEntry } from '@/shared/li
 import { parseFriendlyMatchBlock, ParsedFriendlyMatch } from '@/shared/lib/parseFriendlyMatch';
 import { parseBefaMatchResult } from '@/shared/lib/parseBefaMatch';
 import { MatchPosterModal } from '@/features/matches/components/MatchPosterModal';
-import type { MatchDuel } from '@/features/matches/components/SocialMatchPoster';
+import type { MatchDuel, MotmPlayer } from '@/features/matches/components/SocialMatchPoster';
 import { COMMUNITIES, CommunityId } from '@/shared/lib/communityConfigs';
 import { useFootballStore } from '@/store/footballStore';
 import { Button, Input, Select, Textarea, SearchableSelect, Toggle } from '@/shared/components';
@@ -322,11 +322,13 @@ export function MatchImport() {
   const [posterData, setPosterData] = useState<{
     matchId?: string | number;
     competition: string;
+    round?: string;
     date: string;
     homeClub: string;
     awayClub: string;
     homeScore: number;
     awayScore: number;
+    motmPlayer?: MotmPlayer | null;
     matches: MatchDuel[];
   } | null>(null);
   const [shouldResetAfterPoster, setShouldResetAfterPoster] = useState(false);
@@ -567,14 +569,39 @@ export function MatchImport() {
     const calcHome = parsedData.homeScore ?? mappedEntries.reduce((s, m) => s + (m.goals ?? 0), 0);
     const calcAway = parsedData.awayScore ?? mappedEntries.reduce((s, m) => s + (m.goalsConceded ?? 0), 0);
 
+    // Identify MOTM if selected by user
+    const motmEntry = mappedEntries.find(e => e.motm);
+    let motmPlayer: MotmPlayer | null = null;
+    if (motmEntry) {
+      const regPlayer = playerMap.get(motmEntry.playerId);
+      motmPlayer = {
+        name: regPlayer?.name || motmEntry.teePlayerRawName || 'Player',
+        avatarUrl: regPlayer?.profileImageUrl || undefined,
+        goals: motmEntry.goals ?? 0,
+      };
+    }
+
+    // Format date for poster e.g. 24 SEP 2026
+    const rawDate = mappedEntries[0]?.date || new Date().toISOString().split('T')[0];
+    let formattedDate = rawDate;
+    try {
+      const d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        formattedDate = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+      }
+    } catch {
+      // keep rawDate
+    }
+
     return {
       matchId: matchId ? String(matchId).slice(0, 8) : Math.floor(10000 + Math.random() * 90000),
       competition: parsedData.competition || 'OFFICIAL MATCH',
-      date: mappedEntries[0]?.date || new Date().toISOString().split('T')[0],
+      date: formattedDate,
       homeClub: 'The Enigmatic Elite',
       awayClub: parsedData.opponentClub || 'Opponent Club',
       homeScore: calcHome,
       awayScore: calcAway,
+      motmPlayer,
       matches: duels,
     };
   };
@@ -918,11 +945,13 @@ export function MatchImport() {
           onClose={handleClosePosterModal}
           matchId={posterData.matchId}
           competition={posterData.competition}
+          round={posterData.round}
           date={posterData.date}
           homeClub={posterData.homeClub}
           awayClub={posterData.awayClub}
           homeScore={posterData.homeScore}
           awayScore={posterData.awayScore}
+          motmPlayer={posterData.motmPlayer}
           matches={posterData.matches}
         />
       )}

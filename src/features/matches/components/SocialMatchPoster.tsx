@@ -1,31 +1,47 @@
 import { forwardRef } from 'react';
 
 export interface MatchDuel {
-  matchNumber: number;
-  leftPlayerName: string;
+  matchNumber?: number;
+  // Support both naming conventions
+  teePlayerName?: string;
+  leftPlayerName?: string;
+  teeAvatarUrl?: string;
   leftPlayerAvatar?: string;
-  rightPlayerName: string;
-  rightPlayerAvatar?: string;
-  leftGoals: number;
-  rightGoals: number;
-  result: 'win' | 'loss' | 'draw'; // from left player perspective
-  isMotm?: boolean;
+  opponentName?: string;
+  rightPlayerName?: string;
+  goals?: number;
+  leftGoals?: number;
+  goalsConceded?: number;
+  rightGoals?: number;
+  result?: 'win' | 'loss' | 'draw';
   cleanSheet?: boolean;
+  isMotm?: boolean;
+}
+
+export interface MotmPlayer {
+  name: string;
+  avatarUrl?: string;
+  goals: number;
 }
 
 export interface SocialMatchPosterProps {
   matchId?: string | number;
-  competition: string;
-  date: string;
-  homeClub: string;
-  awayClub: string;
-  homeScore: number;
-  awayScore: number;
+  competition?: string;
+  round?: string;
+  date?: string;
+  homeClub?: string;
+  opponentClub?: string;
+  awayClub?: string;
+  homeScore?: number;
+  awayScore?: number;
   homeLogoUrl?: string;
   awayLogoUrl?: string;
-  matches: MatchDuel[];
+  handle?: string;
+  motmPlayer?: MotmPlayer | null;
+  matches?: MatchDuel[];
+  hexOverlay?: boolean;
+  statusOverride?: 'auto' | 'victory' | 'draw' | 'defeat';
   theme?: 'light' | 'dark';
-  leagueBadge?: string;
 }
 
 function getInitials(name: string, max = 2): string {
@@ -36,402 +52,1166 @@ function getInitials(name: string, max = 2): string {
     .map(w => w[0])
     .join('')
     .slice(0, max)
-    .toUpperCase();
+    .toUpperCase() || '??';
 }
 
 export const SocialMatchPoster = forwardRef<HTMLDivElement, SocialMatchPosterProps>(
   (
     {
-      matchId = '12182',
       competition = 'BeFA Club World Cup 2026',
-      date = '21 SEP 2026',
+      round,
+      date = '24 SEP 2026',
       homeClub = 'The Enigmatic Elite',
+      opponentClub,
       awayClub = 'The Glitcher',
       homeScore = 25,
       awayScore = 7,
-      homeLogoUrl,
-      awayLogoUrl,
+      homeLogoUrl = '',
+      awayLogoUrl = '',
+      handle = '@TheEnigmaticElite',
+      motmPlayer,
       matches = [],
-      theme = 'light',
-      leagueBadge = '🏆',
+      hexOverlay = true,
+      statusOverride = 'auto',
     },
     ref
   ) => {
-    const isDark = theme === 'dark';
+    const finalOpponent = opponentClub || awayClub || 'The Glitcher';
 
-    // Summary calculations
-    const totalGoals = matches.reduce((sum, m) => sum + (m.leftGoals + m.rightGoals), 0);
-    const cleanSheets = matches.filter(m => m.cleanSheet || m.leftGoals === 0 || m.rightGoals === 0).length;
-    
-    // Biggest win duel
-    let biggestWinStr = '0 - 0';
-    let maxDiff = -1;
-    matches.forEach(m => {
-      const diff = Math.abs(m.leftGoals - m.rightGoals);
-      if (diff > maxDiff) {
-        maxDiff = diff;
-        biggestWinStr = m.leftGoals >= m.rightGoals ? `${m.leftGoals} - ${m.rightGoals}` : `${m.rightGoals} - ${m.leftGoals}`;
+    // Parse round if not explicitly given
+    let derivedRound = round;
+    if (!derivedRound) {
+      const match = competition.match(/(?:ROUND\s*[\d/]+|GRAND\s*FINAL|SEMI\s*FINAL|QUARTER\s*FINAL|FINAL)/i);
+      derivedRound = match ? match[0] : 'GRAND FINAL';
+    }
+
+    const roundUpper = derivedRound.toUpperCase();
+    const dateUpper = date.toUpperCase();
+    const homeInitials = getInitials(homeClub, 3);
+    const awayInitials = getInitials(finalOpponent, 3);
+
+    // Format matches rows
+    const RC = {
+      win: { t: '#6EE7B7', bg: 'rgba(16,185,129,0.14)', b: 'rgba(16,185,129,0.55)', g: 'rgba(16,185,129,0.18)' },
+      draw: { t: '#FCD34D', bg: 'rgba(245,158,11,0.13)', b: 'rgba(245,158,11,0.55)', g: 'rgba(245,158,11,0.15)' },
+      loss: { t: '#FDA4AF', bg: 'rgba(225,29,72,0.15)', b: 'rgba(225,29,72,0.6)', g: 'rgba(225,29,72,0.18)' },
+    };
+
+    const rows = matches.map(m => {
+      const pName = m.teePlayerName || m.leftPlayerName || 'Player';
+      const oppName = m.opponentName || m.rightPlayerName || 'Opponent';
+      const goals = m.goals ?? m.leftGoals ?? 0;
+      const goalsConceded = m.goalsConceded ?? m.rightGoals ?? 0;
+      const avatarUrl = m.teeAvatarUrl || m.leftPlayerAvatar;
+
+      let res = m.result;
+      if (!res) {
+        res = goals > goalsConceded ? 'win' : goals < goalsConceded ? 'loss' : 'draw';
       }
+
+      const c = RC[res] || RC.draw;
+      const isMotm = !!m.isMotm;
+      const cleanSheet = !!(m.cleanSheet || goalsConceded === 0);
+
+      return {
+        teePlayerName: pName,
+        teeAvatarUrl: avatarUrl,
+        opponentName: oppName,
+        goals,
+        goalsConceded,
+        result: res,
+        isMotm,
+        cleanSheet,
+        teeInitials: getInitials(pName, 2),
+        oppInitials: getInitials(oppName, 2),
+        ring: isMotm
+          ? 'linear-gradient(135deg,#F7E7A6,#B8862B)'
+          : 'linear-gradient(135deg,#22D3EE,#2F7BFF)',
+        pillText: c.t,
+        pillBg: c.bg,
+        pillBorder: c.b,
+        pillGlow: c.g,
+        hasBadges: isMotm || cleanSheet,
+      };
     });
 
-    const totalPlayers = matches.length > 0 ? matches.length * 2 : 24;
-    const isHomeWinner = homeScore > awayScore;
-    const isAwayWinner = awayScore > homeScore;
+    const record = { w: 0, d: 0, l: 0 };
+    rows.forEach(m => {
+      record[m.result === 'win' ? 'w' : m.result === 'loss' ? 'l' : 'd']++;
+    });
+
+    // Check if we have MOTM
+    let mp = motmPlayer;
+    if (mp === undefined) {
+      // Find if any match was designated as MOTM
+      const motmDuel = rows.find(m => m.isMotm);
+      if (motmDuel) {
+        mp = {
+          name: motmDuel.teePlayerName,
+          avatarUrl: motmDuel.teeAvatarUrl,
+          goals: motmDuel.goals,
+        };
+      } else {
+        mp = null;
+      }
+    }
+
+    const hasMotm = !!(mp && mp.name);
+    const motm = hasMotm && mp ? {
+      ...mp,
+      initials: getInitials(mp.name, 2),
+    } : null;
+
+    // Status Banner Logic
+    const autoStatus = homeScore > awayScore ? 'victory' : homeScore < awayScore ? 'defeat' : 'draw';
+    const activeStatus = (statusOverride && statusOverride !== 'auto') ? statusOverride : autoStatus;
+
+    const S = {
+      victory: {
+        label: 'MATCH VICTORY',
+        text: '#F4FFF8',
+        bg: 'linear-gradient(90deg,rgba(16,185,129,0.28),rgba(212,167,60,0.30))',
+        border: 'rgba(247,231,166,0.55)',
+        glow: 'rgba(16,185,129,0.35)',
+        dot: '#34D399',
+      },
+      draw: {
+        label: 'MATCH DRAW',
+        text: '#FFF7E0',
+        bg: 'linear-gradient(90deg,rgba(245,158,11,0.22),rgba(245,158,11,0.10))',
+        border: 'rgba(245,158,11,0.55)',
+        glow: 'rgba(245,158,11,0.3)',
+        dot: '#FBBF24',
+      },
+      defeat: {
+        label: 'MATCH DEFEAT',
+        text: '#FFF0F2',
+        bg: 'linear-gradient(90deg,rgba(225,29,72,0.26),rgba(225,29,72,0.10))',
+        border: 'rgba(251,113,133,0.55)',
+        glow: 'rgba(225,29,72,0.32)',
+        dot: '#FB7185',
+      },
+    }[activeStatus];
+
+    // Grid row sizing based on whether MOTM is present or skipped
+    const nRows = Math.max(1, Math.ceil(rows.length / 2));
+    // If no MOTM, available height is much larger (~640px) vs (~470px) with MOTM
+    const rowH = Math.min(84, Math.floor((!hasMotm ? 630 : 470 - (nRows - 1) * 10) / nRows));
 
     return (
       <div
         ref={ref}
+        data-screen-label="Match Poster"
         style={{
+          position: 'relative',
           width: '1080px',
-          minHeight: '1350px',
-          fontFamily: "'Barlow', 'Inter', sans-serif",
+          height: '1350px',
+          overflow: 'hidden',
+          background: 'linear-gradient(180deg,#080C15 0%,#0B1220 45%,#0F172A 100%)',
+          fontFamily: "'Barlow', sans-serif",
+          color: '#E8EEF8',
           boxSizing: 'border-box',
+          userSelect: 'none',
         }}
-        className={`relative p-10 flex flex-col justify-between overflow-hidden select-none transition-colors ${
-          isDark
-            ? 'bg-gradient-to-b from-[#080C15] via-[#0B1220] to-[#0F172A] text-slate-100'
-            : 'bg-gradient-to-b from-[#F8FAFC] via-[#F1F5F9] to-[#E2E8F0] text-slate-800'
-        }`}
       >
-        {/* Subtle Background Pattern */}
+        <style>{`
+          @keyframes motmSpin { to { transform: rotate(360deg); } }
+          @keyframes motmPulse { 0%, 100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
+        `}</style>
+
+        {/* Diagonal subtle line pattern */}
         <div
-          className="absolute inset-0 pointer-events-none opacity-40"
           style={{
-            backgroundImage: `radial-gradient(${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'} 1px, transparent 1px)`,
-            backgroundSize: '24px 24px',
+            position: 'absolute',
+            inset: 0,
+            background:
+              'repeating-linear-gradient(45deg,rgba(255,255,255,0.018) 0 2px,transparent 2px 6px),repeating-linear-gradient(-45deg,rgba(0,0,0,0.25) 0 2px,transparent 2px 6px)',
+            pointerEvents: 'none',
           }}
         />
 
-        {/* 1. TOP BAR */}
-        <div className="relative z-10 flex items-center justify-between border-b pb-4 border-slate-300/40 dark:border-white/10">
-          <div className="font-mono text-sm tracking-widest uppercase font-bold text-slate-500 dark:text-slate-400">
-            ID: #{matchId}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">{leagueBadge}</span>
-            <span
-              style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-              className="text-3xl tracking-widest uppercase font-black text-slate-900 dark:text-white"
-            >
-              {competition.split(' ')[0] || 'MATCH'}
-            </span>
-          </div>
-          <div className="font-mono text-xs tracking-widest uppercase font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/30 flex items-center gap-1.5">
-            <span>⚡</span>
-            <span>{matches.length} MAN V {matches.length} MAN</span>
-          </div>
+        {/* Hex Overlay */}
+        {hexOverlay && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundImage:
+                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100' viewBox='0 0 56 100'%3E%3Cpath d='M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100' fill='none' stroke='%23ffffff' stroke-opacity='0.045'/%3E%3Cpath d='M28 0L28 34L0 50L0 84L28 100L56 84L56 50L28 34' fill='none' stroke='%23ffffff' stroke-opacity='0.045'/%3E%3C/svg%3E\")",
+              WebkitMaskImage: 'radial-gradient(ellipse 70% 55% at 50% 28%,#000 0%,transparent 100%)',
+              maskImage: 'radial-gradient(ellipse 70% 55% at 50% 28%,#000 0%,transparent 100%)',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+
+        {/* Ambient Glows */}
+        <div
+          style={{
+            position: 'absolute',
+            left: '-220px',
+            top: '120px',
+            width: '760px',
+            height: '620px',
+            background: 'radial-gradient(circle,rgba(47,123,255,0.34) 0%,rgba(34,211,238,0.10) 40%,transparent 70%)',
+            pointerEvents: 'none',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            right: '-260px',
+            top: '160px',
+            width: '700px',
+            height: '560px',
+            background: 'radial-gradient(circle,rgba(244,63,122,0.16) 0%,transparent 65%)',
+            pointerEvents: 'none',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '-180px',
+            width: '900px',
+            height: '420px',
+            marginLeft: '-450px',
+            background: 'radial-gradient(ellipse,rgba(34,211,238,0.14) 0%,transparent 70%)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* Massive TEE Watermark */}
+        <div
+          style={{
+            position: 'absolute',
+            right: '-30px',
+            bottom: '40px',
+            fontFamily: "'Bebas Neue', sans-serif",
+            fontSize: '380px',
+            lineHeight: 1,
+            letterSpacing: '-6px',
+            color: 'rgba(255,255,255,0.022)',
+            pointerEvents: 'none',
+          }}
+        >
+          TEE
         </div>
 
-        {/* 2. MAIN SCOREBOARD */}
+        {/* MAIN POSTER CONTENT CONTAINER */}
         <div
-          className={`relative z-10 mt-6 rounded-2xl p-6 border shadow-lg ${
-            isDark
-              ? 'bg-[#111827]/80 border-white/10 shadow-black/40'
-              : 'bg-white border-slate-200/90 shadow-slate-200/80'
-          }`}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            padding: '44px 56px 40px',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
         >
-          <div className="grid grid-cols-[1fr,auto,1fr] items-center gap-6">
-            {/* Left / Home Team */}
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 border-2 border-primary/40 bg-primary/10 flex items-center justify-center shadow-md">
-                {homeLogoUrl ? (
-                  <img src={homeLogoUrl} alt={homeClub} className="w-full h-full object-cover" />
-                ) : (
-                  <span
-                    style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-                    className="text-2xl font-bold text-primary"
-                  >
-                    {getInitials(homeClub)}
-                  </span>
-                )}
-              </div>
-              <div className="min-w-0">
+          {/* HEADER */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+              <div
+                style={{
+                  width: '58px',
+                  height: '58px',
+                  borderRadius: '50%',
+                  padding: '2px',
+                  background: 'linear-gradient(135deg,#F7E7A6 0%,#D4A73C 40%,#FFF1C1 55%,#B8862B 100%)',
+                  boxShadow: '0 0 28px rgba(212,167,60,0.45)',
+                }}
+              >
                 <div
-                  style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-                  className="text-3xl md:text-4xl tracking-wider uppercase font-black truncate text-slate-900 dark:text-white"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: '50%',
+                    background: '#0B1220',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '28px',
+                  }}
                 >
-                  {homeClub}
+                  🏆
                 </div>
-                {isHomeWinner && (
-                  <div className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-md border border-amber-500/30 mt-1">
-                    <span>🏆</span> WINNER
-                  </div>
-                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <div
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: '13px',
+                    letterSpacing: '4px',
+                    color: '#D4A73C',
+                    fontWeight: 700,
+                  }}
+                >
+                  OFFICIAL COMPETITION
+                </div>
+                <div
+                  style={{
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: '44px',
+                    lineHeight: 1,
+                    letterSpacing: '1.5px',
+                    background: 'linear-gradient(180deg,#FFFFFF 0%,#C9D6EA 100%)',
+                    WebkitBackgroundClip: 'text',
+                    color: 'transparent',
+                  }}
+                >
+                  {competition}
+                </div>
               </div>
             </div>
 
-            {/* Score Pill */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+              <div
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: '999px',
+                  border: '1px solid rgba(34,211,238,0.45)',
+                  background: 'rgba(34,211,238,0.10)',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '13px',
+                  letterSpacing: '2.5px',
+                  fontWeight: 700,
+                  color: '#7DE8F7',
+                }}
+              >
+                {roundUpper}
+              </div>
+              <div
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '13px',
+                  letterSpacing: '2px',
+                  color: '#8A97AD',
+                }}
+              >
+                {dateUpper}
+              </div>
+            </div>
+          </div>
+
+          {/* DIVIDER LINE WITH CYAN DIAMOND */}
+          <div
+            style={{
+              position: 'relative',
+              height: '1px',
+              margin: '24px 0 0',
+              background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.14) 20%,rgba(255,255,255,0.14) 80%,transparent)',
+            }}
+          >
             <div
-              className={`flex items-center justify-center px-8 py-3 rounded-2xl border shadow-inner ${
-                isDark ? 'bg-black/50 border-white/10' : 'bg-slate-100/90 border-slate-200'
-              }`}
-            >
-              <span
-                style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-                className={`text-6xl md:text-7xl font-black ${
-                  homeScore > awayScore
-                    ? 'text-emerald-500'
-                    : homeScore < awayScore
-                    ? 'text-rose-500'
-                    : 'text-slate-700 dark:text-slate-300'
-                }`}
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '-1px',
+                width: '220px',
+                height: '3px',
+                marginLeft: '-110px',
+                background: 'linear-gradient(90deg,transparent,#22D3EE,transparent)',
+                boxShadow: '0 0 16px #22D3EE',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '-4px',
+                width: '9px',
+                height: '9px',
+                marginLeft: '-4.5px',
+                transform: 'rotate(45deg)',
+                background: '#E8FBFF',
+                boxShadow: '0 0 12px #22D3EE',
+              }}
+            />
+          </div>
+
+          {/* SCOREBOARD */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '250px minmax(0,1fr) 250px',
+              alignItems: 'center',
+              marginTop: '30px',
+            }}
+          >
+            {/* HOME CLUB */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
+              <div style={{ position: 'relative', width: '150px', height: '170px' }}>
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: '-40px',
+                    background: 'radial-gradient(circle,rgba(34,211,238,0.45) 0%,rgba(47,123,255,0.18) 40%,transparent 70%)',
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    clipPath: 'polygon(50% 0, 100% 13%, 100% 58%, 50% 100%, 0 58%, 0 13%)',
+                    background: 'linear-gradient(160deg,#7DE8F7 0%,#2F7BFF 50%,#0E2A66 100%)',
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: '4px',
+                    clipPath: 'polygon(50% 0, 100% 13%, 100% 58%, 50% 100%, 0 58%, 0 13%)',
+                    background: 'linear-gradient(170deg,#12264D 0%,#0A1328 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {homeLogoUrl ? (
+                    <img src={homeLogoUrl} alt={homeClub} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div
+                      style={{
+                        fontFamily: "'Bebas Neue', sans-serif",
+                        fontSize: '56px',
+                        letterSpacing: '2px',
+                        color: '#E8FBFF',
+                        textShadow: '0 0 18px rgba(34,211,238,0.8)',
+                        marginTop: '-12px',
+                      }}
+                    >
+                      {homeInitials}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div
+                style={{
+                  textAlign: 'center',
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: '30px',
+                  lineHeight: 1,
+                  letterSpacing: '1.5px',
+                  color: '#FFFFFF',
+                }}
+              >
+                {homeClub}
+              </div>
+              <div
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '11px',
+                  letterSpacing: '3px',
+                  color: '#22D3EE',
+                  fontWeight: 700,
+                }}
+              >
+                HOME
+              </div>
+            </div>
+
+            {/* BIG SCORE */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '22px' }}>
+              <div
+                style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: '200px',
+                  lineHeight: 0.8,
+                  letterSpacing: '-2px',
+                  background: 'linear-gradient(180deg,#FFFFFF 0%,#BFF4FF 55%,#4FA3FF 100%)',
+                  WebkitBackgroundClip: 'text',
+                  color: 'transparent',
+                  filter: 'drop-shadow(0 0 28px rgba(34,211,238,0.45))',
+                  paddingTop: '18px',
+                }}
               >
                 {homeScore}
-              </span>
-              <span className="text-2xl font-bold text-slate-400 dark:text-slate-600 mx-4">×</span>
-              <span
-                style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-                className={`text-6xl md:text-7xl font-black ${
-                  awayScore > homeScore
-                    ? 'text-emerald-500'
-                    : awayScore < homeScore
-                    ? 'text-rose-500'
-                    : 'text-slate-700 dark:text-slate-300'
-                }`}
+              </div>
+              <div
+                style={{
+                  position: 'relative',
+                  width: '62px',
+                  height: '62px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    transform: 'rotate(45deg)',
+                    border: '1.5px solid rgba(34,211,238,0.7)',
+                    background: 'rgba(10,20,40,0.8)',
+                    boxShadow: '0 0 24px rgba(34,211,238,0.4), inset 0 0 14px rgba(34,211,238,0.25)',
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'relative',
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: '26px',
+                    letterSpacing: '1px',
+                    color: '#E8FBFF',
+                  }}
+                >
+                  VS
+                </div>
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: '200px',
+                  lineHeight: 0.8,
+                  letterSpacing: '-2px',
+                  background: 'linear-gradient(180deg,#E3E7EF 0%,#8C97AA 100%)',
+                  WebkitBackgroundClip: 'text',
+                  color: 'transparent',
+                  opacity: 0.78,
+                  paddingTop: '18px',
+                }}
               >
                 {awayScore}
-              </span>
+              </div>
             </div>
 
-            {/* Right / Away Team */}
-            <div className="flex items-center justify-end gap-4 text-right">
-              <div className="min-w-0">
+            {/* AWAY CLUB */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
+              <div style={{ position: 'relative', width: '150px', height: '170px' }}>
                 <div
-                  style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-                  className="text-3xl md:text-4xl tracking-wider uppercase font-black truncate text-slate-900 dark:text-white"
+                  style={{
+                    position: 'absolute',
+                    inset: '-40px',
+                    background: 'radial-gradient(circle,rgba(244,63,122,0.32) 0%,transparent 65%)',
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    clipPath: 'polygon(50% 0, 100% 13%, 100% 58%, 50% 100%, 0 58%, 0 13%)',
+                    background: 'linear-gradient(160deg,#FDA4C4 0%,#C0265E 55%,#4A0F2A 100%)',
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: '4px',
+                    clipPath: 'polygon(50% 0, 100% 13%, 100% 58%, 50% 100%, 0 58%, 0 13%)',
+                    background: 'linear-gradient(170deg,#2A1224 0%,#140A16 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                  }}
                 >
-                  {awayClub}
+                  {awayLogoUrl ? (
+                    <img src={awayLogoUrl} alt={finalOpponent} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <div
+                      style={{
+                        fontFamily: "'Bebas Neue', sans-serif",
+                        fontSize: '56px',
+                        letterSpacing: '2px',
+                        color: '#FFE4EE',
+                        textShadow: '0 0 18px rgba(244,63,122,0.7)',
+                        marginTop: '-12px',
+                      }}
+                    >
+                      {awayInitials}
+                    </div>
+                  )}
                 </div>
-                {isAwayWinner && (
-                  <div className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-md border border-amber-500/30 mt-1">
-                    <span>🏆</span> WINNER
-                  </div>
-                )}
               </div>
-              <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0 border-2 border-rose-500/30 bg-rose-500/10 flex items-center justify-center shadow-md">
-                {awayLogoUrl ? (
-                  <img src={awayLogoUrl} alt={awayClub} className="w-full h-full object-cover" />
-                ) : (
-                  <span
-                    style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-                    className="text-2xl font-bold text-rose-500"
+              <div
+                style={{
+                  textAlign: 'center',
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: '30px',
+                  lineHeight: 1,
+                  letterSpacing: '1.5px',
+                  color: '#FFFFFF',
+                }}
+              >
+                {finalOpponent}
+              </div>
+              <div
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '11px',
+                  letterSpacing: '3px',
+                  color: '#F47BA3',
+                  fontWeight: 700,
+                }}
+              >
+                AWAY
+              </div>
+            </div>
+          </div>
+
+          {/* STATUS BANNER */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '22px' }}>
+            <div
+              style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                padding: '10px 34px',
+                borderRadius: '999px',
+                background: S.bg,
+                border: `1px solid ${S.border}`,
+                boxShadow: `0 0 40px ${S.glow}`,
+              }}
+            >
+              <div
+                style={{
+                  width: '9px',
+                  height: '9px',
+                  borderRadius: '50%',
+                  background: S.dot,
+                  boxShadow: `0 0 12px ${S.dot}`,
+                }}
+              />
+              <div
+                style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: '34px',
+                  lineHeight: 1,
+                  letterSpacing: '6px',
+                  color: S.text,
+                  paddingTop: '3px',
+                }}
+              >
+                {S.label}
+              </div>
+              <div
+                style={{
+                  width: '9px',
+                  height: '9px',
+                  borderRadius: '50%',
+                  background: S.dot,
+                  boxShadow: `0 0 12px ${S.dot}`,
+                }}
+              />
+            </div>
+          </div>
+
+          {/* MAN OF THE MATCH SECTION — ONLY IF hasMotm IS TRUE */}
+          {hasMotm && motm && (
+            <div
+              style={{
+                marginTop: '26px',
+                padding: '1px',
+                borderRadius: '22px',
+                background:
+                  'linear-gradient(110deg,rgba(247,231,166,0.9) 0%,rgba(184,134,43,0.35) 35%,rgba(255,255,255,0.08) 70%,rgba(212,167,60,0.6) 100%)',
+                boxShadow: '0 18px 50px rgba(0,0,0,0.45), 0 0 40px rgba(212,167,60,0.12)',
+              }}
+            >
+              <div
+                style={{
+                  position: 'relative',
+                  height: '148px',
+                  borderRadius: '21px',
+                  overflow: 'hidden',
+                  background:
+                    'linear-gradient(100deg,rgba(40,30,10,0.92) 0%,rgba(14,18,30,0.9) 45%,rgba(11,18,32,0.88) 100%)',
+                  backdropFilter: 'blur(14px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '30px',
+                  padding: '0 34px 0 30px',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: '28px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: '170px',
+                    lineHeight: 1,
+                    letterSpacing: '4px',
+                    color: 'rgba(247,231,166,0.06)',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  MVP
+                </div>
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    width: '340px',
+                    height: '100%',
+                    background: 'radial-gradient(circle at 20% 50%,rgba(212,167,60,0.28) 0%,transparent 70%)',
+                    pointerEvents: 'none',
+                  }}
+                />
+                <div style={{ position: 'relative', width: '104px', height: '104px', flexShrink: 0 }}>
+                  {/* Halo pulse and spin */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: -16,
+                      borderRadius: '50%',
+                      background: 'radial-gradient(circle,rgba(247,231,166,0.45) 0%,transparent 70%)',
+                      animation: 'motmPulse 2.8s ease-in-out infinite',
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: -5,
+                      borderRadius: '50%',
+                      background:
+                        'conic-gradient(from 0deg,#FFF1C1,#D4A73C,rgba(184,134,43,0.1) 35%,#F7E7A6 55%,#B8862B 75%,#FFF1C1)',
+                      animation: 'motmSpin 5s linear infinite',
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      borderRadius: '50%',
+                      background: '#0B1220',
+                      padding: '3px',
+                    }}
                   >
-                    {getInitials(awayClub)}
-                  </span>
-                )}
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        overflow: 'hidden',
+                        background: 'linear-gradient(145deg,#3A2E12 0%,#141A2A 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {motm.avatarUrl ? (
+                        <img src={motm.avatarUrl} alt={motm.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div
+                          style={{
+                            fontFamily: "'Bebas Neue', sans-serif",
+                            fontSize: '40px',
+                            color: '#F7E7A6',
+                            letterSpacing: '1px',
+                          }}
+                        >
+                          {motm.initials}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: '50%',
+                      top: '-24px',
+                      transform: 'translateX(-50%) rotate(-8deg)',
+                      fontSize: '30px',
+                      filter: 'drop-shadow(0 0 10px rgba(247,231,166,0.8))',
+                    }}
+                  >
+                    👑
+                  </div>
+                </div>
+
+                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: '12px',
+                      letterSpacing: '4px',
+                      fontWeight: 700,
+                      color: '#D4A73C',
+                    }}
+                  >
+                    MAN OF THE MATCH
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "'Bebas Neue', sans-serif",
+                      fontSize: '58px',
+                      lineHeight: 0.9,
+                      letterSpacing: '1.5px',
+                      background: 'linear-gradient(180deg,#FFF6D2 0%,#F2D27A 45%,#C9962F 100%)',
+                      WebkitBackgroundClip: 'text',
+                      color: 'transparent',
+                      filter: 'drop-shadow(0 2px 14px rgba(212,167,60,0.35))',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {motm.name}
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '2px' }}>
+                    <div
+                      style={{
+                        padding: '6px 13px',
+                        borderRadius: '999px',
+                        background: 'linear-gradient(135deg,#F7E7A6 0%,#D4A73C 60%,#B8862B 100%)',
+                        color: '#1A1204',
+                        fontSize: '14px',
+                        fontWeight: 800,
+                        letterSpacing: '0.5px',
+                      }}
+                    >
+                      {motm.goals} Goals Scored
+                    </div>
+                    <div
+                      style={{
+                        padding: '6px 13px',
+                        borderRadius: '999px',
+                        border: '1px solid rgba(247,231,166,0.45)',
+                        background: 'rgba(212,167,60,0.12)',
+                        color: '#F7E7A6',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                      }}
+                    >
+                      MOTM Winner
+                    </div>
+                    <div
+                      style={{
+                        padding: '6px 13px',
+                        borderRadius: '999px',
+                        border: '1px solid rgba(34,211,238,0.4)',
+                        background: 'rgba(34,211,238,0.10)',
+                        color: '#9FEFFB',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                      }}
+                    >
+                      Match MVP
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* DUELS HEADER */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginTop: hasMotm ? '26px' : '36px',
+              marginBottom: '12px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  transform: 'rotate(45deg)',
+                  background: '#22D3EE',
+                  boxShadow: '0 0 10px #22D3EE',
+                }}
+              />
+              <div
+                style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: '26px',
+                  letterSpacing: '4px',
+                  color: '#FFFFFF',
+                  paddingTop: '2px',
+                }}
+              >
+                PLAYER DUELS
+              </div>
+              <div
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '12px',
+                  letterSpacing: '2px',
+                  color: '#6B7890',
+                }}
+              >
+                {rows.length} MATCHES
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '12px',
+                letterSpacing: '1.5px',
+                fontWeight: 700,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#34D399' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981' }} />
+                {record.w}W
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FBBF24' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F59E0B' }} />
+                {record.d}D
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FB7185' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#E11D48' }} />
+                {record.l}L
               </div>
             </div>
           </div>
-        </div>
 
-        {/* 3. COMPETITION & DATE SUB-HEADER */}
-        <div className="relative z-10 mt-6 flex items-center justify-between">
+          {/* DUELS GRID */}
           <div
-            style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-            className="text-3xl tracking-widest uppercase font-black text-slate-800 dark:text-white"
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gridAutoRows: `${rowH}px`,
+              gap: '10px 14px',
+              alignContent: 'start',
+            }}
           >
-            {competition}
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="px-3.5 py-1.5 rounded-lg border text-xs font-mono font-bold tracking-wider uppercase bg-white/70 dark:bg-white/5 border-slate-300 dark:border-white/10 text-slate-600 dark:text-slate-300">
-              🗓️ {date}
-            </div>
-            <div className="px-3.5 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase bg-amber-500 text-white shadow-sm flex items-center gap-1.5">
-              <span>👥</span>
-              <span>{matches.length} MATCHES</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 4. PLAYER DUELS GRID (2 Columns of 6) */}
-        <div className="relative z-10 mt-5 grid grid-cols-2 gap-3 flex-1 min-h-[520px]">
-          {matches.map((m, idx) => {
-            const isLeftWin = m.leftGoals > m.rightGoals;
-            const isRightWin = m.rightGoals > m.leftGoals;
-            const isDraw = m.leftGoals === m.rightGoals;
-
-            // Border accent colors on left & right edges
-            const leftBorderColor = isLeftWin ? '#10B981' : isLeftWin === false && !isDraw ? '#EF4444' : '#94A3B8';
-            const rightBorderColor = isRightWin ? '#10B981' : isRightWin === false && !isDraw ? '#EF4444' : '#94A3B8';
-
-            return (
+            {rows.map((m, idx) => (
               <div
                 key={idx}
                 style={{
-                  borderLeft: `4px solid ${leftBorderColor}`,
-                  borderRight: `4px solid ${rightBorderColor}`,
+                  position: 'relative',
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(0, 1fr) 80px minmax(0, 1fr)',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '0 14px',
+                  borderRadius: '14px',
+                  background:
+                    'linear-gradient(90deg,rgba(47,123,255,0.07) 0%,rgba(255,255,255,0.025) 50%,rgba(244,63,122,0.04) 100%)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  backdropFilter: 'blur(10px)',
+                  boxSizing: 'border-box',
                 }}
-                className={`rounded-xl p-2.5 px-3 flex items-center justify-between gap-2 shadow-sm border-t border-b ${
-                  isDark
-                    ? 'bg-[#151D2F] border-white/5 shadow-black/20'
-                    : 'bg-white border-slate-200/80 shadow-slate-100'
-                }`}
               >
-                {/* Left Player */}
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-slate-200 dark:bg-slate-800 flex items-center justify-center border border-slate-300/60 dark:border-white/10">
-                    {m.leftPlayerAvatar ? (
-                      <img src={m.leftPlayerAvatar} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-xs font-black text-slate-500 dark:text-slate-400">
-                        {getInitials(m.leftPlayerName)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-bold truncate text-slate-900 dark:text-slate-100">
-                      {m.leftPlayerName}
+                {/* LEFT PLAYER */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                  <div
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      flexShrink: 0,
+                      borderRadius: '50%',
+                      padding: '2px',
+                      background: m.ring,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        overflow: 'hidden',
+                        background: 'linear-gradient(145deg,#1A3263 0%,#0B1428 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {m.teeAvatarUrl ? (
+                        <img src={m.teeAvatarUrl} alt={m.teePlayerName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#CFEFFF', letterSpacing: '0.5px' }}>
+                          {m.teeInitials}
+                        </div>
+                      )}
                     </div>
-                    {m.isMotm && (
-                      <div className="inline-flex items-center gap-0.5 text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-amber-500 text-white leading-none">
-                        👑 MVP
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: '15.5px',
+                        fontWeight: 700,
+                        color: '#F2F6FC',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {m.teePlayerName}
+                    </div>
+                    {m.hasBadges && (
+                      <div style={{ display: 'flex', gap: '5px' }}>
+                        {m.isMotm && (
+                          <div
+                            style={{
+                              padding: '2px 7px',
+                              borderRadius: '999px',
+                              background: 'linear-gradient(135deg,#F7E7A6,#C9962F)',
+                              color: '#1A1204',
+                              fontSize: '10.5px',
+                              fontWeight: 800,
+                              letterSpacing: '0.5px',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            👑 MOTM
+                          </div>
+                        )}
+                        {m.cleanSheet && (
+                          <div
+                            style={{
+                              padding: '2px 7px',
+                              borderRadius: '999px',
+                              border: '1px solid rgba(34,211,238,0.45)',
+                              background: 'rgba(34,211,238,0.12)',
+                              color: '#9FEFFB',
+                              fontSize: '10.5px',
+                              fontWeight: 800,
+                              letterSpacing: '0.5px',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            🛡️ CS
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Center Match Score Pill */}
-                <div className="flex flex-col items-center justify-center px-2 flex-shrink-0">
-                  <span className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 leading-tight">
-                    ⏱️ M-{m.matchNumber || idx + 1}
-                  </span>
+                {/* SCORE PILL */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    background: m.pillBg,
+                    border: `1px solid ${m.pillBorder}`,
+                    boxShadow: `0 0 18px ${m.pillGlow}`,
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: '27px',
+                    lineHeight: 1,
+                    letterSpacing: '1px',
+                    color: m.pillText,
+                    paddingTop: '3px',
+                  }}
+                >
+                  <span>{m.goals}</span>
+                  <span style={{ opacity: 0.5, fontSize: '20px' }}>–</span>
+                  <span>{m.goalsConceded}</span>
+                </div>
+
+                {/* RIGHT OPPONENT */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', minWidth: 0 }}>
                   <div
-                    style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-                    className="text-2xl font-black tracking-wider flex items-center gap-1.5 leading-none mt-0.5"
+                    style={{
+                      fontSize: '14.5px',
+                      fontWeight: 600,
+                      color: '#A7B1C2',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      textAlign: 'right',
+                    }}
                   >
-                    <span className={isLeftWin ? 'text-emerald-500' : isDraw ? 'text-slate-500' : 'text-rose-500'}>
-                      {m.leftGoals}
-                    </span>
-                    <span className="text-slate-300 dark:text-slate-600 text-lg">-</span>
-                    <span className={isRightWin ? 'text-emerald-500' : isDraw ? 'text-slate-500' : 'text-rose-500'}>
-                      {m.rightGoals}
-                    </span>
+                    {m.opponentName}
                   </div>
-                </div>
-
-                {/* Right Player */}
-                <div className="flex items-center justify-end gap-2.5 min-w-0 flex-1 text-right">
-                  <div className="min-w-0">
-                    <div className="text-[13px] font-bold truncate text-slate-900 dark:text-slate-100">
-                      {m.rightPlayerName}
-                    </div>
-                  </div>
-                  <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-slate-200 dark:bg-slate-800 flex items-center justify-center border border-slate-300/60 dark:border-white/10">
-                    {m.rightPlayerAvatar ? (
-                      <img src={m.rightPlayerAvatar} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-xs font-black text-slate-500 dark:text-slate-400">
-                        {getInitials(m.rightPlayerName)}
-                      </span>
-                    )}
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      flexShrink: 0,
+                      borderRadius: '50%',
+                      border: '1.5px solid rgba(244,63,122,0.5)',
+                      background: 'linear-gradient(145deg,#3A1024 0%,#1A0A14 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      color: '#FBB6CE',
+                    }}
+                  >
+                    {m.oppInitials}
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
 
-        {/* 5. SUMMARY STATS (4 Cards) */}
-        <div className="relative z-10 mt-6 grid grid-cols-4 gap-3">
-          {/* Total Goals */}
+          {/* FOOTER */}
           <div
-            className={`p-3.5 rounded-xl border flex items-center gap-3.5 shadow-sm ${
-              isDark ? 'bg-[#111827] border-white/5' : 'bg-white border-slate-200/80'
-            }`}
+            style={{
+              height: '1px',
+              marginTop: '18px',
+              background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.12) 15%,rgba(255,255,255,0.12) 85%,transparent)',
+            }}
+          />
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '20px',
+              paddingTop: '16px',
+            }}
           >
-            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-xl flex-shrink-0">
-              ⚽
-            </div>
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">TOTAL GOALS</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div
-                style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-                className="text-2xl font-black text-slate-900 dark:text-white leading-none mt-0.5"
+                style={{
+                  width: '30px',
+                  height: '34px',
+                  clipPath: 'polygon(50% 0, 100% 13%, 100% 58%, 50% 100%, 0 58%, 0 13%)',
+                  background: 'linear-gradient(160deg,#7DE8F7,#2F7BFF 60%,#0E2A66)',
+                }}
+              />
+              <div
+                style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: '21px',
+                  letterSpacing: '3px',
+                  color: '#DCE4F0',
+                  paddingTop: '2px',
+                }}
               >
-                {totalGoals}
+                {homeClub.toUpperCase()} <span style={{ color: '#22D3EE' }}>•</span> OFFICIAL MATCH REPORT
               </div>
             </div>
-          </div>
-
-          {/* Clean Sheets */}
-          <div
-            className={`p-3.5 rounded-xl border flex items-center gap-3.5 shadow-sm ${
-              isDark ? 'bg-[#111827] border-white/5' : 'bg-white border-slate-200/80'
-            }`}
-          >
-            <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl flex-shrink-0">
-              🛡️
-            </div>
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">CLEAN SHEETS</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div
-                style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-                className="text-2xl font-black text-emerald-500 leading-none mt-0.5"
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '999px',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  background: 'rgba(255,255,255,0.04)',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  color: '#9FEFFB',
+                }}
               >
-                {cleanSheets}
+                {handle}
+              </div>
+              <div
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: '12.5px',
+                  letterSpacing: '1.5px',
+                  color: '#6B7890',
+                }}
+              >
+                {dateUpper}
               </div>
             </div>
-          </div>
-
-          {/* Biggest Win */}
-          <div
-            className={`p-3.5 rounded-xl border flex items-center gap-3.5 shadow-sm ${
-              isDark ? 'bg-[#111827] border-white/5' : 'bg-white border-slate-200/80'
-            }`}
-          >
-            <div className="w-10 h-10 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl flex-shrink-0">
-              🔥
-            </div>
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">BIGGEST WIN</div>
-              <div
-                style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-                className="text-2xl font-black text-amber-500 leading-none mt-0.5"
-              >
-                {biggestWinStr}
-              </div>
-            </div>
-          </div>
-
-          {/* Total Players */}
-          <div
-            className={`p-3.5 rounded-xl border flex items-center gap-3.5 shadow-sm ${
-              isDark ? 'bg-[#111827] border-white/5' : 'bg-white border-slate-200/80'
-            }`}
-          >
-            <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center text-xl flex-shrink-0">
-              👥
-            </div>
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">TOTAL PLAYERS</div>
-              <div
-                style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-                className="text-2xl font-black text-blue-500 leading-none mt-0.5"
-              >
-                {totalPlayers}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 6. FOOTER */}
-        <div className="relative z-10 mt-6 pt-4 border-t border-slate-300/40 dark:border-white/10 flex items-center justify-between text-xs">
-          <div className="font-mono uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
-            <span>FEDERATION</span>
-            <span className="font-black text-slate-900 dark:text-slate-200">{homeClub.toUpperCase()}</span>
-          </div>
-
-          <div className="flex items-center gap-2 font-mono text-[11px] text-slate-400">
-            <span>OFFICIALS</span>
-            <div className="flex -space-x-1.5 overflow-hidden">
-              <span className="inline-block h-5 w-5 rounded-full ring-2 ring-white dark:ring-slate-900 bg-slate-300 text-[9px] font-bold text-center leading-5 text-slate-700">A</span>
-              <span className="inline-block h-5 w-5 rounded-full ring-2 ring-white dark:ring-slate-900 bg-slate-400 text-[9px] font-bold text-center leading-5 text-white">B</span>
-              <span className="inline-block h-5 w-5 rounded-full ring-2 ring-white dark:ring-slate-900 bg-slate-500 text-[9px] font-bold text-center leading-5 text-white">C</span>
-            </div>
-          </div>
-
-          <div className="font-mono text-xs font-bold tracking-wider text-primary">
-            🌐 @TheEnigmaticElite
           </div>
         </div>
       </div>
