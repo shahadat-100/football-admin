@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
+import { supabase } from '@/lib/supabase';
 
 interface User {
   email: string;
@@ -33,26 +34,28 @@ export const useAuthStore = create<AuthState>()(
         login: async (email, password) => {
           set({ isLoading: true, error: null });
           try {
-            const res = await fetch('/api/login', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email, password }),
+            const { data, error } = await supabase.auth.signInWithPassword({
+              email: email.trim(),
+              password: password.trim(),
             });
 
-            const contentType = res.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-              throw new Error('Server returned an unexpected response format. Please ensure the API is running.');
+            if (error) {
+              throw error;
             }
 
-            const data = await res.json();
-
-            if (!res.ok) {
-              throw new Error(data.message || 'Login failed');
+            if (!data.user) {
+              throw new Error('Login failed. No user found.');
             }
 
-            set({ user: data.user, isAuthenticated: true, isLoading: false });
+            const user: User = {
+              email: data.user.email || email,
+              name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Admin',
+              role: 'admin',
+            };
+
+            set({ user, isAuthenticated: true, isLoading: false, error: null });
           } catch (err: any) {
-            const message = err instanceof SyntaxError ? 'Failed to parse server response' : err.message;
+            const message = err.message || 'Login failed';
             set({ error: message, isLoading: false, isAuthenticated: false });
             throw err;
           }
@@ -61,7 +64,7 @@ export const useAuthStore = create<AuthState>()(
         logout: async () => {
           set({ isLoading: true });
           try {
-            await fetch('/api/logout', { method: 'POST' });
+            await supabase.auth.signOut();
           } catch (err) {
             console.error('Logout error:', err);
           } finally {
@@ -72,15 +75,18 @@ export const useAuthStore = create<AuthState>()(
         checkAuth: async () => {
           set({ isLoading: true });
           try {
-            const res = await fetch('/api/me');
-            const contentType = res.headers.get('content-type');
-            
-            if (res.ok && contentType && contentType.includes('application/json')) {
-              const data = await res.json();
-              set({ user: data.user, isAuthenticated: true, isLoading: false });
-            } else {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (error || !session?.user) {
               set({ user: null, isAuthenticated: false, isLoading: false });
+              return;
             }
+
+            const user: User = {
+              email: session.user.email || '',
+              name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Admin',
+              role: 'admin',
+            };
+            set({ user, isAuthenticated: true, isLoading: false });
           } catch (err) {
             set({ user: null, isAuthenticated: false, isLoading: false });
           }
@@ -88,7 +94,7 @@ export const useAuthStore = create<AuthState>()(
       }),
       {
         name: 'auth-storage',
-        partialize: (state) => ({ user: state.user }),
+        partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
       }
     ),
     { enabled: process.env.NODE_ENV !== 'production' }
