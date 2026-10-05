@@ -220,8 +220,6 @@ export function PlayerHeroCard({
     .slice(0, 10)
     .reverse();
 
-  const hasCover = !!player.coverImageUrl;
-
   // ── Career stat grid items ──────────────────────────────────
   const careerStats = [
     { label: 'Matches',     value: stats.totalMatches,       accent: '#818cf8' },
@@ -253,36 +251,11 @@ export function PlayerHeroCard({
       style={{ minHeight: '300px' }}
     >
       {/* ── BACKGROUND ──────────────────────────────────────── */}
-      {hasCover ? (
-        <>
-          <img
-            src={player.coverImageUrl!}
-            alt="cover"
-            className="absolute inset-0 w-full h-full object-cover object-center"
-          />
-          {/* Bottom 40% gradient overlay only */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: 'linear-gradient(to bottom, transparent 0%, transparent 55%, rgba(10,15,30,0.85) 80%, rgba(10,15,30,0.97) 100%)',
-            }}
-          />
-          {/* Subtle dark veil for left panel readability */}
-          <div
-            className="absolute inset-0 pointer-events-none lg:w-[70%]"
-            style={{ background: 'linear-gradient(to right, rgba(10,15,30,0.55) 0%, transparent 100%)' }}
-          />
-        </>
-      ) : (
-        <>
-          {/* Dark navy gradient fallback */}
-          <div
-            className="absolute inset-0"
-            style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)' }}
-          />
-          <FootballPitchOverlay />
-        </>
-      )}
+      <div
+        className="absolute inset-0"
+        style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)' }}
+      />
+      <FootballPitchOverlay />
 
       {/* ── ACTION BUTTONS (absolute top-right) ─────────────── */}
       <div className="absolute top-4 right-4 z-30 flex flex-wrap gap-1.5 justify-end max-w-[360px]">
