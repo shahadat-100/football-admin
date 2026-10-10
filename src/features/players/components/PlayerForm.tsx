@@ -127,7 +127,8 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
         <ImageUpload
           value={watch('coverImageUrl')}
           onChange={(val) => setValue('coverImageUrl', val || '')}
-          onRemove={() => setValue('coverImageUrl', '')}
+          onRemove={() => setValue("coverImageUrl", "")}
+          bucket="covers"
           className="w-full max-w-sm"
         />
       </div>
