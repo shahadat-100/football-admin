@@ -203,9 +203,9 @@ export function PlayerHeroCard({
   currentRank,
   currentSeasonRank,
   currentSeason,
-  onEdit,
-  onAddEntry,
-  onRepair,
+  onEdit: _onEdit,
+  onAddEntry: _onAddEntry,
+  onRepair: _onRepair,
   onMilestones,
   onDelete,
   recheckLoading,
@@ -260,9 +260,9 @@ export function PlayerHeroCard({
       {/* ── ACTION BUTTONS (absolute top-right) ─────────────── */}
       <div className="absolute top-4 right-4 z-30 flex flex-wrap gap-1.5 justify-end max-w-[360px]">
         {[
-          { label: '✎ Edit',       onClick: onEdit,       red: false },
-          { label: '+ Entry',      onClick: onAddEntry,   red: false },
-          { label: '🔧 Repair',    onClick: onRepair,     red: false },
+
+
+
           { label: recheckLoading ? '⏳…' : '🔔 Milestones', onClick: onMilestones, red: false },
           { label: 'Delete',       onClick: onDelete,     red: true  },
         ].map(btn => (
