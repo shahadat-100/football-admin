@@ -122,14 +122,23 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
         />
       </div>
 
-      <div className="grid gap-2">
-        <label className="text-[12px] font-medium text-gray-400">Cover Image</label>
+      <div className="grid gap-1.5">
+        <div className="flex items-center justify-between">
+          <label className="text-[12px] font-medium text-gray-400">Cover Image / Gallery Card</label>
+          <span className="text-[10.5px] font-mono font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+            Best Ratio: 4:5 (1080 × 1350 px)
+          </span>
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-tight">
+          Transparent PNG cutout recommended. Any image (Story/Landscape) will auto-fit safely without cutting the head.
+        </p>
         <ImageUpload
           value={watch('coverImageUrl')}
           onChange={(val) => setValue('coverImageUrl', val || '')}
           onRemove={() => setValue("coverImageUrl", "")}
           bucket="covers"
-          className="w-full max-w-sm"
+          aspectRatio="4:5"
+          className="w-full max-w-sm pt-1"
         />
       </div>
 

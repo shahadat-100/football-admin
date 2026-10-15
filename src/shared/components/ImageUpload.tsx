@@ -10,7 +10,7 @@ interface ImageUploadProps {
   onRemove: () => void;
   className?: string;
   bucket?: string;
-  aspectRatio?: '16:9' | '1:1' | '4:3';
+  aspectRatio?: '4:5' | '16:9' | '1:1' | '4:3';
   autoFitForGallery?: boolean;
 }
 
@@ -20,32 +20,35 @@ export function ImageUpload({
   onRemove, 
   className, 
   bucket = 'images',
-  aspectRatio,
+  aspectRatio = '4:5',
   autoFitForGallery
 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   // Automatically enable gallery aspect ratio and fit if bucket is 'covers' or autoFitForGallery is set
-  const isGalleryCover = autoFitForGallery || bucket === 'covers' || aspectRatio === '16:9';
+  const isGalleryCard = autoFitForGallery || bucket === 'covers' || aspectRatio === '4:5';
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     let file = e.target.files?.[0];
     if (file) {
-      if (file.size > 15 * 1024 * 1024) {
-        alert("File too large (max 15MB)");
+      if (file.size > 20 * 1024 * 1024) {
+        alert("File too large (max 20MB)");
         return;
       }
       try {
         setIsUploading(true);
 
-        // Normalize & center-crop to perfect gallery dimensions (16:9 standard: 1200x675)
-        if (isGalleryCover) {
+        // Normalize any image format (Story 9:16, Landscape 16:9, Square 1:1)
+        // into a uniform 4:5 card height (1080 x 1350) with safe headroom (no chopped heads!)
+        if (isGalleryCard) {
           file = await fitImageForGallery(file, {
-            aspectRatio: 16 / 9,
-            targetWidth: 1200,
-            targetHeight: 675,
-            quality: 0.88,
+            aspectRatio: 4 / 5,
+            targetWidth: 1080,
+            targetHeight: 1350,
+            alignment: 'bottom',
+            headroom: 0.05,
+            format: 'image/png',
           });
         }
 
@@ -78,8 +81,8 @@ export function ImageUpload({
     }
   };
 
-  const containerDimensions = isGalleryCover 
-    ? 'w-full max-w-sm aspect-[16/9] min-h-[140px]' 
+  const containerDimensions = isGalleryCard 
+    ? 'w-full max-w-[220px] aspect-[4/5] min-h-[240px]' 
     : 'w-32 h-32';
 
   return (
@@ -93,11 +96,11 @@ export function ImageUpload({
       />
       
       {value ? (
-        <div className={`relative ${containerDimensions} rounded-lg overflow-hidden border border-border group bg-neutral-900/50`}>
+        <div className={`relative ${containerDimensions} rounded-xl overflow-hidden border border-border group bg-neutral-900/60 shadow-md`}>
           <img 
             src={value} 
             alt="Upload preview" 
-            className={`w-full h-full ${isGalleryCover ? 'object-cover' : 'object-contain'}`} 
+            className={`w-full h-full ${isGalleryCard ? 'object-contain object-bottom' : 'object-contain'}`} 
           />
           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
             <Button type="button" variant="danger" size="sm" onClick={onRemove}>
@@ -110,19 +113,29 @@ export function ImageUpload({
           type="button"
           disabled={isUploading}
           onClick={() => inputRef.current?.click()}
-          className={`${containerDimensions} rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground transition-colors ${isUploading ? 'opacity-70 cursor-not-allowed bg-muted/50' : 'hover:bg-muted/50'}`}
+          className={`${containerDimensions} rounded-xl border-2 border-dashed border-border/70 flex flex-col items-center justify-center text-muted-foreground transition-all ${isUploading ? 'opacity-70 cursor-not-allowed bg-muted/50' : 'hover:bg-muted/40 hover:border-amber-500/50'}`}
         >
           {isUploading ? (
             <>
-              <Loader2 className="w-8 h-8 mb-2 opacity-50 animate-spin" />
-              <span className="text-[11px] font-medium">Processing & Uploading...</span>
+              <Loader2 className="w-8 h-8 mb-2 opacity-50 animate-spin text-amber-500" />
+              <span className="text-[11px] font-medium text-amber-500">Fitting to 4:5 & Uploading...</span>
             </>
           ) : (
             <>
-              <ImagePlus className="w-8 h-8 mb-2 opacity-50" />
-              <span className="text-[11px] font-medium">
-                {isGalleryCover ? 'Upload Gallery Cover (16:9)' : 'Upload Image'}
+              <ImagePlus className="w-8 h-8 mb-2 opacity-50 group-hover:text-amber-500" />
+              <span className="text-[11px] font-semibold text-foreground group-hover:text-amber-400 transition-colors">
+                {isGalleryCard ? 'Upload Gallery Card' : 'Upload Image'}
               </span>
+              {isGalleryCard && (
+                <>
+                  <span className="text-[10.5px] font-mono text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 mt-1.5">
+                    4:5 (1080 × 1350)
+                  </span>
+                  <span className="text-[9.5px] text-muted-foreground/80 mt-1 text-center px-2">
+                    PNG Cutout Recommended
+                  </span>
+                </>
+              )}
             </>
           )}
         </button>
