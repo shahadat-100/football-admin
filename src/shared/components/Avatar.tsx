@@ -18,10 +18,10 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
         ref={ref}
         style={{
           ...inlineStyle,
-          backgroundColor: src ? 'transparent' : avatarColor(name),
+          backgroundColor: src ? '#ffffff' : avatarColor(name),
         }}
         className={cn(
-          "relative flex shrink-0 items-center justify-center rounded-full overflow-hidden text-white font-bold",
+          "relative flex shrink-0 items-center justify-center rounded-full overflow-hidden bg-white text-white font-bold",
           !isNum ? size : '',
           className
         )}
