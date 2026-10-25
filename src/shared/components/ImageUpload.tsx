@@ -20,14 +20,14 @@ export function ImageUpload({
   onRemove, 
   className, 
   bucket = 'images',
-  aspectRatio = '4:5',
+  aspectRatio,
   autoFitForGallery
 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Automatically enable gallery aspect ratio and fit if bucket is 'covers' or autoFitForGallery is set
-  const isGalleryCard = autoFitForGallery || bucket === 'covers' || aspectRatio === '4:5';
+  // Automatically enable gallery aspect ratio (4:5) ONLY for covers bucket or when autoFitForGallery is explicitly requested
+  const isGalleryCard = Boolean(autoFitForGallery || bucket === 'covers' || (aspectRatio === '4:5' && bucket === 'covers'));
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     let file = e.target.files?.[0];
