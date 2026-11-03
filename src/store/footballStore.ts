@@ -305,11 +305,12 @@ interface FootballStore {
   updateMatchEntry: (e: MatchEntry) => Promise<void>;
   removeMatchEntry: (id: string) => Promise<void>;
   
-  fetchNews: () => Promise<void>;
+  fetchNews: (force?: boolean) => Promise<void>;
   setNews: (n: NewsArticle[]) => void;
   addNews: (n: NewsArticle) => Promise<void>;
   updateNews: (n: NewsArticle) => Promise<void>;
   removeNews: (id: string) => Promise<void>;
+  cleanupOldMilestoneNews: (days?: number) => Promise<number>;
 
   fetchSeasons: () => Promise<void>;
   addSeason: (name: string) => Promise<SeasonDb | undefined>;
@@ -1385,9 +1386,15 @@ export const useFootballStore = create<FootballStore>()(
         else console.error('Error removing match entry:', error);
       },
       
-      fetchNews: async () => {
-        if (get().news.length > 0) return;
-        // Issue 8 fix: limit to 200 most-recent articles — milestone automation can grow this table large
+      fetchNews: async (force?: boolean) => {
+        if (!force && get().news.length > 0) return;
+
+        // Auto-cleanup 90-day old automated milestone news in background
+        get().cleanupOldMilestoneNews(90).catch((err) => {
+          console.warn('Auto cleanup milestone news skipped:', err);
+        });
+
+        // Limit to 200 most-recent articles — milestone automation can grow this table large
         const { data, error } = await supabase
           .from('news')
           .select('id, title, content, author, category, hot, date, image')
@@ -1395,6 +1402,53 @@ export const useFootballStore = create<FootballStore>()(
           .limit(200);
         if (data) set({ news: data as NewsArticle[] });
         if (error) console.error('Error fetching news:', error);
+      },
+      cleanupOldMilestoneNews: async (days: number = 90) => {
+        try {
+          const cutoff = new Date();
+          cutoff.setDate(cutoff.getDate() - days);
+          const cutoffDateStr = cutoff.toISOString().split('T')[0];
+
+          // 1. Try RPC function if database migration was executed
+          const { data: rpcCount, error: rpcErr } = await supabase.rpc('cleanup_old_milestone_news', {
+            days_threshold: days,
+          });
+
+          if (!rpcErr && typeof rpcCount === 'number') {
+            if (rpcCount > 0) {
+              set((state) => ({
+                news: state.news.filter(n => !(
+                  (n.author === 'Club Records' || n.category === 'Milestone') && n.date < cutoffDateStr
+                )),
+              }));
+            }
+            return rpcCount;
+          }
+
+          // 2. Direct fallback: Delete automated milestone news older than cutoff date
+          const { data: deleted, error: delErr } = await supabase
+            .from('news')
+            .delete()
+            .eq('author', 'Club Records')
+            .lt('date', cutoffDateStr)
+            .select('id');
+
+          if (delErr) {
+            console.warn('Direct news cleanup fallback error:', delErr);
+            return 0;
+          }
+
+          const deletedIds = new Set((deleted || []).map((x: any) => x.id));
+          if (deletedIds.size > 0) {
+            set((state) => ({
+              news: state.news.filter(n => !deletedIds.has(n.id)),
+            }));
+          }
+          return deletedIds.size;
+        } catch (err) {
+          console.error('Error in cleanupOldMilestoneNews:', err);
+          return 0;
+        }
       },
       setNews: (news) => set({ news }),
       addNews: async (n) => {

@@ -4,15 +4,16 @@ import { NewsArticle } from '@/features/news/types';
 import { NewsForm } from '@/features/news';
 import { Button, Input, Modal, DeleteConfirm, Badge } from '@/shared/components';
 import { fuzzyFilter } from '@/shared/lib/utils';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, Sparkles } from 'lucide-react';
 
 export function News() {
-  const { news, fetchNews, addNews, updateNews, removeNews } = useFootballStore();
+  const { news, fetchNews, addNews, updateNews, removeNews, cleanupOldMilestoneNews } = useFootballStore();
 
   const [modal, setModal] = useState<{ type: 'add' | 'edit' | 'delete', data?: NewsArticle } | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCleaning, setIsCleaning] = useState(false);
   const PAGE_SIZE = 50;
 
   useEffect(() => {
@@ -72,6 +73,20 @@ export function News() {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  const handleCleanupMilestones = async () => {
+    if (!window.confirm('Clean up automated milestone news older than 90 days? (Manual admin articles will remain untouched)')) return;
+    setIsCleaning(true);
+    try {
+      const removed = await cleanupOldMilestoneNews(90);
+      alert(removed > 0 ? `Cleaned up ${removed} old automated milestone articles.` : 'No automated milestone articles older than 90 days found.');
+      await fetchNews(true);
+    } catch (err: any) {
+      alert('Cleanup failed: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setIsCleaning(false);
+    }
+  };
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
       {modal?.type === 'add' && (
@@ -101,9 +116,11 @@ export function News() {
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between mb-6 gap-4">
         <div>
           <h2 className="font-bold text-[22px] mb-1">News</h2>
-          <p className="text-muted-foreground text-[13px]">{news.length} articles</p>
+          <p className="text-muted-foreground text-[13px]">
+            {news.length} articles <span className="text-[11px] opacity-75">(Milestones older than 90d auto-pruned)</span>
+          </p>
         </div>
-        <div className="flex gap-3 items-center">
+        <div className="flex flex-wrap gap-3 items-center">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
@@ -113,6 +130,15 @@ export function News() {
               className="pl-9 w-full sm:w-[220px]"
             />
           </div>
+          <Button 
+            variant="secondary" 
+            onClick={handleCleanupMilestones} 
+            disabled={isCleaning}
+            title="Clean up automated milestone news older than 90 days"
+          >
+            <Sparkles className={`w-4 h-4 mr-1.5 ${isCleaning ? 'animate-spin' : ''}`} />
+            {isCleaning ? 'Cleaning...' : 'Clean 90d+ Milestones'}
+          </Button>
           <Button onClick={() => setModal({ type: 'add' })}>
             <Plus className="w-4 h-4 mr-1.5" /> Publish News
           </Button>
