@@ -11,6 +11,7 @@ const NAV = [
   { id: 'entries', label: 'Match entries', icon: ClipboardList },
   { id: 'matches', label: 'Matches', icon: Trophy },
   { id: 'friendly', label: 'Friendly', icon: Swords },
+  { id: 'tournaments', label: 'Tournaments', icon: Trophy },
   { id: 'news', label: 'News', icon: Newspaper },
   { id: 'hall-of-fame', label: 'Hall of Fame', icon: Award },
   { id: 'club-info', label: 'Club Info', icon: Shield },

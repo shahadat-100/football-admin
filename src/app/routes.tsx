@@ -9,6 +9,7 @@ import { HallOfFame } from '@/pages/HallOfFame';
 import { ClubInfo } from '@/pages/ClubInfo';
 import { MatchImport } from '@/pages/MatchImport';
 import { FriendlyMatches } from '@/pages/FriendlyMatches';
+import { AdminTournaments } from '@/pages/AdminTournaments';
 import { LoginForm } from '@/features/auth/components/LoginForm';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { useAuthStore } from '@/features/auth/store/useAuthStore';
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
       { path: "hall-of-fame", element: <HallOfFame /> },
       { path: "club-info", element: <ClubInfo /> },
       { path: "import", element: <MatchImport /> },
+      { path: "tournaments", element: <AdminTournaments /> },
     ]
   }
 ]);
