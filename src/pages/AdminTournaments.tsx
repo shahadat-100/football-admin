@@ -4,7 +4,7 @@ import { Tournament, TournamentRegistration, TournamentMatch, TournamentSubmissi
 import { calculateTournamentTimeline, partitionIntoEqualGroups, generateGroupFixtures, getMatchdaysForGroupSize } from '@/features/tournaments/utils/tournamentEngine';
 import { 
   Trophy, Plus, CheckCircle, XCircle, 
-  ExternalLink, Play, ShieldAlert, Image as ImageIcon
+  ExternalLink, Play, ShieldAlert, Image as ImageIcon, Trash2
 } from 'lucide-react';
 
 export function AdminTournaments() {
@@ -330,6 +330,33 @@ export function AdminTournaments() {
     }
   };
 
+  // Delete Tournament Handler (Cascades to groups, matches & registrations)
+  const handleDeleteTournament = async (tournamentId: string, tournamentTitle: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete tournament "${tournamentTitle}"?\nAll registrations, groups, and matches will be deleted.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('tournaments')
+        .delete()
+        .eq('id', tournamentId);
+
+      if (error) throw error;
+
+      alert(`Tournament "${tournamentTitle}" has been removed.`);
+      const remaining = tournaments.filter(t => t.id !== tournamentId);
+      setTournaments(remaining);
+      setSelectedTournament(remaining.length > 0 ? remaining[0] : null);
+    } catch (err: any) {
+      console.error('Failed to delete tournament:', err);
+      alert(err.message || 'Failed to delete tournament');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const approvedCount = registrations.filter(r => r.status === 'approved').length;
   const pendingCount = registrations.filter(r => r.status === 'pending').length;
   const disputedMatches = matches.filter(m => m.status === 'disputed' || m.status === 'pending_approval');
@@ -400,16 +427,28 @@ export function AdminTournaments() {
               </div>
             </div>
 
-            {selectedTournament.status === 'registration_open' && (
+            <div className="flex items-center gap-2">
+              {selectedTournament.status === 'registration_open' && (
+                <button
+                  onClick={handleGenerateGroups}
+                  disabled={loading}
+                  className="flex items-center gap-2 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow transition active:scale-95 disabled:opacity-50"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  Trigger Auto Group Draw ({approvedCount} Players)
+                </button>
+              )}
+
               <button
-                onClick={handleGenerateGroups}
+                onClick={() => handleDeleteTournament(selectedTournament.id, selectedTournament.title)}
                 disabled={loading}
-                className="flex items-center gap-2 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow transition active:scale-95 disabled:opacity-50"
+                className="flex items-center gap-1.5 py-2 px-3.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white font-bold text-xs transition active:scale-95 disabled:opacity-50"
+                title="Delete this tournament"
               >
-                <Play className="w-3.5 h-3.5 fill-current" />
-                Trigger Auto Group Draw ({approvedCount} Players)
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Tournament
               </button>
-            )}
+            </div>
           </div>
 
           {/* Sub Navigation */}
