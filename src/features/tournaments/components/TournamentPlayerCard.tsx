@@ -134,14 +134,14 @@ export const TournamentPlayerCard: React.FC<TournamentPlayerCardProps> = ({
         {/* ─── 3. Bottom: Game ID & Device Pills ─── */}
         <div className="relative z-10 pt-2">
           <div className="grid grid-cols-2 gap-2 bg-[#00112a]/90 border border-[#c89850]/30 rounded-2xl p-2.5 shadow-lg">
-            {/* Game ID / IGN */}
+            {/* Game ID */}
             <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/5 border border-white/5">
               <Hash className="w-4 h-4 text-[#c89850] flex-shrink-0" />
               <div className="flex flex-col min-w-0">
                 <span className="text-[9px] uppercase font-sans font-bold text-white/50 tracking-wider leading-none">
-                  Game ID / IGN
+                  Game ID
                 </span>
-                <span className="text-[12px] font-sans font-bold text-white tracking-wide truncate mt-0.5">
+                <span className="text-[12px] font-mono font-bold text-white tracking-wide truncate mt-0.5">
                   {gameId || '—'}
                 </span>
               </div>

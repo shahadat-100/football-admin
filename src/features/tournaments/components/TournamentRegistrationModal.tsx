@@ -45,7 +45,7 @@ export const TournamentRegistrationModal: React.FC<TournamentRegistrationModalPr
       return;
     }
     if (!gameId.trim()) {
-      setError('Please enter your eFootball Game ID (IGN).');
+      setError('Please enter your eFootball Game ID.');
       return;
     }
     if (!deviceModel.trim()) {
@@ -166,15 +166,15 @@ export const TournamentRegistrationModal: React.FC<TournamentRegistrationModalPr
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-white/80 mb-1.5">
-                        eFootball Game ID / IGN *
+                        eFootball Game ID *
                       </label>
                       <input
                         type="text"
-                        placeholder="Enter your Game ID / IGN"
+                        placeholder="Enter your Game ID"
                         value={gameId}
                         onChange={(e) => setGameId(e.target.value)}
                         required
-                        className="w-full py-2.5 px-3.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#c89850] transition"
+                        className="w-full py-2.5 px-3.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-[#c89850] transition font-mono"
                       />
                     </div>
 
@@ -234,7 +234,7 @@ export const TournamentRegistrationModal: React.FC<TournamentRegistrationModalPr
               <TournamentPlayerCard
                 playerName={selectedPlayer ? selectedPlayer.name : 'YOUR NAME'}
                 playerAvatarUrl={selectedPlayer?.profileImageUrl}
-                gameId={gameId || 'YOUR_IGN'}
+                gameId={gameId || 'YOUR_GAME_ID'}
                 deviceModel={deviceModel || 'YOUR DEVICE'}
                 tournamentTitle={tournamentTitle}
                 seasonName={seasonName}
