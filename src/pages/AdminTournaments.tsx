@@ -6,8 +6,12 @@ import {
   Trophy, Plus, CheckCircle, XCircle, 
   ExternalLink, Play, ShieldAlert, Image as ImageIcon, Trash2
 } from 'lucide-react';
+import { useFootballStore } from '@/store/footballStore';
 
 export function AdminTournaments() {
+  const storePlayers = useFootballStore((state) => state.players) || [];
+  const fetchPlayers = useFootballStore((state) => state.fetchPlayers);
+
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [registrations, setRegistrations] = useState<TournamentRegistration[]>([]);
@@ -23,6 +27,7 @@ export function AdminTournaments() {
 
   // New Tournament Form State
   const [title, setTitle] = useState('');
+  const [seasonName, setSeasonName] = useState('Season 1 • 2026');
   const [registrationDeadline, setRegistrationDeadline] = useState('');
   const [intervalDays, setIntervalDays] = useState(2);
   const [graceHours] = useState(24);
@@ -54,13 +59,36 @@ export function AdminTournaments() {
   const fetchTournamentData = async (tournamentId: string) => {
     try {
       const [regRes, matchRes, subRes] = await Promise.all([
-        supabase.from('tournament_registrations').select('*, player:players(*)').eq('tournament_id', tournamentId).order('created_at', { ascending: false }),
-        supabase.from('tournament_matches').select('*, player1:players!player1_id(*), player2:players!player2_id(*)').eq('tournament_id', tournamentId).order('matchday', { ascending: true }),
+        supabase.from('tournament_registrations').select('*').eq('tournament_id', tournamentId).order('created_at', { ascending: false }),
+        supabase.from('tournament_matches').select('*').eq('tournament_id', tournamentId).order('matchday', { ascending: true }),
         supabase.from('tournament_submissions').select('*').order('created_at', { ascending: false })
       ]);
 
-      setRegistrations(regRes.data || []);
-      setMatches(matchRes.data || []);
+      // Resolve player info reliably without relying on PostgREST foreign key joins
+      let currentPlayers = storePlayers;
+      if (currentPlayers.length === 0) {
+        const { data: rawPlayers } = await supabase.from('players').select('*');
+        if (rawPlayers) {
+          currentPlayers = rawPlayers.map(p => ({
+            ...p,
+            profileImageUrl: p.profileimageurl || p.profileImageUrl
+          })) as any;
+        }
+      }
+
+      const mappedRegs = (regRes.data || []).map(r => ({
+        ...r,
+        player: currentPlayers.find(p => p.id === r.player_id)
+      }));
+
+      const mappedMatches = (matchRes.data || []).map(m => ({
+        ...m,
+        player1: currentPlayers.find(p => p.id === m.player1_id),
+        player2: currentPlayers.find(p => p.id === m.player2_id)
+      }));
+
+      setRegistrations(mappedRegs);
+      setMatches(mappedMatches);
       setSubmissions(subRes.data || []);
     } catch (err) {
       console.error('Error fetching tournament details:', err);
@@ -69,7 +97,8 @@ export function AdminTournaments() {
 
   useEffect(() => {
     fetchTournaments();
-  }, []);
+    fetchPlayers();
+  }, [fetchPlayers]);
 
   useEffect(() => {
     if (selectedTournament) {
@@ -103,6 +132,7 @@ export function AdminTournaments() {
         .from('tournaments')
         .insert({
           title,
+          season_name: seasonName.trim() || 'Season 1 • 2026',
           status: 'registration_open',
           group_size: groupSize,
           registration_deadline: regDate.toISOString(),
@@ -724,6 +754,23 @@ export function AdminTournaments() {
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full py-2 px-3 rounded-xl bg-background border border-border text-sm"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  Tournament Season *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Season 1 • 2026 or Winter Cup 2026"
+                  value={seasonName}
+                  onChange={(e) => setSeasonName(e.target.value)}
+                  className="w-full py-2 px-3 rounded-xl bg-background border border-border text-sm font-semibold"
+                />
+                <span className="text-[10px] text-muted-foreground block mt-0.5">
+                  Decided freely by admin (e.g. Season 1, Season 2, Monthly Championship)
+                </span>
               </div>
 
               <div>
