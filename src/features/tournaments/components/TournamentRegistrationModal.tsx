@@ -166,11 +166,11 @@ export const TournamentRegistrationModal: React.FC<TournamentRegistrationModalPr
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-white/80 mb-1.5">
-                        eFootball IGN / Game ID *
+                        eFootball Game ID / IGN *
                       </label>
                       <input
                         type="text"
-                        placeholder="e.g. SHADOW_99"
+                        placeholder="Enter your Game ID / IGN"
                         value={gameId}
                         onChange={(e) => setGameId(e.target.value)}
                         required
@@ -184,7 +184,7 @@ export const TournamentRegistrationModal: React.FC<TournamentRegistrationModalPr
                       </label>
                       <input
                         type="text"
-                        placeholder="e.g. iPhone 15 Pro"
+                        placeholder="e.g. iPhone 15 Pro / Poco X3"
                         value={deviceModel}
                         onChange={(e) => setDeviceModel(e.target.value)}
                         required

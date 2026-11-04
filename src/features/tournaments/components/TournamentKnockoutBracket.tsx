@@ -1,77 +1,83 @@
 import React from 'react';
 import { TournamentMatch } from '../types';
-import { Trophy, Award } from 'lucide-react';
+import { Trophy } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
 
 interface TournamentKnockoutBracketProps {
   matches: TournamentMatch[];
   championName?: string | null;
-  championAvatar?: string | null;
 }
 
 export const TournamentKnockoutBracket: React.FC<TournamentKnockoutBracketProps> = ({
   matches,
   championName,
 }) => {
-  // Filter matches by knockout stages
-  const qfMatches = matches.filter(m => m.stage === 'quarter_final').sort((a, b) => (a.bracket_match_number || 0) - (b.bracket_match_number || 0));
-  const sfMatches = matches.filter(m => m.stage === 'semi_final').sort((a, b) => (a.bracket_match_number || 0) - (b.bracket_match_number || 0));
+  const qfMatches = matches
+    .filter(m => m.stage === 'quarter_final')
+    .sort((a, b) => (a.bracket_match_number || 0) - (b.bracket_match_number || 0));
+  const sfMatches = matches
+    .filter(m => m.stage === 'semi_final')
+    .sort((a, b) => (a.bracket_match_number || 0) - (b.bracket_match_number || 0));
   const finalMatch = matches.find(m => m.stage === 'final');
-  const thirdPlaceMatch = matches.find(m => m.stage === 'third_place');
 
-  // Match Box Component
-  const BracketMatchNode = ({ match, title }: { match?: TournamentMatch; title: string }) => {
-    if (!match) {
-      return (
-        <div className="w-56 p-3 rounded-xl bg-white/5 border border-dashed border-white/10 text-center text-white/30 text-xs">
-          {title} (TBD)
-        </div>
-      );
-    }
-
-    const p1Won = match.status === 'completed' && match.winner_id && match.winner_id === match.player1_id;
-    const p2Won = match.status === 'completed' && match.winner_id && match.winner_id === match.player2_id;
+  // A Single Match Card in the Bracket
+  const MatchCard = ({
+    match,
+    title,
+  }: {
+    match?: TournamentMatch;
+    title: string;
+  }) => {
+    const isCompleted = match?.status === 'completed';
+    const p1Won = isCompleted && match?.winner_id && match.winner_id === match.player1_id;
+    const p2Won = isCompleted && match?.winner_id && match.winner_id === match.player2_id;
 
     return (
-      <div className="w-60 rounded-xl bg-[#001738] border border-white/10 shadow-lg overflow-hidden relative group hover:border-[#c89850]/50 transition">
-        {/* Stage Header */}
-        <div className="bg-[#00112a] px-3 py-1 text-[10px] font-mono uppercase text-[#c89850] font-bold flex items-center justify-between border-b border-white/5">
+      <div className="w-56 bg-card border border-border rounded-xl shadow-sm overflow-hidden hover:border-primary/50 transition duration-200">
+        <div className="bg-muted/40 px-3 py-1.5 text-[11px] font-bold text-muted-foreground flex items-center justify-between border-b border-border/50">
           <span>{title}</span>
-          <span className="text-white/40">{match.status === 'completed' ? 'Final' : 'Scheduled'}</span>
+          <span className={cn(
+            'text-[10px] px-1.5 py-0.2 rounded font-bold uppercase',
+            isCompleted ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted text-muted-foreground'
+          )}>
+            {isCompleted ? 'Final' : 'Upcoming'}
+          </span>
         </div>
 
-        {/* Competitors */}
         <div className="p-2 space-y-1">
           {/* Player 1 */}
-          <div className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-xs font-bold transition ${
-            p1Won ? 'bg-[#c89850]/20 text-[#c89850]' : 'text-white'
-          }`}>
+          <div className={cn(
+            'flex items-center justify-between px-2 py-1.5 rounded-lg text-xs font-semibold transition',
+            p1Won ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold' : 'text-foreground'
+          )}>
             <div className="flex items-center gap-2 truncate">
-              {match.player1?.profileImageUrl ? (
-                <img src={match.player1.profileImageUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
+              {match?.player1?.profileImageUrl ? (
+                <img src={match.player1.profileImageUrl} alt="" className="w-4 h-4 rounded-full object-cover" />
               ) : (
-                <span className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px]">⚽</span>
+                <span className="w-4 h-4 rounded-full bg-muted flex items-center justify-center text-[9px]">⚽</span>
               )}
-              <span className="truncate">{match.player1?.name || 'TBD'}</span>
+              <span className="truncate">{match?.player1?.name || 'TBD'}</span>
             </div>
-            <span className="font-mono text-sm ml-2">
-              {match.status === 'completed' ? match.player1_score ?? 0 : '-'}
+            <span className="font-mono text-xs ml-2 font-black">
+              {isCompleted ? match?.player1_score ?? 0 : '-'}
             </span>
           </div>
 
           {/* Player 2 */}
-          <div className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-xs font-bold transition ${
-            p2Won ? 'bg-[#c89850]/20 text-[#c89850]' : 'text-white'
-          }`}>
+          <div className={cn(
+            'flex items-center justify-between px-2 py-1.5 rounded-lg text-xs font-semibold transition',
+            p2Won ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold' : 'text-foreground'
+          )}>
             <div className="flex items-center gap-2 truncate">
-              {match.player2?.profileImageUrl ? (
-                <img src={match.player2.profileImageUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
+              {match?.player2?.profileImageUrl ? (
+                <img src={match.player2.profileImageUrl} alt="" className="w-4 h-4 rounded-full object-cover" />
               ) : (
-                <span className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px]">⚽</span>
+                <span className="w-4 h-4 rounded-full bg-muted flex items-center justify-center text-[9px]">⚽</span>
               )}
-              <span className="truncate">{match.player2?.name || 'TBD'}</span>
+              <span className="truncate">{match?.player2?.name || 'TBD'}</span>
             </div>
-            <span className="font-mono text-sm ml-2">
-              {match.status === 'completed' ? match.player2_score ?? 0 : '-'}
+            <span className="font-mono text-xs ml-2 font-black">
+              {isCompleted ? match?.player2_score ?? 0 : '-'}
             </span>
           </div>
         </div>
@@ -81,63 +87,93 @@ export const TournamentKnockoutBracket: React.FC<TournamentKnockoutBracketProps>
 
   return (
     <div className="w-full overflow-x-auto py-6">
-      {/* Champion Podium if Completed */}
       {championName && (
-        <div className="mb-8 p-6 rounded-3xl bg-gradient-to-r from-[#001738] via-[#00265a] to-[#001738] border-2 border-[#c89850] shadow-2xl text-center max-w-md mx-auto">
-          <div className="w-16 h-16 rounded-full bg-[#c89850] text-[#00265a] flex items-center justify-center mx-auto mb-3 shadow-lg animate-bounce">
-            <Trophy className="w-9 h-9 fill-current" />
-          </div>
-          <span className="text-xs uppercase font-bold tracking-widest text-[#c89850]">
-            Official Champion
+        <div className="mb-8 p-6 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-center max-w-sm mx-auto">
+          <Trophy className="w-10 h-10 text-amber-500 mx-auto mb-2 animate-bounce" />
+          <span className="text-xs font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
+            Tournament Champion
           </span>
-          <h3 className="text-2xl font-black text-white mt-1 uppercase">
+          <h3 className="text-2xl font-black text-foreground mt-1">
             {championName}
           </h3>
-          <p className="text-white/60 text-xs mt-1">
-            Undisputed Tournament Winner • Gold Badge Awarded
-          </p>
         </div>
       )}
 
-      {/* Bracket Tree Columns */}
-      <div className="flex items-center justify-center gap-8 min-w-[700px] px-4">
-        {/* Quarter Finals Column */}
-        <div className="flex flex-col gap-6">
-          <h4 className="text-xs uppercase font-black tracking-wider text-center text-[#c89850] mb-2 font-mono">
+      {/* ─── CONNECTED BRACKET TREE WITH DRAW CONNECTOR LINES ─── */}
+      <div className="min-w-[780px] flex items-center justify-start gap-0 py-4 px-2">
+        {/* ROUND 1: QUARTER FINALS (4 Matches) */}
+        <div className="flex flex-col justify-around gap-6">
+          <div className="text-xs font-black uppercase text-muted-foreground tracking-wider mb-1 px-1">
             Quarter-Finals
-          </h4>
-          {[0, 1, 2, 3].map(idx => (
-            <BracketMatchNode key={idx} match={qfMatches[idx]} title={`QF ${idx + 1}`} />
-          ))}
+          </div>
+
+          {/* Pair 1 */}
+          <div className="space-y-4">
+            <MatchCard match={qfMatches[0]} title="QF 1" />
+            <MatchCard match={qfMatches[1]} title="QF 2" />
+          </div>
+
+          {/* Pair 2 */}
+          <div className="space-y-4 mt-6">
+            <MatchCard match={qfMatches[2]} title="QF 3" />
+            <MatchCard match={qfMatches[3]} title="QF 4" />
+          </div>
         </div>
 
-        {/* Semi Finals Column */}
-        <div className="flex flex-col gap-24">
-          <h4 className="text-xs uppercase font-black tracking-wider text-center text-[#c89850] mb-2 font-mono">
+        {/* CONNECTING LINES: QF TO SF */}
+        <div className="flex flex-col justify-around h-full w-12 flex-shrink-0 pt-6">
+          {/* Top Branch Connector */}
+          <div className="h-[148px] border-r-2 border-border relative flex items-center">
+            {/* Upper arm from QF1 */}
+            <div className="absolute -top-[1px] right-0 w-6 border-t-2 border-border" />
+            {/* Lower arm from QF2 */}
+            <div className="absolute -bottom-[1px] right-0 w-6 border-b-2 border-border" />
+            {/* Horizontal line out to SF1 */}
+            <div className="w-6 border-t-2 border-border ml-auto" />
+          </div>
+
+          {/* Bottom Branch Connector */}
+          <div className="h-[148px] border-r-2 border-border relative flex items-center mt-12">
+            {/* Upper arm from QF3 */}
+            <div className="absolute -top-[1px] right-0 w-6 border-t-2 border-border" />
+            {/* Lower arm from QF4 */}
+            <div className="absolute -bottom-[1px] right-0 w-6 border-b-2 border-border" />
+            {/* Horizontal line out to SF2 */}
+            <div className="w-6 border-t-2 border-border ml-auto" />
+          </div>
+        </div>
+
+        {/* ROUND 2: SEMI FINALS (2 Matches) */}
+        <div className="flex flex-col justify-around gap-20 pl-2">
+          <div className="text-xs font-black uppercase text-muted-foreground tracking-wider mb-1 px-1">
             Semi-Finals
-          </h4>
-          {[0, 1].map(idx => (
-            <BracketMatchNode key={idx} match={sfMatches[idx]} title={`SF ${idx + 1}`} />
-          ))}
+          </div>
+
+          <div className="space-y-28">
+            <MatchCard match={sfMatches[0]} title="Semi-Final 1" />
+            <MatchCard match={sfMatches[1]} title="Semi-Final 2" />
+          </div>
         </div>
 
-        {/* Grand Final & 3rd Place Column */}
-        <div className="flex flex-col gap-10">
-          <div>
-            <h4 className="text-xs uppercase font-black tracking-wider text-center text-[#c89850] mb-2 font-mono flex items-center justify-center gap-1">
-              <Trophy className="w-3.5 h-3.5" />
-              Championship Final
-            </h4>
-            <BracketMatchNode match={finalMatch} title="Grand Final" />
+        {/* CONNECTING LINES: SF TO FINAL */}
+        <div className="flex flex-col justify-center h-full w-12 flex-shrink-0 pt-6">
+          <div className="h-[240px] border-r-2 border-border relative flex items-center">
+            {/* Upper arm from SF1 */}
+            <div className="absolute -top-[1px] right-0 w-6 border-t-2 border-border" />
+            {/* Lower arm from SF2 */}
+            <div className="absolute -bottom-[1px] right-0 w-6 border-b-2 border-border" />
+            {/* Horizontal line out to Final */}
+            <div className="w-6 border-t-2 border-border ml-auto" />
           </div>
+        </div>
 
-          <div>
-            <h4 className="text-[11px] uppercase font-bold tracking-wider text-center text-white/40 mb-2 font-mono flex items-center justify-center gap-1">
-              <Award className="w-3 h-3" />
-              3rd Place Playoff
-            </h4>
-            <BracketMatchNode match={thirdPlaceMatch} title="Bronze Match" />
+        {/* ROUND 3: GRAND FINAL 🏆 */}
+        <div className="flex flex-col justify-center pl-2">
+          <div className="text-xs font-black uppercase text-amber-500 tracking-wider mb-2 px-1 flex items-center gap-1">
+            <Trophy className="w-3.5 h-3.5" />
+            Grand Championship
           </div>
+          <MatchCard match={finalMatch} title="Grand Final" />
         </div>
       </div>
     </div>

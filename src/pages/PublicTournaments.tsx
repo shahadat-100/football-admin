@@ -8,13 +8,14 @@ import { TournamentKnockoutBracket } from '@/features/tournaments/components/Tou
 import { TournamentPlayerCard } from '@/features/tournaments/components/TournamentPlayerCard';
 import { useFootballStore } from '@/store/footballStore';
 import { 
-  Trophy, Calendar, Users, Gamepad2, Smartphone,
-  Clock, Award, Sparkles, CheckCircle2, Eye, X
+  Trophy, Calendar, Users, Smartphone,
+  Clock, Sparkles, Eye, X, Hash, GitBranch
 } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
 
 export function PublicTournaments() {
   const storePlayers = useFootballStore((state) => state.players) || [];
-  const [, setTournaments] = useState<Tournament[]>([]);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   
   const [groups, setGroups] = useState<TournamentGroup[]>([]);
@@ -22,14 +23,14 @@ export function PublicTournaments() {
   const [registrations, setRegistrations] = useState<TournamentRegistration[]>([]);
   const [matches, setMatches] = useState<TournamentMatch[]>([]);
   
-  const [activeTab, setActiveTab] = useState<'matches' | 'groups' | 'bracket' | 'participants' | 'awards'>('matches');
+  const [activeTab, setActiveTab] = useState<'participants' | 'matches' | 'groups' | 'bracket'>('participants');
   const [selectedMatchday, setSelectedMatchday] = useState<number>(1);
   const [isRegModalOpen, setIsRegModalOpen] = useState(false);
   const [selectedMatchForSubmission, setSelectedMatchForSubmission] = useState<TournamentMatch | null>(null);
   const [viewingPlayerCard, setViewingPlayerCard] = useState<TournamentRegistration | null>(null);
-  const [, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch Tournaments
+  // Fetch all tournaments
   const fetchTournaments = async () => {
     try {
       setLoading(true);
@@ -39,9 +40,10 @@ export function PublicTournaments() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTournaments(data || []);
-      if (data && data.length > 0) {
-        setSelectedTournament(data[0]);
+      const list = data || [];
+      setTournaments(list);
+      if (list.length > 0 && !selectedTournament) {
+        setSelectedTournament(list[0]);
       }
     } catch (err) {
       console.error('Error fetching tournaments:', err);
@@ -50,7 +52,7 @@ export function PublicTournaments() {
     }
   };
 
-  // Fetch Tournament Details
+  // Fetch details for the selected tournament
   const fetchTournamentDetails = async (tournamentId: string) => {
     try {
       const [groupsRes, participantsRes, matchesRes, regRes] = await Promise.all([
@@ -64,6 +66,15 @@ export function PublicTournaments() {
       setParticipants(participantsRes.data || []);
       setMatches(matchesRes.data || []);
       setRegistrations(regRes.data || []);
+
+      const cur = tournaments.find(t => t.id === tournamentId);
+      if (cur?.status === 'group_stage') {
+        setActiveTab('matches');
+      } else if (cur?.status === 'knockout_stage') {
+        setActiveTab('bracket');
+      } else {
+        setActiveTab('participants');
+      }
     } catch (err) {
       console.error('Error fetching tournament details:', err);
     }
@@ -82,7 +93,6 @@ export function PublicTournaments() {
   const matchdayMatches = matches.filter(m => m.stage === 'group' && m.matchday === selectedMatchday);
   const availableMatchdays = Array.from(new Set(matches.filter(m => m.stage === 'group').map(m => m.matchday))).sort((a, b) => a - b);
 
-  // Tournament Status Step Indicator
   const getStageIndex = (status?: string) => {
     switch (status) {
       case 'registration_open': return 1;
@@ -96,404 +106,398 @@ export function PublicTournaments() {
   const currentStep = getStageIndex(selectedTournament?.status);
 
   return (
-    <div className="min-h-screen pb-16 bg-[#030d1d] text-white">
-      {/* ─── Hero Banner in Club Navy (#00265a) and Gold (#c89850) ─── */}
-      <div 
-        className="relative overflow-hidden border-b border-[#c89850]/20 py-10 px-4 sm:px-8"
-        style={{
-          background: 'linear-gradient(135deg, #001738 0%, #00265a 50%, #00112a 100%)'
-        }}
-      >
-        <div className="absolute -right-10 -bottom-10 w-96 h-96 bg-[#c89850]/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#c89850]/20 border border-[#c89850]/40 text-[#c89850] text-xs font-bold uppercase tracking-wider mb-3">
-              <Trophy className="w-4 h-4" />
-              Solo Championship Engine
-            </div>
-
-            <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white uppercase font-sans">
-              {selectedTournament?.title || 'eFootball Solo Tournament'}
-            </h1>
-            <p className="text-white/70 text-sm sm:text-base mt-2 max-w-xl">
-              Competitive equal-group league with automated walkover rules, fair ranking, and knockout glory.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            {selectedTournament?.status === 'registration_open' && (
-              <button
-                onClick={() => setIsRegModalOpen(true)}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 py-3 px-6 rounded-2xl bg-[#c89850] hover:bg-[#b58641] text-[#00265a] font-black text-sm tracking-wide shadow-xl transition active:scale-95"
-              >
-                <Sparkles className="w-4 h-4 fill-current" />
-                Register & Get Player Card
-              </button>
-            )}
-          </div>
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-16">
+      {/* ─── Page Header ─── */}
+      <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight flex items-center gap-3">
+            <span className="text-amber-500">🏆</span> Tournament Hub
+          </h1>
+          <p className="text-muted-foreground text-sm md:text-base font-medium max-w-2xl">
+            Active and upcoming championships. Select a tournament chip to view registered contenders, fixtures, and standings.
+          </p>
         </div>
+
+        {selectedTournament?.status === 'registration_open' && (
+          <button
+            onClick={() => setIsRegModalOpen(true)}
+            className="flex items-center justify-center gap-2 py-3 px-6 rounded-xl bg-primary text-primary-foreground font-black text-sm tracking-wide shadow-sm hover:opacity-90 transition active:scale-95"
+          >
+            <Sparkles className="w-4 h-4 fill-current" />
+            Register & Get Card
+          </button>
+        )}
       </div>
 
-      {/* ─── Live Tournament Timeline / Lifecycle Progress Bar ─── */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 -mt-4 relative z-20">
-        <div className="bg-[#001738] border border-white/10 rounded-2xl p-4 sm:p-5 shadow-xl">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative">
-            {[
-              { step: 1, title: '1. Registration', desc: `${registrations.length} Players Registered`, icon: Users },
-              { step: 2, title: '2. Group Stage', desc: `${availableMatchdays.length || (selectedTournament?.group_size ? (selectedTournament.group_size % 2 === 0 ? selectedTournament.group_size - 1 : selectedTournament.group_size) : 'Round-Robin')} Matchdays`, icon: Calendar },
-              { step: 3, title: '3. Knockout Rounds', desc: 'R16 → Quarters → Semis', icon: Trophy },
-              { step: 4, title: '4. Grand Final', desc: 'Podium & Awards Ceremony', icon: Award },
-            ].map((s) => {
-              const Icon = s.icon;
-              const isActive = currentStep === s.step;
-              const isPast = currentStep > s.step;
-
-              return (
-                <div
-                  key={s.step}
-                  className={`flex items-center gap-3 p-3 rounded-xl border transition ${
-                    isActive
-                      ? 'bg-[#c89850]/15 border-[#c89850] text-white shadow-lg'
-                      : isPast
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-white/90'
-                      : 'bg-white/5 border-white/5 text-white/40'
-                  }`}
-                >
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs ${
-                      isActive
-                        ? 'bg-[#c89850] text-[#00265a]'
-                        : isPast
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-white/10 text-white/50'
-                    }`}
-                  >
-                    {isPast ? <CheckCircle2 className="w-5 h-5" /> : <Icon className="w-4 h-4" />}
-                  </div>
-                  <div>
-                    <span className="text-xs font-black block leading-tight">{s.title}</span>
-                    <span className="text-[10px] text-white/60 block mt-0.5">{s.desc}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-white/10 pb-4 overflow-x-auto">
-          {[
-            { id: 'matches', label: 'Matchday Fixtures', icon: Calendar },
-            { id: 'groups', label: 'Group Tables', icon: Users },
-            { id: 'bracket', label: 'Knockout Bracket', icon: Trophy },
-            { id: 'participants', label: `Registered Players (${registrations.length})`, icon: Users },
-            { id: 'awards', label: 'Awards & Podium', icon: Award },
-          ].map(tab => {
-            const Icon = tab.icon;
+      {/* ─── Tournament Selector Chips ─── */}
+      {tournaments.length > 0 ? (
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6">
+          {tournaments.map((t) => {
+            const isSelected = selectedTournament?.id === t.id;
             return (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 py-2.5 px-5 rounded-xl font-bold text-sm whitespace-nowrap transition ${
-                  activeTab === tab.id
-                    ? 'bg-[#c89850] text-[#00265a] shadow-lg'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
+                key={t.id}
+                onClick={() => setSelectedTournament(t)}
+                className={cn(
+                  'py-2.5 px-4 rounded-xl text-sm font-bold whitespace-nowrap transition border flex items-center gap-2.5 shadow-sm',
+                  isSelected
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted/50'
+                )}
               >
-                <Icon className="w-4 h-4" />
-                {tab.label}
+                <span>{t.title}</span>
+                <span className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full uppercase font-black',
+                  isSelected
+                    ? 'bg-black/20 text-white'
+                    : t.status === 'registration_open' ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                    : t.status === 'group_stage' ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                    : t.status === 'knockout_stage' ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                    : 'bg-muted text-muted-foreground'
+                )}>
+                  {t.status.replace('_', ' ')}
+                </span>
               </button>
             );
           })}
         </div>
+      ) : !loading ? (
+        <div className="p-12 text-center rounded-2xl bg-card border border-border text-muted-foreground text-sm shadow-sm mb-6">
+          <Trophy className="w-10 h-10 mx-auto mb-2 opacity-30" />
+          <p className="font-bold text-foreground">No tournaments available right now</p>
+          <p className="text-xs text-muted-foreground mt-1">Check back soon for upcoming tournaments!</p>
+        </div>
+      ) : null}
 
-        {/* ─── TAB 1: MATCHDAY FIXTURES ─── */}
-        {activeTab === 'matches' && (
-          <div className="pt-6 space-y-6">
-            {availableMatchdays.length > 0 ? (
-              <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                {availableMatchdays.map(md => (
-                  <button
-                    key={md}
-                    onClick={() => setSelectedMatchday(md)}
-                    className={`py-2 px-4 rounded-xl font-black text-xs uppercase tracking-wider transition ${
-                      selectedMatchday === md
-                        ? 'bg-[#00265a] text-[#c89850] border border-[#c89850] shadow'
-                        : 'bg-white/5 text-white/60 border border-white/5 hover:bg-white/10'
-                    }`}
-                  >
-                    Matchday {md}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="p-12 text-center rounded-2xl bg-white/5 border border-white/10 text-white/50 text-sm">
-                Matches have not been generated yet. Registrations are currently open!
-              </div>
-            )}
+      {/* ─── Selected Tournament Content ─── */}
+      {selectedTournament && (
+        <div className="space-y-6">
+          {/* Progress Timeline (* --- | --- | --- *) */}
+          <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 shadow-sm">
+            <div className="flex items-center justify-between relative max-w-3xl mx-auto px-4">
+              {/* Background Connecting Line */}
+              <div className="absolute left-8 right-8 top-4 h-[2px] bg-border -z-0" />
+              {/* Active Progress Line */}
+              <div 
+                className="absolute left-8 top-4 h-[2px] bg-primary transition-all duration-500 -z-0"
+                style={{ width: `${((currentStep - 1) / 3) * 85}%` }}
+              />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {matchdayMatches.map((match) => (
-                <div
-                  key={match.id}
-                  className="p-5 rounded-2xl bg-[#001738]/80 border border-white/10 hover:border-[#c89850]/40 transition shadow-lg relative overflow-hidden"
+              {[
+                { step: 1, label: 'Registration', desc: `${registrations.length} Players` },
+                { step: 2, label: 'Group Stage', desc: 'Round-Robin' },
+                { step: 3, label: 'Knockouts', desc: 'QF → Semis' },
+                { step: 4, label: 'Finals', desc: 'Championship' },
+              ].map((s) => {
+                const isDone = currentStep > s.step;
+                const isCurrent = currentStep === s.step;
+
+                return (
+                  <div key={s.step} className="flex flex-col items-center relative z-10 bg-card px-2">
+                    <div className={cn(
+                      'w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all',
+                      isDone ? 'bg-primary text-primary-foreground shadow' :
+                      isCurrent ? 'bg-primary text-primary-foreground ring-4 ring-primary/20 scale-110' :
+                      'bg-muted text-muted-foreground border border-border'
+                    )}>
+                      {isDone ? '✓' : s.step}
+                    </div>
+                    <span className={cn(
+                      'text-xs font-bold mt-2 text-center whitespace-nowrap',
+                      isCurrent ? 'text-foreground font-black' : 'text-muted-foreground'
+                    )}>
+                      {s.label}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground/60 hidden sm:block whitespace-nowrap">
+                      {s.desc}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Sub Navigation Tabs */}
+          <div className="flex items-center gap-1.5 bg-muted/40 p-1.5 rounded-2xl border border-border w-max overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('participants')}
+              className={cn(
+                'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap',
+                activeTab === 'participants' ? 'bg-card text-foreground shadow-sm border border-border' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Users className="w-3.5 h-3.5" />
+              Contenders ({registrations.length})
+            </button>
+
+            {matches.length > 0 && (
+              <>
+                <button
+                  onClick={() => setActiveTab('matches')}
+                  className={cn(
+                    'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap',
+                    activeTab === 'matches' ? 'bg-card text-foreground shadow-sm border border-border' : 'text-muted-foreground hover:text-foreground'
+                  )}
                 >
-                  <div className="flex items-center justify-between text-xs text-white/50 mb-4 pb-2 border-b border-white/5">
-                    <span className="flex items-center gap-1 font-mono">
-                      <Clock className="w-3.5 h-3.5 text-[#c89850]" />
-                      Play by: {new Date(match.play_deadline).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                  <Calendar className="w-3.5 h-3.5" />
+                  Matchday Fixtures
+                </button>
 
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                      match.status === 'completed'
-                        ? 'bg-emerald-500/20 text-emerald-400'
-                        : match.status === 'disputed'
-                        ? 'bg-rose-500/20 text-rose-400'
-                        : 'bg-amber-500/20 text-amber-400'
-                    }`}>
-                      {match.is_auto_win ? 'Auto Win' : match.status}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1 flex flex-col items-center text-center">
-                      <div className="w-12 h-12 rounded-full bg-white/10 border border-[#c89850]/30 overflow-hidden mb-2">
-                        {match.player1?.profileImageUrl ? (
-                          <img src={match.player1.profileImageUrl} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-xs">⚽</div>
-                        )}
-                      </div>
-                      <span className="font-bold text-sm truncate max-w-[120px]">
-                        {match.player1_is_dummy ? 'BYE / Walkover' : match.player1?.name || 'TBD'}
-                      </span>
-                      {match.player1 && (
-                        <div className="flex items-center gap-1 text-[11px] text-[#c89850] font-mono mt-0.5">
-                          <Gamepad2 className="w-3 h-3" />
-                          <span>IGN</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col items-center justify-center px-4">
-                      {match.status === 'completed' ? (
-                        <div className="flex items-center gap-2 text-2xl font-black text-[#c89850] font-sans">
-                          <span>{match.player1_score ?? 0}</span>
-                          <span className="text-white/30 text-lg">-</span>
-                          <span>{match.player2_score ?? 0}</span>
-                        </div>
-                      ) : (
-                        <span className="text-xl font-black text-white/30 tracking-widest">VS</span>
-                      )}
-                    </div>
-
-                    <div className="flex-1 flex flex-col items-center text-center">
-                      <div className="w-12 h-12 rounded-full bg-white/10 border border-[#c89850]/30 overflow-hidden mb-2">
-                        {match.player2?.profileImageUrl ? (
-                          <img src={match.player2.profileImageUrl} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-xs">⚽</div>
-                        )}
-                      </div>
-                      <span className="font-bold text-sm truncate max-w-[120px]">
-                        {match.player2_is_dummy ? 'BYE / Walkover' : match.player2?.name || 'TBD'}
-                      </span>
-                      {match.player2 && (
-                        <div className="flex items-center gap-1 text-[11px] text-[#c89850] font-mono mt-0.5">
-                          <Gamepad2 className="w-3 h-3" />
-                          <span>IGN</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
-                    {match.status !== 'completed' ? (
-                      <button
-                        onClick={() => setSelectedMatchForSubmission(match)}
-                        className="w-full py-2 px-3 rounded-xl bg-[#c89850]/20 hover:bg-[#c89850]/30 text-[#c89850] font-bold text-xs uppercase tracking-wider border border-[#c89850]/30 transition flex items-center justify-center gap-1.5"
-                      >
-                        <span>Submit Score / Claim Walkover</span>
-                      </button>
-                    ) : (
-                      <div className="w-full flex items-center justify-between text-xs text-white/40">
-                        <span className="font-semibold text-emerald-400/90 flex items-center gap-1">
-                          ✓ Match Verified
-                        </span>
-                        {match.screenshot_url && (
-                          <a
-                            href={match.screenshot_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[#c89850] hover:underline font-mono text-[11px]"
-                          >
-                            View Scoreboard
-                          </a>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ─── TAB 2: GROUP TABLES ─── */}
-        {activeTab === 'groups' && (
-          <div className="pt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {groups.map((group) => {
-              const groupParticipants = participants.filter(p => p.group_id === group.id);
-              const groupMatches = matches.filter(m => m.group_id === group.id);
-              const standings = calculateGroupStandings(groupParticipants, groupMatches);
-
-              return (
-                <div key={group.id} className="p-5 rounded-2xl bg-[#001738]/80 border border-white/10 shadow-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-black text-[#c89850] uppercase tracking-wider">
-                      {group.name}
-                    </h3>
-                    <span className="text-xs text-white/40">Top 2 Qualify</span>
-                  </div>
-
-                  <table className="w-full text-left text-xs">
-                    <thead className="text-white/40 uppercase font-bold border-b border-white/10 pb-2">
-                      <tr>
-                        <th className="py-2">#</th>
-                        <th className="py-2">Player</th>
-                        <th className="py-2 text-center">P</th>
-                        <th className="py-2 text-center">W</th>
-                        <th className="py-2 text-center">D</th>
-                        <th className="py-2 text-center">L</th>
-                        <th className="py-2 text-center">GD</th>
-                        <th className="py-2 text-right font-black text-[#c89850]">Pts</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5 font-medium">
-                      {standings.map((row) => (
-                        <tr key={row.participant_id} className="hover:bg-white/5 transition">
-                          <td className="py-2.5 font-bold text-white/50">{row.rank}</td>
-                          <td className="py-2.5 font-bold text-white flex items-center gap-2">
-                            {row.avatar_url && (
-                              <img src={row.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover" />
-                            )}
-                            <span className="truncate max-w-[120px]">{row.player_name}</span>
-                          </td>
-                          <td className="py-2.5 text-center text-white/70">{row.played}</td>
-                          <td className="py-2.5 text-center text-emerald-400">{row.won}</td>
-                          <td className="py-2.5 text-center text-white/50">{row.drawn}</td>
-                          <td className="py-2.5 text-center text-rose-400">{row.lost}</td>
-                          <td className="py-2.5 text-center font-mono">
-                            {row.gd > 0 ? `+${row.gd}` : row.gd}
-                          </td>
-                          <td className="py-2.5 text-right font-black text-[#c89850] text-sm">
-                            {row.points}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ─── TAB 3: KNOCKOUT BRACKET ─── */}
-        {activeTab === 'bracket' && (
-          <div className="pt-6">
-            <TournamentKnockoutBracket
-              matches={matches}
-              championName={selectedTournament?.champion_player_id ? 'Tournament Champion' : null}
-            />
-          </div>
-        )}
-
-        {/* ─── TAB 4: REGISTERED PLAYERS VISUAL SHOWCASE ─── */}
-        {activeTab === 'participants' && (
-          <div className="pt-6">
-            {registrations.length === 0 ? (
-              <div className="p-12 text-center rounded-2xl bg-white/5 border border-white/10 text-white/50 text-sm">
-                No approved participants yet. Be the first to register!
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {registrations.map((reg) => (
-                  <div
-                    key={reg.id}
-                    className="p-4 rounded-2xl bg-[#001738] border border-white/10 hover:border-[#c89850]/50 transition shadow-lg flex flex-col items-center text-center group relative overflow-hidden"
-                  >
-                    {/* Top Gold Corner Accent */}
-                    <div className="absolute top-0 right-0 w-8 h-8 bg-[#c89850]/20 rounded-bl-2xl flex items-center justify-center">
-                      <Sparkles className="w-3.5 h-3.5 text-[#c89850]" />
-                    </div>
-
-                    <div className="w-16 h-16 rounded-full bg-white/10 border-2 border-[#c89850]/40 overflow-hidden mb-3 group-hover:scale-105 transition">
-                      {reg.player?.profileImageUrl ? (
-                        <img src={reg.player.profileImageUrl} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xl">⚽</div>
-                      )}
-                    </div>
-
-                    <h4 className="font-black text-sm text-white truncate max-w-[130px]">
-                      {reg.player?.name || 'Player'}
-                    </h4>
-
-                    <div className="mt-1 flex flex-col gap-0.5 text-[11px] text-white/60">
-                      <span className="flex items-center gap-1 font-mono text-[#c89850]">
-                        <Gamepad2 className="w-3 h-3" />
-                        <span className="truncate max-w-[120px]">{reg.game_id}</span>
-                      </span>
-                      <span className="flex items-center gap-1 text-[10px] text-white/40">
-                        <Smartphone className="w-2.5 h-2.5" />
-                        <span className="truncate max-w-[120px]">{reg.device_model}</span>
-                      </span>
-                    </div>
-
-                    <button
-                      onClick={() => setViewingPlayerCard(reg)}
-                      className="mt-3 w-full py-1.5 px-2 rounded-xl bg-white/5 hover:bg-[#c89850] hover:text-[#00265a] text-white/80 font-bold text-[10px] uppercase tracking-wider transition flex items-center justify-center gap-1"
-                    >
-                      <Eye className="w-3 h-3" />
-                      <span>View Card</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
+                <button
+                  onClick={() => setActiveTab('groups')}
+                  className={cn(
+                    'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap',
+                    activeTab === 'groups' ? 'bg-card text-foreground shadow-sm border border-border' : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <Trophy className="w-3.5 h-3.5" />
+                  Group Tables
+                </button>
+              </>
             )}
+
+            <button
+              onClick={() => setActiveTab('bracket')}
+              className={cn(
+                'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap',
+                activeTab === 'bracket' ? 'bg-card text-foreground shadow-sm border border-border' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <GitBranch className="w-3.5 h-3.5" />
+              Knockout Tree
+            </button>
           </div>
-        )}
 
-        {/* ─── TAB 5: AWARDS & PODIUM ─── */}
-        {activeTab === 'awards' && (
-          <div className="pt-8 grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="p-6 rounded-3xl bg-[#001738] border border-[#c89850]/40 text-center shadow-xl">
-              <span className="text-4xl mb-2 block">🥇</span>
-              <h4 className="text-xs uppercase font-bold text-[#c89850] tracking-widest">Champion</h4>
-              <p className="text-xl font-black text-white mt-1">To Be Decided</p>
-              <span className="text-xs text-white/40 mt-1 block">Gold Trophy & Permanent Profile Badge</span>
-            </div>
+          {/* ─── TAB 1: REGISTERED PLAYERS / CONTENDERS ─── */}
+          {activeTab === 'participants' && (
+            <div className="space-y-4">
+              {registrations.length === 0 ? (
+                <div className="p-12 text-center rounded-2xl bg-card border border-border text-muted-foreground text-sm shadow-sm">
+                  <Users className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                  <p className="font-semibold text-foreground">No approved contenders yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Be the first to register and generate your official player card!</p>
+                  {selectedTournament.status === 'registration_open' && (
+                    <button
+                      onClick={() => setIsRegModalOpen(true)}
+                      className="mt-4 inline-flex items-center gap-2 py-2 px-4 rounded-xl bg-primary text-primary-foreground font-bold text-xs"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Register Now
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                  {registrations.map((reg) => (
+                    <div
+                      key={reg.id}
+                      className="p-4 rounded-2xl bg-card border border-border hover:border-primary/50 transition duration-200 shadow-sm flex flex-col items-center text-center group"
+                    >
+                      <div className="w-16 h-16 rounded-2xl bg-muted/50 border border-border overflow-hidden mb-3 group-hover:scale-105 transition">
+                        {reg.player?.profileImageUrl ? (
+                          <img src={reg.player.profileImageUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xl">⚽</div>
+                        )}
+                      </div>
 
-            <div className="p-6 rounded-3xl bg-[#001738] border border-white/10 text-center shadow-xl">
-              <span className="text-4xl mb-2 block">🥈</span>
-              <h4 className="text-xs uppercase font-bold text-white/60 tracking-widest">Runner-up</h4>
-              <p className="text-xl font-black text-white mt-1">To Be Decided</p>
-              <span className="text-xs text-white/40 mt-1 block">Silver Medal & Profile Badge</span>
-            </div>
+                      <h4 className="font-bold text-sm text-foreground truncate max-w-[130px]">
+                        {reg.player?.name || 'Player'}
+                      </h4>
 
-            <div className="p-6 rounded-3xl bg-[#001738] border border-white/10 text-center shadow-xl">
-              <span className="text-4xl mb-2 block">🥉</span>
-              <h4 className="text-xs uppercase font-bold text-[#c89850]/70 tracking-widest">3rd Place</h4>
-              <p className="text-xl font-black text-white mt-1">To Be Decided</p>
-              <span className="text-xs text-white/40 mt-1 block">Bronze Medal Playoff Winner</span>
+                      <div className="mt-1 flex flex-col gap-0.5 text-xs text-muted-foreground">
+                        <span className="flex items-center justify-center gap-1 font-mono text-[11px] text-foreground font-semibold">
+                          <Hash className="w-3 h-3 text-primary" />
+                          <span className="truncate max-w-[110px]">{reg.game_id}</span>
+                        </span>
+                        <span className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground/70">
+                          <Smartphone className="w-2.5 h-2.5" />
+                          <span className="truncate max-w-[110px]">{reg.device_model}</span>
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => setViewingPlayerCard(reg)}
+                        className="mt-3 w-full py-1.5 px-2 rounded-xl bg-muted hover:bg-primary hover:text-primary-foreground text-foreground font-bold text-[11px] transition flex items-center justify-center gap-1"
+                      >
+                        <Eye className="w-3 h-3" />
+                        <span>View Card</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        )}
-      </div>
+          )}
+
+          {/* ─── TAB 2: MATCHDAY FIXTURES ─── */}
+          {activeTab === 'matches' && (
+            <div className="space-y-4">
+              {availableMatchdays.length > 0 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                  {availableMatchdays.map((md) => (
+                    <button
+                      key={md}
+                      onClick={() => setSelectedMatchday(md)}
+                      className={cn(
+                        'py-2 px-4 rounded-xl text-xs font-bold whitespace-nowrap transition border',
+                        selectedMatchday === md
+                          ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                          : 'bg-card text-muted-foreground border-border hover:text-foreground'
+                      )}
+                    >
+                      Matchday {md}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                {matchdayMatches.map((m) => {
+                  const isFinished = m.status === 'completed';
+                  const isAutoWin = m.is_auto_win;
+
+                  return (
+                    <div key={m.id} className="p-4 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground mb-3 pb-2 border-b border-border/50">
+                        <span className="font-bold text-primary">Matchday {m.matchday}</span>
+                        <span className="flex items-center gap-1 text-[11px]">
+                          <Clock className="w-3 h-3 text-muted-foreground/60" />
+                          Play by: {new Date(m.play_deadline).toLocaleDateString()}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between py-2">
+                        {/* Player 1 */}
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs overflow-hidden flex-shrink-0">
+                            {m.player1?.profileImageUrl ? (
+                              <img src={m.player1.profileImageUrl} alt="" className="w-full h-full object-cover" />
+                            ) : '⚽'}
+                          </div>
+                          <span className="font-bold text-sm text-foreground truncate">{m.player1?.name || 'TBD'}</span>
+                        </div>
+
+                        {/* Score */}
+                        <div className="px-3 text-center flex-shrink-0">
+                          {isFinished ? (
+                            <span className="text-base font-black font-mono text-foreground px-2 py-1 rounded-lg bg-muted">
+                              {m.player1_score} - {m.player2_score}
+                            </span>
+                          ) : (
+                            <span className="text-xs font-black text-muted-foreground px-2 py-1 rounded bg-muted/50">
+                              VS
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Player 2 */}
+                        <div className="flex items-center justify-end gap-2.5 flex-1 min-w-0 text-right">
+                          <span className="font-bold text-sm text-foreground truncate">{m.player2?.name || 'TBD'}</span>
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs overflow-hidden flex-shrink-0">
+                            {m.player2?.profileImageUrl ? (
+                              <img src={m.player2.profileImageUrl} alt="" className="w-full h-full object-cover" />
+                            ) : '⚽'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-2 border-t border-border/50 flex items-center justify-between text-xs">
+                        {isAutoWin ? (
+                          <span className="text-[11px] font-bold text-amber-500">Auto-Win Walkover</span>
+                        ) : isFinished ? (
+                          <span className="text-[11px] font-bold text-emerald-500">Verified Result</span>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">Pending match play</span>
+                        )}
+
+                        {!isFinished && (
+                          <button
+                            onClick={() => setSelectedMatchForSubmission(m)}
+                            className="py-1 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground font-bold text-xs transition"
+                          >
+                            Submit Score
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ─── TAB 3: GROUP STANDINGS ─── */}
+          {activeTab === 'groups' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {groups.map((group) => {
+                const groupParticipants = participants.filter(p => p.group_id === group.id);
+                const groupMatches = matches.filter(m => m.group_id === group.id);
+                const standings = calculateGroupStandings(groupParticipants, groupMatches);
+
+                return (
+                  <div key={group.id} className="p-5 rounded-2xl bg-card border border-border shadow-sm overflow-hidden">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-base font-black text-foreground uppercase tracking-wider">
+                        {group.name}
+                      </h3>
+                      <span className="text-xs text-muted-foreground font-semibold">Top 2 Qualify</span>
+                    </div>
+
+                    <table className="w-full text-left text-xs">
+                      <thead className="text-muted-foreground uppercase font-bold border-b border-border/50 pb-2">
+                        <tr>
+                          <th className="py-2">#</th>
+                          <th className="py-2">Player</th>
+                          <th className="py-2 text-center">P</th>
+                          <th className="py-2 text-center">W</th>
+                          <th className="py-2 text-center">D</th>
+                          <th className="py-2 text-center">L</th>
+                          <th className="py-2 text-center">GD</th>
+                          <th className="py-2 text-right font-black text-foreground">Pts</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40 font-medium">
+                        {standings.map((row) => (
+                          <tr key={row.participant_id} className="hover:bg-muted/40 transition">
+                            <td className="py-2.5 font-bold text-muted-foreground">{row.rank}</td>
+                            <td className="py-2.5 font-bold text-foreground flex items-center gap-2">
+                              {row.avatar_url && (
+                                <img src={row.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+                              )}
+                              <span className="truncate max-w-[120px]">{row.player_name}</span>
+                            </td>
+                            <td className="py-2.5 text-center text-muted-foreground">{row.played}</td>
+                            <td className="py-2.5 text-center text-emerald-500 font-bold">{row.won}</td>
+                            <td className="py-2.5 text-center text-muted-foreground">{row.drawn}</td>
+                            <td className="py-2.5 text-center text-rose-500 font-bold">{row.lost}</td>
+                            <td className="py-2.5 text-center font-mono">
+                              {row.gd > 0 ? `+${row.gd}` : row.gd}
+                            </td>
+                            <td className="py-2.5 text-right font-black text-foreground text-sm">
+                              {row.points}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ─── TAB 4: KNOCKOUT BRACKET WITH DRAW LINES ─── */}
+          {activeTab === 'bracket' && (
+            <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+              <TournamentKnockoutBracket
+                matches={matches}
+                championName={selectedTournament?.champion_player_id ? 'Tournament Champion' : null}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Registration Modal */}
       {selectedTournament && (
@@ -509,7 +513,7 @@ export function PublicTournaments() {
         />
       )}
 
-      {/* Match Score & Auto-Win Submission Modal */}
+      {/* Match Score Submission Modal */}
       {selectedMatchForSubmission && (
         <MatchScoreSubmissionModal
           isOpen={Boolean(selectedMatchForSubmission)}
@@ -525,10 +529,10 @@ export function PublicTournaments() {
       {/* View Official Tournament Player Card Modal */}
       {viewingPlayerCard && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-sm bg-[#001738] border border-[#c89850]/30 rounded-3xl p-6 shadow-2xl">
+          <div className="relative w-full max-w-sm bg-card border border-border rounded-3xl p-6 shadow-2xl">
             <button
               onClick={() => setViewingPlayerCard(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white/70 hover:text-white transition z-20"
+              className="absolute top-4 right-4 p-2 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition z-20"
             >
               <X className="w-4 h-4" />
             </button>

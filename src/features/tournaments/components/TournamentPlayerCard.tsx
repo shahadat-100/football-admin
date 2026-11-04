@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { toPng } from 'html-to-image';
-import { Download, Copy, Check, Sparkles, Smartphone, Gamepad2 } from 'lucide-react';
+import { Download, Copy, Check, Shield, Smartphone, Hash } from 'lucide-react';
 
 interface TournamentPlayerCardProps {
   playerName: string;
@@ -17,7 +17,7 @@ export const TournamentPlayerCard: React.FC<TournamentPlayerCardProps> = ({
   playerAvatarUrl,
   gameId,
   deviceModel,
-  tournamentTitle = 'EFOOTBALL SOLO CHAMPIONSHIP',
+  tournamentTitle = 'EFOOTBALL CHAMPIONSHIP',
   seasonName = 'SEASON 1 • 2026',
   onDownloaded
 }) => {
@@ -32,11 +32,11 @@ export const TournamentPlayerCard: React.FC<TournamentPlayerCardProps> = ({
       setDownloading(true);
       const dataUrl = await toPng(cardRef.current, {
         quality: 0.98,
-        pixelRatio: 2.5, // Crisp 2.5x resolution for retina/FB upload
+        pixelRatio: 3, // Ultra-crisp 3x resolution for Facebook
       });
 
       const link = document.createElement('a');
-      link.download = `${playerName.toLowerCase().replace(/\s+/g, '_')}_tournament_card.png`;
+      link.download = `${playerName.toLowerCase().replace(/\s+/g, '_')}_card.png`;
       link.href = dataUrl;
       link.click();
 
@@ -52,7 +52,7 @@ export const TournamentPlayerCard: React.FC<TournamentPlayerCardProps> = ({
 
   // Handle Copy Facebook Caption
   const handleCopyCaption = () => {
-    const caption = `⚽ Officially registered for ${tournamentTitle} (${seasonName})! 🔥\n\n👤 Player: ${playerName}\n🎮 IGN: ${gameId}\n📱 Device: ${deviceModel}\n\nReady to battle for the championship! Wish me luck! 🏆⚡\n#eFootball #SoloChampionship #TournamentRegistration`;
+    const caption = `⚽ Officially registered for ${tournamentTitle} (${seasonName})! 🔥\n\n👤 Player: ${playerName}\n🔢 Game ID: ${gameId}\n📱 Device: ${deviceModel}\n\nReady for the challenge! Wish me luck! 🏆⚡\n#eFootball #Tournament #OfficialContender`;
     navigator.clipboard.writeText(caption);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
@@ -63,57 +63,48 @@ export const TournamentPlayerCard: React.FC<TournamentPlayerCardProps> = ({
       {/* 4:5 Aspect Ratio Card Container */}
       <div
         ref={cardRef}
-        className="relative w-full aspect-[4/5] rounded-2xl overflow-hidden shadow-2xl select-none"
+        className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl select-none flex flex-col justify-between p-5 border-2 border-[#c89850]/40"
         style={{
-          backgroundColor: '#00265a',
+          background: 'radial-gradient(ellipse at 50% 20%, #002c6b 0%, #00173d 60%, #000c22 100%)',
           fontFamily: "'Bebas Neue', sans-serif, system-ui",
         }}
       >
-        {/* Subtle Grunge/Grid Background Texture */}
+        {/* Subtle Luxury Card Background Lines */}
         <div 
-          className="absolute inset-0 opacity-15 pointer-events-none mix-blend-overlay"
+          className="absolute inset-0 opacity-10 pointer-events-none"
           style={{
-            backgroundImage: `radial-gradient(#ffffff 1px, transparent 1px), radial-gradient(#ffffff 1px, #00265a 1px)`,
-            backgroundSize: '20px 20px',
-            backgroundPosition: '0 0, 10px 10px'
+            backgroundImage: `radial-gradient(#c89850 1px, transparent 1px)`,
+            backgroundSize: '24px 24px',
           }}
         />
 
-        {/* Diagonal Gold Accent Cut / Polygon Behind Player */}
-        <div
-          className="absolute right-0 top-0 bottom-0 w-[55%] z-0"
-          style={{
-            backgroundColor: '#c89850',
-            clipPath: 'polygon(25% 0%, 100% 0%, 100% 100%, 0% 100%)',
-          }}
-        />
+        {/* Top Metallic Border Line */}
+        <div className="absolute top-0 inset-x-8 h-[2px] bg-gradient-to-r from-transparent via-[#c89850] to-transparent opacity-80" />
 
-        {/* Dynamic Chalk / Paint Strokes Effect on Gold Block */}
-        <div
-          className="absolute right-0 top-0 bottom-0 w-[55%] opacity-20 pointer-events-none mix-blend-multiply"
-          style={{
-            backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 15px, transparent 0, transparent 30px)'
-          }}
-        />
-
-        {/* ─── Top Header Badge ─── */}
-        <div className="relative z-10 p-5 flex items-center justify-between">
-          <div className="flex items-center gap-2 bg-[#001738]/90 backdrop-blur-md px-3.5 py-1 rounded-md border border-[#c89850]/40 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-[#c89850] animate-pulse" />
-            <span className="text-[14px] tracking-wider text-[#c89850] uppercase font-bold">
-              {tournamentTitle}
-            </span>
+        {/* ─── 1. Header: Tournament & Season ─── */}
+        <div className="relative z-10 flex items-center justify-between border-b border-[#c89850]/20 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#c89850] text-[#00173d] flex items-center justify-center font-bold shadow">
+              <Shield className="w-4 h-4 fill-current" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[15px] tracking-wider text-[#c89850] uppercase font-black leading-none truncate max-w-[170px]">
+                {tournamentTitle}
+              </span>
+              <span className="text-[10px] tracking-widest text-white/50 uppercase font-sans font-bold mt-0.5">
+                OFFICIAL CONTENDER
+              </span>
+            </div>
           </div>
 
-          <div className="bg-[#c89850] text-[#00265a] font-black text-xs px-2.5 py-1 rounded shadow">
+          <div className="px-2.5 py-1 rounded-md bg-[#c89850]/15 border border-[#c89850]/40 text-[#c89850] text-[11px] font-sans font-bold tracking-wider">
             {seasonName}
           </div>
         </div>
 
-        {/* ─── Center / Right: Player Photo Frame ─── */}
-        <div className="absolute right-3 bottom-14 w-[58%] h-[68%] z-10 flex items-end justify-center">
-          {/* Black Stroke Shadow Frame Container */}
-          <div className="relative w-full h-full rounded-xl border-4 border-[#001738] shadow-[6px_6px_0px_rgba(0,0,0,0.5)] bg-[#001a40] overflow-hidden">
+        {/* ─── 2. Center: Centered Player Photo in Luxury Frame ─── */}
+        <div className="relative z-10 flex-1 flex flex-col items-center justify-center py-2">
+          <div className="relative w-[65%] aspect-square rounded-2xl overflow-hidden border-2 border-[#c89850]/60 shadow-[0_12px_30px_rgba(0,0,0,0.6)] bg-white">
             {playerAvatarUrl ? (
               <img
                 src={playerAvatarUrl}
@@ -122,52 +113,52 @@ export const TournamentPlayerCard: React.FC<TournamentPlayerCardProps> = ({
                 crossOrigin="anonymous"
               />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-[#00265a] text-white/50 p-4 text-center">
-                <span className="text-4xl font-bold mb-2">⚽</span>
-                <span className="text-sm font-sans tracking-tight">No Photo Uploaded</span>
+              <div className="w-full h-full flex flex-col items-center justify-center bg-[#00173d] text-white/40 p-4 text-center">
+                <span className="text-5xl font-bold mb-1">⚽</span>
+                <span className="text-xs font-sans">No Avatar</span>
               </div>
             )}
-
-            {/* Bottom Inner Gradient on Frame */}
-            <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#001738] to-transparent opacity-80 pointer-events-none" />
+            {/* Subtle inner bottom gradient for depth */}
+            <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
           </div>
-        </div>
 
-        {/* ─── Left Side: Giant Vertical Rotated Typography ─── */}
-        <div className="absolute left-4 bottom-24 top-20 z-10 flex items-center justify-center pointer-events-none">
-          <span
-            className="text-[44px] sm:text-[50px] leading-none text-white tracking-widest font-black uppercase whitespace-nowrap opacity-90 drop-shadow-[2px_2px_4px_rgba(0,0,0,0.6)]"
-            style={{
-              writingMode: 'vertical-rl',
-              transform: 'rotate(180deg)',
-            }}
-          >
-            {playerName}
-          </span>
-        </div>
-
-        {/* ─── Bottom Information Banner ─── */}
-        <div className="absolute inset-x-0 bottom-0 z-20 bg-[#001738] border-t-2 border-[#c89850]/50 p-3.5 flex items-center justify-between">
-          <div className="flex flex-col">
-            <span className="text-[20px] text-white leading-tight font-black tracking-wide uppercase truncate max-w-[200px]">
+          {/* Player Name Directly Below Photo */}
+          <div className="mt-3 text-center px-2 w-full">
+            <h2 className="text-[26px] sm:text-[30px] font-black text-white tracking-wider uppercase leading-none truncate drop-shadow-md">
               {playerName}
-            </span>
-            <div className="flex items-center gap-3 text-white/80 font-sans text-[11px] font-semibold mt-0.5">
-              <span className="flex items-center gap-1 text-[#c89850]">
-                <Gamepad2 className="w-3.5 h-3.5" />
-                <span className="font-mono">{gameId || 'IGN: Not set'}</span>
-              </span>
-              <span className="text-white/30">•</span>
-              <span className="flex items-center gap-1 text-white/70">
-                <Smartphone className="w-3.5 h-3.5" />
-                <span className="truncate max-w-[100px]">{deviceModel || 'Device'}</span>
-              </span>
-            </div>
+            </h2>
+            <div className="w-16 h-[2px] bg-gradient-to-r from-transparent via-[#c89850] to-transparent mx-auto mt-1.5" />
           </div>
+        </div>
 
-          {/* Accent Gold Icon */}
-          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#c89850] text-[#00265a] shadow">
-            <Sparkles className="w-5 h-5 fill-current" />
+        {/* ─── 3. Bottom: Game ID & Device Pills ─── */}
+        <div className="relative z-10 pt-2">
+          <div className="grid grid-cols-2 gap-2 bg-[#00112a]/90 border border-[#c89850]/30 rounded-2xl p-2.5 shadow-lg">
+            {/* Game ID / IGN */}
+            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/5 border border-white/5">
+              <Hash className="w-4 h-4 text-[#c89850] flex-shrink-0" />
+              <div className="flex flex-col min-w-0">
+                <span className="text-[9px] uppercase font-sans font-bold text-white/50 tracking-wider leading-none">
+                  Game ID / IGN
+                </span>
+                <span className="text-[12px] font-sans font-bold text-white tracking-wide truncate mt-0.5">
+                  {gameId || '—'}
+                </span>
+              </div>
+            </div>
+
+            {/* Device */}
+            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/5 border border-white/5">
+              <Smartphone className="w-4 h-4 text-[#c89850] flex-shrink-0" />
+              <div className="flex flex-col min-w-0">
+                <span className="text-[9px] uppercase font-sans font-bold text-white/50 tracking-wider leading-none">
+                  Device
+                </span>
+                <span className="text-[12px] font-sans font-bold text-white truncate mt-0.5">
+                  {deviceModel || '—'}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -177,7 +168,7 @@ export const TournamentPlayerCard: React.FC<TournamentPlayerCardProps> = ({
         <button
           onClick={handleDownload}
           disabled={downloading}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#c89850] hover:bg-[#b58641] text-[#00265a] font-bold text-sm shadow-lg transition active:scale-[0.98] disabled:opacity-50"
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#c89850] hover:bg-[#b58641] text-[#00173d] font-bold text-sm shadow-lg transition active:scale-[0.98] disabled:opacity-50"
         >
           <Download className="w-4 h-4" />
           {downloading ? 'Generating...' : 'Download Card (HD)'}
@@ -196,7 +187,7 @@ export const TournamentPlayerCard: React.FC<TournamentPlayerCardProps> = ({
           ) : (
             <>
               <Copy className="w-4 h-4 text-white/80" />
-              <span>Copy FB Caption</span>
+              <span>Copy Caption</span>
             </>
           )}
         </button>
