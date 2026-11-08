@@ -1,5 +1,5 @@
 import React from 'react';
-import { TournamentMatch } from '../types';
+import { TournamentMatch, MatchStage } from '../types';
 import { Trophy } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 
@@ -8,36 +8,58 @@ interface TournamentKnockoutBracketProps {
   championName?: string | null;
 }
 
+/**
+ * Ordered knockout stages (excluding third_place which is rendered separately).
+ * The bracket dynamically detects which stages have matches and renders them.
+ */
+const KNOCKOUT_STAGE_ORDER: { stage: MatchStage; label: string; shortLabel: string }[] = [
+  { stage: 'round_of_64', label: 'Round of 64', shortLabel: 'R64' },
+  { stage: 'round_of_32', label: 'Round of 32', shortLabel: 'R32' },
+  { stage: 'round_of_16', label: 'Round of 16', shortLabel: 'R16' },
+  { stage: 'quarter_final', label: 'Quarter-Finals', shortLabel: 'QF' },
+  { stage: 'semi_final', label: 'Semi-Finals', shortLabel: 'SF' },
+  { stage: 'final', label: 'Grand Final', shortLabel: 'Final' },
+];
+
 export const TournamentKnockoutBracket: React.FC<TournamentKnockoutBracketProps> = ({
   matches,
   championName,
 }) => {
-  const qfMatches = matches
-    .filter(m => m.stage === 'quarter_final')
-    .sort((a, b) => (a.bracket_match_number || 0) - (b.bracket_match_number || 0));
-  const sfMatches = matches
-    .filter(m => m.stage === 'semi_final')
-    .sort((a, b) => (a.bracket_match_number || 0) - (b.bracket_match_number || 0));
-  const finalMatch = matches.find(m => m.stage === 'final');
+  const thirdPlaceMatch = matches.find(m => m.stage === 'third_place');
 
-  // A Single Match Card in the Bracket
+  // Detect which stages actually have matches and collect them
+  const activeRounds = KNOCKOUT_STAGE_ORDER
+    .map(def => {
+      const roundMatches = matches
+        .filter(m => m.stage === def.stage)
+        .sort((a, b) => (a.bracket_match_number || 0) - (b.bracket_match_number || 0));
+      return { ...def, matches: roundMatches };
+    })
+    .filter(r => r.matches.length > 0);
+
+  // ─── Single Match Card ───
   const MatchCard = ({
     match,
     title,
+    compact = false,
   }: {
     match?: TournamentMatch;
     title: string;
+    compact?: boolean;
   }) => {
     const isCompleted = match?.status === 'completed';
     const p1Won = isCompleted && match?.winner_id && match.winner_id === match.player1_id;
     const p2Won = isCompleted && match?.winner_id && match.winner_id === match.player2_id;
 
     return (
-      <div className="w-56 bg-card border border-border rounded-xl shadow-sm overflow-hidden hover:border-primary/50 transition duration-200">
+      <div className={cn(
+        "bg-card border border-border rounded-xl shadow-sm overflow-hidden hover:border-primary/50 transition duration-200",
+        compact ? "w-44" : "w-52"
+      )}>
         <div className="bg-muted/40 px-3 py-1.5 text-[11px] font-bold text-muted-foreground flex items-center justify-between border-b border-border/50">
           <span>{title}</span>
           <span className={cn(
-            'text-[10px] px-1.5 py-0.2 rounded font-bold uppercase',
+            'text-[10px] px-1.5 py-0.5 rounded font-bold uppercase',
             isCompleted ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted text-muted-foreground'
           )}>
             {isCompleted ? 'Final' : 'Upcoming'}
@@ -52,9 +74,9 @@ export const TournamentKnockoutBracket: React.FC<TournamentKnockoutBracketProps>
           )}>
             <div className="flex items-center gap-2 truncate">
               {match?.player1?.profileImageUrl ? (
-                <img src={match.player1.profileImageUrl} alt="" className="w-4 h-4 rounded-full object-cover" />
+                <img src={match.player1.profileImageUrl} alt="" className="w-6 h-6 rounded-full object-cover ring-1 ring-border" />
               ) : (
-                <span className="w-4 h-4 rounded-full bg-muted flex items-center justify-center text-[9px]">⚽</span>
+                <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px]">⚽</span>
               )}
               <span className="truncate">{match?.player1?.name || 'TBD'}</span>
             </div>
@@ -70,9 +92,9 @@ export const TournamentKnockoutBracket: React.FC<TournamentKnockoutBracketProps>
           )}>
             <div className="flex items-center gap-2 truncate">
               {match?.player2?.profileImageUrl ? (
-                <img src={match.player2.profileImageUrl} alt="" className="w-4 h-4 rounded-full object-cover" />
+                <img src={match.player2.profileImageUrl} alt="" className="w-6 h-6 rounded-full object-cover ring-1 ring-border" />
               ) : (
-                <span className="w-4 h-4 rounded-full bg-muted flex items-center justify-center text-[9px]">⚽</span>
+                <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px]">⚽</span>
               )}
               <span className="truncate">{match?.player2?.name || 'TBD'}</span>
             </div>
@@ -84,6 +106,47 @@ export const TournamentKnockoutBracket: React.FC<TournamentKnockoutBracketProps>
       </div>
     );
   };
+
+  /**
+   * Renders connector lines between two adjacent rounds.
+   * Each pair of matches in the current round merges into one match in the next round.
+   * @param matchCount - number of matches in the LEFT (current) round
+   * @param isLast - whether the next round is the final
+   */
+  const ConnectorLines = ({ matchCount }: { matchCount: number }) => {
+    // Number of pairs = matchCount / 2 (each pair feeds into one match of next round)
+    const pairCount = Math.ceil(matchCount / 2);
+
+    return (
+      <div className="flex flex-col justify-around h-full w-10 flex-shrink-0">
+        {Array.from({ length: pairCount }).map((_, i) => (
+          <div key={i} className={cn("relative flex items-center", i > 0 && "mt-6")}>
+            {/* Vertical bar connecting two matches */}
+            <div className="h-[120px] border-r-2 border-border relative flex items-center">
+              {/* Top arm */}
+              <div className="absolute -top-[1px] right-0 w-5 border-t-2 border-border" />
+              {/* Bottom arm */}
+              <div className="absolute -bottom-[1px] right-0 w-5 border-b-2 border-border" />
+              {/* Horizontal out */}
+              <div className="w-5 border-t-2 border-border ml-auto" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // ─── Pair matches into groups of 2 for bracket display ───
+  const pairMatches = (roundMatches: TournamentMatch[]) => {
+    const pairs: TournamentMatch[][] = [];
+    for (let i = 0; i < roundMatches.length; i += 2) {
+      pairs.push(roundMatches.slice(i, i + 2));
+    }
+    return pairs;
+  };
+
+  // Determine if we should use compact cards (many rounds)
+  const useCompact = activeRounds.length > 3;
 
   return (
     <div className="w-full overflow-x-auto py-6">
@@ -99,83 +162,77 @@ export const TournamentKnockoutBracket: React.FC<TournamentKnockoutBracketProps>
         </div>
       )}
 
-      {/* ─── CONNECTED BRACKET TREE WITH DRAW CONNECTOR LINES ─── */}
-      <div className="min-w-[780px] flex items-center justify-start gap-0 py-4 px-2">
-        {/* ROUND 1: QUARTER FINALS (4 Matches) */}
-        <div className="flex flex-col justify-around gap-6">
-          <div className="text-xs font-black uppercase text-muted-foreground tracking-wider mb-1 px-1">
-            Quarter-Finals
-          </div>
+      {/* ─── DYNAMIC BRACKET TREE ─── */}
+      <div className={cn(
+        "flex items-center justify-start gap-0 py-4 px-2",
+        useCompact ? "min-w-[600px]" : "min-w-[780px]"
+      )}>
+        {activeRounds.map((round, roundIdx) => {
+          const isFinal = round.stage === 'final';
+          const isFirstRound = roundIdx === 0;
+          const pairs = pairMatches(round.matches);
 
-          {/* Pair 1 */}
-          <div className="space-y-4">
-            <MatchCard match={qfMatches[0]} title="QF 1" />
-            <MatchCard match={qfMatches[1]} title="QF 2" />
-          </div>
+          return (
+            <React.Fragment key={round.stage}>
+              {/* Connector lines BEFORE this round (except for the first round) */}
+              {!isFirstRound && roundIdx > 0 && (
+                <ConnectorLines
+                  matchCount={activeRounds[roundIdx - 1].matches.length}
+                />
+              )}
 
-          {/* Pair 2 */}
-          <div className="space-y-4 mt-6">
-            <MatchCard match={qfMatches[2]} title="QF 3" />
-            <MatchCard match={qfMatches[3]} title="QF 4" />
-          </div>
-        </div>
+              {/* The round column */}
+              <div className={cn(
+                "flex flex-col justify-around",
+                !isFirstRound && "pl-2"
+              )}>
+                {/* Round title */}
+                <div className={cn(
+                  "text-xs font-black uppercase tracking-wider mb-2 px-1 flex items-center gap-1",
+                  isFinal ? "text-amber-500" : "text-muted-foreground"
+                )}>
+                  {isFinal && <Trophy className="w-3.5 h-3.5" />}
+                  {round.label}
+                </div>
 
-        {/* CONNECTING LINES: QF TO SF */}
-        <div className="flex flex-col justify-around h-full w-12 flex-shrink-0 pt-6">
-          {/* Top Branch Connector */}
-          <div className="h-[148px] border-r-2 border-border relative flex items-center">
-            {/* Upper arm from QF1 */}
-            <div className="absolute -top-[1px] right-0 w-6 border-t-2 border-border" />
-            {/* Lower arm from QF2 */}
-            <div className="absolute -bottom-[1px] right-0 w-6 border-b-2 border-border" />
-            {/* Horizontal line out to SF1 */}
-            <div className="w-6 border-t-2 border-border ml-auto" />
-          </div>
-
-          {/* Bottom Branch Connector */}
-          <div className="h-[148px] border-r-2 border-border relative flex items-center mt-12">
-            {/* Upper arm from QF3 */}
-            <div className="absolute -top-[1px] right-0 w-6 border-t-2 border-border" />
-            {/* Lower arm from QF4 */}
-            <div className="absolute -bottom-[1px] right-0 w-6 border-b-2 border-border" />
-            {/* Horizontal line out to SF2 */}
-            <div className="w-6 border-t-2 border-border ml-auto" />
-          </div>
-        </div>
-
-        {/* ROUND 2: SEMI FINALS (2 Matches) */}
-        <div className="flex flex-col justify-around gap-20 pl-2">
-          <div className="text-xs font-black uppercase text-muted-foreground tracking-wider mb-1 px-1">
-            Semi-Finals
-          </div>
-
-          <div className="space-y-28">
-            <MatchCard match={sfMatches[0]} title="Semi-Final 1" />
-            <MatchCard match={sfMatches[1]} title="Semi-Final 2" />
-          </div>
-        </div>
-
-        {/* CONNECTING LINES: SF TO FINAL */}
-        <div className="flex flex-col justify-center h-full w-12 flex-shrink-0 pt-6">
-          <div className="h-[240px] border-r-2 border-border relative flex items-center">
-            {/* Upper arm from SF1 */}
-            <div className="absolute -top-[1px] right-0 w-6 border-t-2 border-border" />
-            {/* Lower arm from SF2 */}
-            <div className="absolute -bottom-[1px] right-0 w-6 border-b-2 border-border" />
-            {/* Horizontal line out to Final */}
-            <div className="w-6 border-t-2 border-border ml-auto" />
-          </div>
-        </div>
-
-        {/* ROUND 3: GRAND FINAL 🏆 */}
-        <div className="flex flex-col justify-center pl-2">
-          <div className="text-xs font-black uppercase text-amber-500 tracking-wider mb-2 px-1 flex items-center gap-1">
-            <Trophy className="w-3.5 h-3.5" />
-            Grand Championship
-          </div>
-          <MatchCard match={finalMatch} title="Grand Final" />
-        </div>
+                {/* Match cards */}
+                {isFinal ? (
+                  // Final is a single card
+                  <MatchCard match={round.matches[0]} title="Grand Final" compact={useCompact} />
+                ) : (
+                  // Other rounds: show pairs with spacing
+                  <div className="space-y-4">
+                    {pairs.map((pair, pairIdx) => (
+                      <div key={pairIdx} className={cn("space-y-4", pairIdx > 0 && "mt-4")}>
+                        {pair.map((m, mIdx) => (
+                          <MatchCard
+                            key={m.id}
+                            match={m}
+                            title={`${round.shortLabel} ${pairIdx * 2 + mIdx + 1}`}
+                            compact={useCompact}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </React.Fragment>
+          );
+        })}
       </div>
+
+      {/* ─── 3RD PLACE PLAYOFF (separate section below the bracket) ─── */}
+      {thirdPlaceMatch && (
+        <div className="mt-8 pt-6 border-t border-border/50">
+          <div className="max-w-xs mx-auto">
+            <div className="text-xs font-black uppercase text-orange-400 tracking-wider mb-2 px-1 flex items-center gap-1.5">
+              🥉 3rd Place Playoff
+            </div>
+            <MatchCard match={thirdPlaceMatch} title="3rd Place" />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -9,6 +9,17 @@ import {
   Clock, Lock, Shuffle, ArrowRight, Calendar
 } from 'lucide-react';
 import { useFootballStore } from '@/store/footballStore';
+import { cn } from '@/shared/lib/cn';
+
+// Knockout Stages Master Flow (from Round of 64 down to Grand Final)
+const KNOCKOUT_STAGES_CONFIG: { stage: MatchStage; nextStage?: MatchStage; label: string; shortLabel: string; matchCount: number; playerCount: number }[] = [
+  { stage: 'round_of_64', nextStage: 'round_of_32', label: 'Round of 64', shortLabel: 'R64', matchCount: 32, playerCount: 64 },
+  { stage: 'round_of_32', nextStage: 'round_of_16', label: 'Round of 32', shortLabel: 'R32', matchCount: 16, playerCount: 32 },
+  { stage: 'round_of_16', nextStage: 'quarter_final', label: 'Round of 16', shortLabel: 'R16', matchCount: 8, playerCount: 16 },
+  { stage: 'quarter_final', nextStage: 'semi_final', label: 'Quarter-Finals', shortLabel: 'QF', matchCount: 4, playerCount: 8 },
+  { stage: 'semi_final', nextStage: 'final', label: 'Semi-Finals', shortLabel: 'SF', matchCount: 2, playerCount: 4 },
+  { stage: 'final', label: 'Grand Final', shortLabel: 'Final', matchCount: 1, playerCount: 2 },
+];
 
 // Helper to convert date to YYYY-MM-DDTHH:mm for datetime-local input
 const formatForDateTimeLocal = (isoStr?: string | null) => {
@@ -539,7 +550,7 @@ export function AdminTournaments() {
     return qualified;
   };
 
-  // 1. Perform Random Draw for Knockouts (Stage 1)
+  // 1. Perform Random Draw for Knockouts (Stage 1: Dynamically supports R64 / R32 / R16 / QF / SF)
   const handlePerformKnockoutDraw = async (playDeadlineStr: string, graceHours: number) => {
     if (!selectedTournament) return;
     const qualified = getQualifiedGroupPlayers();
@@ -553,15 +564,16 @@ export function AdminTournaments() {
       // Fair random shuffle for draw
       const shuffled = [...qualified].sort(() => Math.random() - 0.5);
 
-      let stage: MatchStage = 'quarter_final';
-      let matchCount = 4;
-      if (shuffled.length <= 4) {
-        stage = 'semi_final';
-        matchCount = 2;
-      } else if (shuffled.length > 8) {
-        stage = 'round_of_16';
-        matchCount = 8;
+      // Dynamically select starting stage based on participant count (64 -> R64, 32 -> R32, 16 -> R16, 8 -> QF, 4 -> SF)
+      let matchedConfig = KNOCKOUT_STAGES_CONFIG.find(c => shuffled.length >= c.playerCount);
+      if (!matchedConfig) {
+        matchedConfig = shuffled.length <= 2 
+          ? KNOCKOUT_STAGES_CONFIG[5] 
+          : KNOCKOUT_STAGES_CONFIG[4];
       }
+
+      const stage = matchedConfig.stage;
+      const matchCount = matchedConfig.matchCount;
 
       const playDeadline = new Date(playDeadlineStr);
       const submissionDeadline = new Date(playDeadline.getTime() + graceHours * 3600000);
@@ -595,7 +607,7 @@ export function AdminTournaments() {
         updated_at: new Date().toISOString()
       }).eq('id', selectedTournament.id);
 
-      alert(`Random draw completed! ${matchCount} ${stage.replace('_', ' ')} matches generated.`);
+      alert(`Random draw completed! ${matchCount} ${matchedConfig.label} matches generated.`);
       setDeadlineModal(null);
       fetchTournaments();
       fetchTournamentData(selectedTournament.id);
@@ -607,106 +619,65 @@ export function AdminTournaments() {
     }
   };
 
-  // 2. Advance QF Winners to Semi-Finals (Deterministic Bracket)
-  const handleAdvanceToSemiFinals = async (playDeadlineStr: string, graceHours: number) => {
+  // 2. Generic Dynamic Round Advancement (R64 -> R32 -> R16 -> QF -> SF -> Final)
+  const handleAdvanceToNextRound = async (
+    currentStage: MatchStage,
+    playDeadlineStr: string,
+    graceHours: number
+  ) => {
     if (!selectedTournament) return;
-    const qfMatches = matches.filter(m => m.stage === 'quarter_final').sort((a, b) => (a.bracket_match_number || 0) - (b.bracket_match_number || 0));
+    const stageConfig = KNOCKOUT_STAGES_CONFIG.find(c => c.stage === currentStage);
+    if (!stageConfig || !stageConfig.nextStage) return;
 
-    const allCompleted = qfMatches.length === 4 && qfMatches.every(m => m.status === 'completed' && m.winner_id);
+    const currentRoundMatches = matches
+      .filter(m => m.stage === currentStage)
+      .sort((a, b) => (a.bracket_match_number || 0) - (b.bracket_match_number || 0));
+
+    const allCompleted = currentRoundMatches.length === stageConfig.matchCount &&
+      currentRoundMatches.every(m => m.status === 'completed' && m.winner_id);
+
     if (!allCompleted) {
-      alert('All 4 Quarter-Final matches must be completed with verified winners before advancing to Semi-Finals.');
+      alert(`All ${stageConfig.label} matches must be completed with verified winners before advancing to the next round.`);
       return;
     }
+
+    const nextStage = stageConfig.nextStage;
+    const nextConfig = KNOCKOUT_STAGES_CONFIG.find(c => c.stage === nextStage);
+    if (!nextConfig) return;
 
     try {
       setLoading(true);
       const playDeadline = new Date(playDeadlineStr);
       const submissionDeadline = new Date(playDeadline.getTime() + graceHours * 3600000);
 
-      const w1 = qfMatches[0].winner_id;
-      const w2 = qfMatches[1].winner_id;
-      const w3 = qfMatches[2].winner_id;
-      const w4 = qfMatches[3].winner_id;
+      const nextMatchesToInsert: any[] = [];
+      for (let i = 0; i < currentRoundMatches.length; i += 2) {
+        const w1 = currentRoundMatches[i]?.winner_id;
+        const w2 = currentRoundMatches[i + 1]?.winner_id;
+        const matchNum = Math.floor(i / 2) + 1;
 
-      const sfMatchesToInsert = [
-        {
+        nextMatchesToInsert.push({
           tournament_id: selectedTournament.id,
-          stage: 'semi_final',
-          matchday: 2,
-          bracket_match_number: 1,
+          stage: nextStage,
+          matchday: matchNum,
+          bracket_match_number: matchNum,
           player1_id: w1,
           player2_id: w2,
           status: 'scheduled',
           play_deadline: playDeadline.toISOString(),
           submission_deadline: submissionDeadline.toISOString()
-        },
-        {
-          tournament_id: selectedTournament.id,
-          stage: 'semi_final',
-          matchday: 2,
-          bracket_match_number: 2,
-          player1_id: w3,
-          player2_id: w4,
-          status: 'scheduled',
-          play_deadline: playDeadline.toISOString(),
-          submission_deadline: submissionDeadline.toISOString()
-        }
-      ];
+        });
+      }
 
-      const { error: insErr } = await supabase.from('tournament_matches').insert(sfMatchesToInsert);
+      const { error: insErr } = await supabase.from('tournament_matches').insert(nextMatchesToInsert);
       if (insErr) throw insErr;
 
-      alert('Semi-Finals fixtures generated successfully!');
+      alert(`${nextConfig.label} fixtures generated successfully!`);
       setDeadlineModal(null);
       fetchTournamentData(selectedTournament.id);
     } catch (err: any) {
-      console.error('Failed to advance to semi-finals:', err);
-      alert(err.message || 'Failed to advance to semi-finals');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 3. Advance SF Winners to Grand Final
-  const handleAdvanceToGrandFinal = async (playDeadlineStr: string, graceHours: number) => {
-    if (!selectedTournament) return;
-    const sfMatches = matches.filter(m => m.stage === 'semi_final').sort((a, b) => (a.bracket_match_number || 0) - (b.bracket_match_number || 0));
-
-    const allCompleted = sfMatches.length === 2 && sfMatches.every(m => m.status === 'completed' && m.winner_id);
-    if (!allCompleted) {
-      alert('Both Semi-Final matches must be completed with verified winners before advancing to Grand Final.');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const playDeadline = new Date(playDeadlineStr);
-      const submissionDeadline = new Date(playDeadline.getTime() + graceHours * 3600000);
-
-      const w1 = sfMatches[0].winner_id;
-      const w2 = sfMatches[1].winner_id;
-
-      const finalMatch = {
-        tournament_id: selectedTournament.id,
-        stage: 'final',
-        matchday: 3,
-        bracket_match_number: 1,
-        player1_id: w1,
-        player2_id: w2,
-        status: 'scheduled',
-        play_deadline: playDeadline.toISOString(),
-        submission_deadline: submissionDeadline.toISOString()
-      };
-
-      const { error: insErr } = await supabase.from('tournament_matches').insert(finalMatch);
-      if (insErr) throw insErr;
-
-      alert('Grand Final match generated successfully!');
-      setDeadlineModal(null);
-      fetchTournamentData(selectedTournament.id);
-    } catch (err: any) {
-      console.error('Failed to advance to grand final:', err);
-      alert(err.message || 'Failed to advance to grand final');
+      console.error('Failed to advance round:', err);
+      alert(err.message || 'Failed to advance round');
     } finally {
       setLoading(false);
     }
@@ -785,10 +756,16 @@ export function AdminTournaments() {
   const groupMatches = matches.filter(m => m.stage === 'group');
   const allGroupMatchesCompleted = groupMatches.length > 0 && groupMatches.every(m => m.status === 'completed');
   const knockoutMatches = matches.filter(m => m.stage !== 'group');
-  const qfMatches = knockoutMatches.filter(m => m.stage === 'quarter_final' || m.stage === 'round_of_16').sort((a, b) => (a.bracket_match_number || 0) - (b.bracket_match_number || 0));
-  const sfMatches = knockoutMatches.filter(m => m.stage === 'semi_final').sort((a, b) => (a.bracket_match_number || 0) - (b.bracket_match_number || 0));
-  const finalMatch = knockoutMatches.find(m => m.stage === 'final');
   const championPlayer = selectedTournament?.champion_player_id ? storePlayers.find(p => p.id === selectedTournament.champion_player_id) : null;
+
+  // Dynamically resolve all knockout stages that currently exist in this tournament
+  const activeKnockoutConfigs = (() => {
+    if (knockoutMatches.length === 0) return [];
+    const existingStages = new Set(knockoutMatches.map(m => m.stage));
+    const firstStageIdx = KNOCKOUT_STAGES_CONFIG.findIndex(c => existingStages.has(c.stage));
+    if (firstStageIdx === -1) return [];
+    return KNOCKOUT_STAGES_CONFIG.slice(firstStageIdx);
+  })();
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -1202,98 +1179,21 @@ export function AdminTournaments() {
           {/* ─── TAB 3: KNOCKOUTS & ROUND CONTROLLER ─── */}
           {activeTab === 'matches' && (
             <div className="p-6 space-y-8">
-              {/* Knockout Status Overview Cards */}
+              {/* Dynamic Knockout Status Overview Cards (R64 / R32 / R16 / QF / SF / Final) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* 1. Quarter-Finals Card */}
-                <div className="p-5 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-black uppercase text-primary tracking-wider">Round 1</span>
-                      {qfMatches.length > 0 ? (
-                        qfMatches.every(m => m.status === 'completed') ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                            Completed
-                          </span>
-                        ) : qfMatches.some(m => m.status === 'completed') ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                            In Progress
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-500/15 text-blue-600 dark:text-blue-400">
-                            Scheduled
-                          </span>
-                        )
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-muted text-muted-foreground">
-                          Not Drawn
-                        </span>
-                      )}
+                {knockoutMatches.length === 0 ? (
+                  <div className="p-5 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4 md:col-span-3 max-w-md">
+                    <div>
+                      <span className="text-xs font-black uppercase text-primary tracking-wider">Initial Knockout Draw</span>
+                      <h3 className="text-base font-black text-foreground mt-1">
+                        {getQualifiedGroupPlayers().length > 0 
+                          ? `${getQualifiedGroupPlayers().length} Qualified Contenders Ready` 
+                          : 'Knockout Stage'}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Fair random shuffle to seed contenders into the dynamic knockout bracket (R64 / R32 / R16 / QF / SF).
+                      </p>
                     </div>
-                    <h3 className="text-base font-black text-foreground">Quarter-Finals</h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {qfMatches.length > 0
-                        ? `${qfMatches.filter(m => m.status === 'completed').length} of ${qfMatches.length} matches completed`
-                        : '8 qualified contenders paired via fair random draw.'}
-                    </p>
-                  </div>
-
-                  {qfMatches.length > 0 ? (
-                    <div className="space-y-2 pt-2 border-t border-border/50 text-xs">
-                      <div className="flex items-center justify-between text-muted-foreground">
-                        <span className="flex items-center gap-1 text-[11px]">
-                          <Clock className="w-3.5 h-3.5" /> Play Deadline:
-                        </span>
-                        <span className="font-bold text-foreground">
-                          {new Date(qfMatches[0].play_deadline).toLocaleDateString()}
-                        </span>
-                      </div>
-
-                      {qfMatches.every(m => m.status !== 'completed') ? (
-                        <button
-                          onClick={() => {
-                            setDeadlineModal({
-                              isOpen: true,
-                              stage: 'quarter_final',
-                              title: 'Edit Quarter-Finals Deadline',
-                              description: 'Update match play deadline for all Quarter-Final fixtures.',
-                              playDeadline: formatForDateTimeLocal(qfMatches[0].play_deadline),
-                              graceHours: selectedTournament?.result_submission_grace_hours || 24,
-                              matchesToUpdate: qfMatches
-                            });
-                          }}
-                          className="w-full py-2 px-3 rounded-xl border border-border bg-muted/30 hover:bg-muted text-foreground font-bold text-xs flex items-center justify-center gap-1.5 transition"
-                        >
-                          <Clock className="w-3.5 h-3.5 text-primary" />
-                          Edit QF Deadline
-                        </button>
-                      ) : (
-                        <div className="py-1.5 px-3 rounded-xl bg-muted/40 text-muted-foreground font-semibold text-[11px] flex items-center justify-center gap-1">
-                          <Lock className="w-3 h-3" /> Deadline locked (in progress)
-                        </div>
-                      )}
-
-                      {qfMatches.every(m => m.status === 'completed') && sfMatches.length === 0 && (
-                        <button
-                          onClick={() => {
-                            const d = new Date();
-                            d.setDate(d.getDate() + 2);
-                            setDeadlineModal({
-                              isOpen: true,
-                              stage: 'semi_final',
-                              title: 'Start Semi-Finals & Set Deadline',
-                              description: 'Advance Quarter-Final winners into Semi-Final pairs.',
-                              playDeadline: formatForDateTimeLocal(d.toISOString()),
-                              graceHours: selectedTournament?.result_submission_grace_hours || 24
-                            });
-                          }}
-                          className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow"
-                        >
-                          <ArrowRight className="w-3.5 h-3.5" />
-                          Advance to Semi-Finals
-                        </button>
-                      )}
-                    </div>
-                  ) : (
                     <button
                       onClick={() => {
                         const d = new Date();
@@ -1308,185 +1208,139 @@ export function AdminTournaments() {
                           isInitialDraw: true
                         });
                       }}
-                      className="w-full py-2.5 px-3 rounded-xl bg-primary text-primary-foreground font-bold text-xs flex items-center justify-center gap-1.5 shadow hover:opacity-90 transition active:scale-95"
+                      className="w-full py-2.5 px-4 rounded-xl bg-primary text-primary-foreground font-bold text-xs flex items-center justify-center gap-1.5 shadow hover:opacity-90 transition active:scale-95"
                     >
                       <Shuffle className="w-3.5 h-3.5" />
                       Conduct Random Draw
                     </button>
-                  )}
-                </div>
-
-                {/* 2. Semi-Finals Card */}
-                <div className="p-5 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-black uppercase text-primary tracking-wider">Round 2</span>
-                      {sfMatches.length > 0 ? (
-                        sfMatches.every(m => m.status === 'completed') ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                            Completed
-                          </span>
-                        ) : sfMatches.some(m => m.status === 'completed') ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                            In Progress
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-500/15 text-blue-600 dark:text-blue-400">
-                            Scheduled
-                          </span>
-                        )
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-muted text-muted-foreground">
-                          Pending QF
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="text-base font-black text-foreground">Semi-Finals</h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {sfMatches.length > 0
-                        ? `${sfMatches.filter(m => m.status === 'completed').length} of ${sfMatches.length} matches completed`
-                        : 'Winners of QF 1 vs QF 2 and QF 3 vs QF 4.'}
-                    </p>
                   </div>
+                ) : (
+                  activeKnockoutConfigs.map((cfg, idx) => {
+                    const roundMatches = knockoutMatches
+                      .filter(m => m.stage === cfg.stage)
+                      .sort((a, b) => (a.bracket_match_number || 0) - (b.bracket_match_number || 0));
+                    const isFinal = cfg.stage === 'final';
+                    const hasMatches = roundMatches.length > 0;
+                    const isCompleted = hasMatches && roundMatches.every(m => m.status === 'completed');
+                    const isInProgress = hasMatches && roundMatches.some(m => m.status === 'completed') && !isCompleted;
+                    const isScheduled = hasMatches && roundMatches.every(m => m.status !== 'completed');
 
-                  {sfMatches.length > 0 ? (
-                    <div className="space-y-2 pt-2 border-t border-border/50 text-xs">
-                      <div className="flex items-center justify-between text-muted-foreground">
-                        <span className="flex items-center gap-1 text-[11px]">
-                          <Clock className="w-3.5 h-3.5" /> Play Deadline:
-                        </span>
-                        <span className="font-bold text-foreground">
-                          {new Date(sfMatches[0].play_deadline).toLocaleDateString()}
-                        </span>
-                      </div>
+                    // Can advance to next round?
+                    const nextConfig = cfg.nextStage ? KNOCKOUT_STAGES_CONFIG.find(c => c.stage === cfg.nextStage) : null;
+                    const nextMatches = nextConfig ? knockoutMatches.filter(m => m.stage === nextConfig.stage) : [];
+                    const canAdvance = isCompleted && nextConfig && nextMatches.length === 0;
 
-                      {sfMatches.every(m => m.status !== 'completed') ? (
-                        <button
-                          onClick={() => {
-                            setDeadlineModal({
-                              isOpen: true,
-                              stage: 'semi_final',
-                              title: 'Edit Semi-Finals Deadline',
-                              description: 'Update match play deadline for Semi-Final fixtures.',
-                              playDeadline: formatForDateTimeLocal(sfMatches[0].play_deadline),
-                              graceHours: selectedTournament?.result_submission_grace_hours || 24,
-                              matchesToUpdate: sfMatches
-                            });
-                          }}
-                          className="w-full py-2 px-3 rounded-xl border border-border bg-muted/30 hover:bg-muted text-foreground font-bold text-xs flex items-center justify-center gap-1.5 transition"
-                        >
-                          <Clock className="w-3.5 h-3.5 text-primary" />
-                          Edit SF Deadline
-                        </button>
-                      ) : (
-                        <div className="py-1.5 px-3 rounded-xl bg-muted/40 text-muted-foreground font-semibold text-[11px] flex items-center justify-center gap-1">
-                          <Lock className="w-3 h-3" /> Deadline locked (in progress)
+                    return (
+                      <div key={cfg.stage} className="p-5 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={cn(
+                              "text-xs font-black uppercase tracking-wider",
+                              isFinal ? "text-amber-500 flex items-center gap-1" : "text-primary"
+                            )}>
+                              {isFinal && <Trophy className="w-3.5 h-3.5" />}
+                              Round {idx + 1}
+                            </span>
+
+                            {hasMatches ? (
+                              isCompleted ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                                  {isFinal ? 'Champion Decided' : 'Completed'}
+                                </span>
+                              ) : isInProgress ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                                  In Progress
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                                  Scheduled
+                                </span>
+                              )
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-muted text-muted-foreground">
+                                Pending Previous Round
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 className="text-base font-black text-foreground">{cfg.label}</h3>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {hasMatches
+                              ? `${roundMatches.filter(m => m.status === 'completed').length} of ${roundMatches.length} matches completed`
+                              : `Awaiting winners from ${activeKnockoutConfigs[idx - 1]?.label || 'previous round'}`}
+                          </p>
                         </div>
-                      )}
 
-                      {sfMatches.every(m => m.status === 'completed') && !finalMatch && (
-                        <button
-                          onClick={() => {
-                            const d = new Date();
-                            d.setDate(d.getDate() + 2);
-                            setDeadlineModal({
-                              isOpen: true,
-                              stage: 'final',
-                              title: 'Start Grand Championship Final',
-                              description: 'Advance Semi-Final winners into the Grand Final match.',
-                              playDeadline: formatForDateTimeLocal(d.toISOString()),
-                              graceHours: selectedTournament?.result_submission_grace_hours || 24
-                            });
-                          }}
-                          className="w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow"
-                        >
-                          <Trophy className="w-3.5 h-3.5" />
-                          Advance to Grand Final
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="py-2 text-center text-xs text-muted-foreground">
-                      Awaiting QF results
-                    </div>
-                  )}
-                </div>
+                        {hasMatches ? (
+                          <div className="space-y-2 pt-2 border-t border-border/50 text-xs">
+                            <div className="flex items-center justify-between text-muted-foreground">
+                              <span className="flex items-center gap-1 text-[11px]">
+                                <Clock className="w-3.5 h-3.5" /> Play Deadline:
+                              </span>
+                              <span className="font-bold text-foreground">
+                                {new Date(roundMatches[0].play_deadline).toLocaleDateString()}
+                              </span>
+                            </div>
 
-                {/* 3. Grand Final Card */}
-                <div className="p-5 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-black uppercase text-amber-500 tracking-wider flex items-center gap-1">
-                        <Trophy className="w-3.5 h-3.5" /> Final
-                      </span>
-                      {finalMatch ? (
-                        finalMatch.status === 'completed' ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                            Crown Winner
-                          </span>
+                            {isScheduled ? (
+                              <button
+                                onClick={() => {
+                                  setDeadlineModal({
+                                    isOpen: true,
+                                    stage: cfg.stage,
+                                    title: `Edit ${cfg.label} Deadline`,
+                                    description: `Update match play deadline for ${cfg.label} fixtures.`,
+                                    playDeadline: formatForDateTimeLocal(roundMatches[0].play_deadline),
+                                    graceHours: selectedTournament?.result_submission_grace_hours || 24,
+                                    matchesToUpdate: roundMatches
+                                  });
+                                }}
+                                className="w-full py-2 px-3 rounded-xl border border-border bg-muted/30 hover:bg-muted text-foreground font-bold text-xs flex items-center justify-center gap-1.5 transition"
+                              >
+                                <Clock className="w-3.5 h-3.5 text-primary" />
+                                Edit {cfg.shortLabel} Deadline
+                              </button>
+                            ) : isCompleted && isFinal ? (
+                              <div className="py-1.5 px-3 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold text-xs text-center flex items-center justify-center gap-1.5">
+                                <Trophy className="w-3.5 h-3.5" />
+                                {championPlayer?.name || 'Champion'} Crowned!
+                              </div>
+                            ) : (
+                              <div className="py-1.5 px-3 rounded-xl bg-muted/40 text-muted-foreground font-semibold text-[11px] flex items-center justify-center gap-1">
+                                <Lock className="w-3 h-3" /> Deadline locked ({isInProgress ? 'in progress' : 'completed'})
+                              </div>
+                            )}
+
+                            {canAdvance && nextConfig && (
+                              <button
+                                onClick={() => {
+                                  const d = new Date();
+                                  d.setDate(d.getDate() + 2);
+                                  setDeadlineModal({
+                                    isOpen: true,
+                                    stage: nextConfig.stage,
+                                    title: `Advance to ${nextConfig.label} & Set Deadline`,
+                                    description: `Advance winners of ${cfg.label} into ${nextConfig.label} fixtures.`,
+                                    playDeadline: formatForDateTimeLocal(d.toISOString()),
+                                    graceHours: selectedTournament?.result_submission_grace_hours || 24
+                                  });
+                                }}
+                                className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow"
+                              >
+                                <ArrowRight className="w-3.5 h-3.5" />
+                                Advance to {nextConfig.label}
+                              </button>
+                            )}
+                          </div>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-500/15 text-blue-600 dark:text-blue-400">
-                            Scheduled
-                          </span>
-                        )
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-muted text-muted-foreground">
-                          Pending SF
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="text-base font-black text-foreground">Grand Championship</h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {finalMatch
-                        ? finalMatch.status === 'completed'
-                          ? `🏆 Champion: ${championPlayer?.name || 'Tournament Winner'}`
-                          : 'Final showdown to determine the tournament champion.'
-                        : 'Winners of SF 1 vs SF 2.'}
-                    </p>
-                  </div>
-
-                  {finalMatch ? (
-                    <div className="space-y-2 pt-2 border-t border-border/50 text-xs">
-                      <div className="flex items-center justify-between text-muted-foreground">
-                        <span className="flex items-center gap-1 text-[11px]">
-                          <Clock className="w-3.5 h-3.5" /> Play Deadline:
-                        </span>
-                        <span className="font-bold text-foreground">
-                          {new Date(finalMatch.play_deadline).toLocaleDateString()}
-                        </span>
+                          <div className="py-2 text-center text-xs text-muted-foreground">
+                            Waiting for previous round to finish
+                          </div>
+                        )}
                       </div>
-
-                      {finalMatch.status !== 'completed' ? (
-                        <button
-                          onClick={() => {
-                            setDeadlineModal({
-                              isOpen: true,
-                              stage: 'final',
-                              title: 'Edit Grand Final Deadline',
-                              description: 'Update match play deadline for the Grand Championship match.',
-                              playDeadline: formatForDateTimeLocal(finalMatch.play_deadline),
-                              graceHours: selectedTournament?.result_submission_grace_hours || 24,
-                              matchesToUpdate: [finalMatch]
-                            });
-                          }}
-                          className="w-full py-2 px-3 rounded-xl border border-border bg-muted/30 hover:bg-muted text-foreground font-bold text-xs flex items-center justify-center gap-1.5 transition"
-                        >
-                          <Clock className="w-3.5 h-3.5 text-primary" />
-                          Edit Final Deadline
-                        </button>
-                      ) : (
-                        <div className="py-1.5 px-3 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold text-xs text-center flex items-center justify-center gap-1.5">
-                          <Trophy className="w-3.5 h-3.5" />
-                          {championPlayer?.name || 'Champion'} Crowned!
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="py-2 text-center text-xs text-muted-foreground">
-                      Awaiting SF results
-                    </div>
-                  )}
-                </div>
+                    );
+                  })
+                )}
               </div>
 
               {/* Knockout Match Score Editor List */}
@@ -1927,10 +1781,11 @@ export function AdminTournaments() {
                   handlePerformKnockoutDraw(deadlineModal.playDeadline, deadlineModal.graceHours);
                 } else if (deadlineModal.matchesToUpdate) {
                   handleUpdateRoundDeadline(deadlineModal.matchesToUpdate, deadlineModal.playDeadline, deadlineModal.graceHours);
-                } else if (deadlineModal.stage === 'semi_final') {
-                  handleAdvanceToSemiFinals(deadlineModal.playDeadline, deadlineModal.graceHours);
-                } else if (deadlineModal.stage === 'final') {
-                  handleAdvanceToGrandFinal(deadlineModal.playDeadline, deadlineModal.graceHours);
+                } else {
+                  const prevConfig = KNOCKOUT_STAGES_CONFIG.find(c => c.nextStage === deadlineModal.stage);
+                  if (prevConfig) {
+                    handleAdvanceToNextRound(prevConfig.stage, deadlineModal.playDeadline, deadlineModal.graceHours);
+                  }
                 }
               }}
               className="space-y-4"
