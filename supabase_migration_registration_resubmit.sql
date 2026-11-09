@@ -1,20 +1,28 @@
 -- ==============================================================================
 -- MIGRATION: ALLOW RE-SUBMISSION OF REJECTED/PENDING TOURNAMENT REGISTRATIONS
 -- ==============================================================================
+-- NOTE FOR SUPABASE SQL EDITOR:
+-- Please select ALL text (Ctrl+A or Cmd+A) before clicking "Run", 
+-- or run STEP 1 and STEP 2 separately.
+-- ==============================================================================
 
--- 1. Ensure RLS allows public updates on rejected or pending registrations
+-- ------------------------------------------------------------------------------
+-- STEP 1: Enable RLS for Re-submitting & Deleting registrations
+-- ------------------------------------------------------------------------------
 DROP POLICY IF EXISTS "Public update registrations" ON public.tournament_registrations;
 CREATE POLICY "Public update registrations" ON public.tournament_registrations 
 FOR UPDATE 
 USING (status IN ('rejected', 'pending'))
 WITH CHECK (status = 'pending');
 
--- 2. Ensure delete policy exists for admin or cleanup
 DROP POLICY IF EXISTS "Public delete registrations" ON public.tournament_registrations;
 CREATE POLICY "Public delete registrations" ON public.tournament_registrations
 FOR DELETE USING (true);
 
--- 3. Stored Procedure (RPC) for guaranteed atomic re-submission
+
+-- ------------------------------------------------------------------------------
+-- STEP 2: Stored Procedure (RPC) for guaranteed atomic re-submission
+-- ------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.resubmit_tournament_registration(
     p_tournament_id UUID,
     p_player_id TEXT,
