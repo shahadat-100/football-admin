@@ -292,19 +292,53 @@ export function AdminTournaments() {
 
   // Approve / Reject Registration
   const handleReviewRegistration = async (id: string, status: 'approved' | 'rejected') => {
+    let rejectionReason: string | null = null;
+    if (status === 'rejected') {
+      const reasonInput = window.prompt(
+        'Enter reason for rejection (optional - will be displayed to the player so they can fix it and re-submit):',
+        'Facebook post proof link is invalid or profile is private'
+      );
+      if (reasonInput === null) {
+        // User cancelled the prompt
+        return;
+      }
+      rejectionReason = reasonInput.trim() || null;
+    }
+
     try {
       const { error } = await supabase
         .from('tournament_registrations')
         .update({
           status,
+          rejection_reason: status === 'approved' ? null : rejectionReason,
           reviewed_at: new Date().toISOString()
         })
         .eq('id', id);
 
       if (error) throw error;
       if (selectedTournament) fetchTournamentData(selectedTournament.id);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Review failed:', err);
+      alert(`Failed to update registration: ${err.message}`);
+    }
+  };
+
+  // Delete Registration Completely (clears record so player can submit fresh)
+  const handleDeleteRegistration = async (id: string, playerName: string) => {
+    if (!window.confirm(`Permanently delete registration for "${playerName}"?\nThis removes the record so the player can register again from scratch.`)) {
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('tournament_registrations')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      if (selectedTournament) fetchTournamentData(selectedTournament.id);
+    } catch (err: any) {
+      console.error('Delete registration failed:', err);
+      alert(`Failed to delete registration: ${err.message}`);
     }
   };
 
@@ -993,35 +1027,69 @@ export function AdminTournaments() {
                           </a>
                         </td>
                         <td className="py-3 px-4">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold capitalize ${
-                            r.status === 'approved'
-                              ? 'bg-emerald-500/10 text-emerald-500'
-                              : r.status === 'rejected'
-                              ? 'bg-rose-500/10 text-rose-500'
-                              : 'bg-amber-500/10 text-amber-500'
-                          }`}>
-                            {r.status}
-                          </span>
+                          <div className="flex flex-col">
+                            <span className={`inline-flex items-center w-fit px-2 py-0.5 rounded-full text-xs font-bold capitalize ${
+                              r.status === 'approved'
+                                ? 'bg-emerald-500/10 text-emerald-500'
+                                : r.status === 'rejected'
+                                ? 'bg-rose-500/10 text-rose-500'
+                                : 'bg-amber-500/10 text-amber-500'
+                            }`}>
+                              {r.status}
+                            </span>
+                            {r.rejection_reason && (
+                              <span className="text-[11px] text-rose-400 mt-1 max-w-xs break-words" title={r.rejection_reason}>
+                                Reason: {r.rejection_reason}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4 text-right">
-                          {r.status === 'pending' && (
-                            <div className="flex items-center justify-end gap-1.5">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {r.status === 'pending' && (
+                              <>
+                                <button
+                                  onClick={() => handleReviewRegistration(r.id, 'approved')}
+                                  className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition"
+                                  title="Approve"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleReviewRegistration(r.id, 'rejected')}
+                                  className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 transition"
+                                  title="Reject (with optional reason)"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                            {r.status === 'rejected' && (
                               <button
                                 onClick={() => handleReviewRegistration(r.id, 'approved')}
                                 className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition"
-                                title="Approve"
+                                title="Approve (Override Rejection)"
                               >
                                 <CheckCircle className="w-4 h-4" />
                               </button>
+                            )}
+                            {r.status === 'approved' && (
                               <button
                                 onClick={() => handleReviewRegistration(r.id, 'rejected')}
                                 className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 transition"
-                                title="Reject"
+                                title="Revoke / Reject"
                               >
                                 <XCircle className="w-4 h-4" />
                               </button>
-                            </div>
-                          )}
+                            )}
+                            <button
+                              onClick={() => handleDeleteRegistration(r.id, r.player?.name || 'Player')}
+                              className="p-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-rose-500/20 hover:text-rose-500 transition"
+                              title="Delete Registration Record"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
