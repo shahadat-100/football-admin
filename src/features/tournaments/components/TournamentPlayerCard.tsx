@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { toPng } from 'html-to-image';
-import { Download, Copy, Check, Shield, Smartphone, Hash } from 'lucide-react';
+import { Download, Copy, Check, Shield, Smartphone, Hash, Zap } from 'lucide-react';
 
 interface TournamentPlayerCardProps {
   playerName: string;
@@ -9,7 +9,26 @@ interface TournamentPlayerCardProps {
   deviceModel: string;
   tournamentTitle?: string;
   seasonName?: string;
+  updatedAt?: string | null;
+  lastUpdateType?: 'id' | 'device' | 'both' | null;
   onDownloaded?: (dataUrl: string) => void;
+}
+
+function formatUpdateDateTime(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const day = d.getDate().toString().padStart(2, '0');
+  const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  let hours = d.getHours();
+  const minutes = d.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const formattedHours = hours.toString().padStart(2, '0');
+  return `${day} ${month} ${year} • ${formattedHours}:${minutes} ${ampm}`;
 }
 
 export const TournamentPlayerCard: React.FC<TournamentPlayerCardProps> = ({
@@ -19,6 +38,8 @@ export const TournamentPlayerCard: React.FC<TournamentPlayerCardProps> = ({
   deviceModel,
   tournamentTitle = 'EFOOTBALL CHAMPIONSHIP',
   seasonName = 'SEASON 1 • 2026',
+  updatedAt,
+  lastUpdateType,
   onDownloaded
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -133,6 +154,18 @@ export const TournamentPlayerCard: React.FC<TournamentPlayerCardProps> = ({
 
         {/* ─── 3. Bottom: Game ID & Device Pills ─── */}
         <div className="relative z-10 pt-2">
+          {updatedAt && lastUpdateType && (
+            <div className="mb-2 flex items-center justify-center gap-1.5 py-1 px-2.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[9px] font-sans font-bold tracking-wider uppercase shadow-inner">
+              <Zap className="w-3 h-3 text-amber-400 fill-current animate-pulse flex-shrink-0" />
+              <span>
+                {lastUpdateType === 'id' && 'GAME ID UPDATED'}
+                {lastUpdateType === 'device' && 'DEVICE UPDATED'}
+                {lastUpdateType === 'both' && 'ID & DEVICE UPDATED'}
+              </span>
+              <span className="text-white/80 font-mono">• {formatUpdateDateTime(updatedAt)}</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-2 bg-[#00112a]/90 border border-[#c89850]/30 rounded-2xl p-2.5 shadow-lg">
             {/* Game ID */}
             <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/5 border border-white/5">

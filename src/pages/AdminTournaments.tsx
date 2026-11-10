@@ -6,7 +6,7 @@ import { TournamentKnockoutBracket } from '@/features/tournaments/components/Tou
 import { 
   Trophy, Plus, CheckCircle, XCircle, 
   ExternalLink, Play, ShieldAlert, Image as ImageIcon, Trash2, Edit3,
-  Clock, Lock, Shuffle, ArrowRight, Calendar
+  Clock, Lock, Shuffle, ArrowRight, Calendar, Zap, Save, X
 } from 'lucide-react';
 import { useFootballStore } from '@/store/footballStore';
 import { cn } from '@/shared/lib/cn';
@@ -339,6 +339,59 @@ export function AdminTournaments() {
     } catch (err: any) {
       console.error('Delete registration failed:', err);
       alert(`Failed to delete registration: ${err.message}`);
+    }
+  };
+
+  // Edit Registration Info (Game ID & Device Model)
+  const [editingReg, setEditingReg] = useState<TournamentRegistration | null>(null);
+  const [editGameId, setEditGameId] = useState('');
+  const [editDeviceModel, setEditDeviceModel] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const handleSaveEditRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingReg) return;
+
+    const newGameId = editGameId.trim();
+    const newDevice = editDeviceModel.trim();
+    if (!newGameId || !newDevice) {
+      alert('Game ID and Device Model cannot be empty.');
+      return;
+    }
+
+    const idChanged = newGameId !== editingReg.game_id;
+    const deviceChanged = newDevice !== editingReg.device_model;
+
+    if (!idChanged && !deviceChanged) {
+      alert('No changes made to Game ID or Device Model.');
+      setEditingReg(null);
+      return;
+    }
+
+    const updateType: 'id' | 'device' | 'both' = 
+      (idChanged && deviceChanged) ? 'both' : (idChanged ? 'id' : 'device');
+
+    try {
+      setSavingEdit(true);
+      const { error } = await supabase
+        .from('tournament_registrations')
+        .update({
+          game_id: newGameId,
+          device_model: newDevice,
+          updated_at: new Date().toISOString(),
+          last_update_type: updateType
+        })
+        .eq('id', editingReg.id);
+
+      if (error) throw error;
+
+      setEditingReg(null);
+      if (selectedTournament) fetchTournamentData(selectedTournament.id);
+    } catch (err: any) {
+      console.error('Failed to update registration:', err);
+      alert(`Failed to save changes: ${err.message}`);
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -1013,8 +1066,24 @@ export function AdminTournaments() {
                           )}
                           <span>{r.player?.name || 'Unknown'}</span>
                         </td>
-                        <td className="py-3 px-4 font-mono text-xs">{r.game_id}</td>
-                        <td className="py-3 px-4 text-xs text-muted-foreground">{r.device_model}</td>
+                        <td className="py-3 px-4 font-mono text-xs">
+                          <div>{r.game_id}</div>
+                          {r.updated_at && (r.last_update_type === 'id' || r.last_update_type === 'both') && (
+                            <span className="text-[10px] text-amber-500 font-sans font-bold flex items-center gap-1 mt-0.5">
+                              <Zap className="w-2.5 h-2.5 fill-current" />
+                              Updated {new Date(r.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric' })} • {new Date(r.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-xs text-muted-foreground">
+                          <div>{r.device_model}</div>
+                          {r.updated_at && (r.last_update_type === 'device' || r.last_update_type === 'both') && (
+                            <span className="text-[10px] text-amber-500 font-sans font-bold flex items-center gap-1 mt-0.5">
+                              <Zap className="w-2.5 h-2.5 fill-current" />
+                              Updated {new Date(r.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric' })} • {new Date(r.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </td>
                         <td className="py-3 px-4">
                           <a
                             href={r.facebook_post_url}
@@ -1082,6 +1151,17 @@ export function AdminTournaments() {
                                 <XCircle className="w-4 h-4" />
                               </button>
                             )}
+                            <button
+                              onClick={() => {
+                                setEditingReg(r);
+                                setEditGameId(r.game_id);
+                                setEditDeviceModel(r.device_model);
+                              }}
+                              className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition"
+                              title="Edit Game ID & Device (Anti-Cheat Timestamped)"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
                             <button
                               onClick={() => handleDeleteRegistration(r.id, r.player?.name || 'Player')}
                               className="p-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-rose-500/20 hover:text-rose-500 transition"
@@ -1920,6 +2000,88 @@ export function AdminTournaments() {
                       Generate Round Fixtures
                     </>
                   )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* ─── EDIT REGISTRATION (GAME ID / DEVICE) MODAL ─── */}
+      {editingReg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="relative w-full max-w-md bg-card border border-border rounded-3xl p-6 shadow-2xl">
+            <button
+              onClick={() => setEditingReg(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-muted text-muted-foreground hover:text-foreground transition"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-2.5 mb-1">
+              <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                <Edit3 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-foreground">
+                  Edit Registration Info
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Player: <span className="font-bold text-foreground">{editingReg.player?.name || 'Unknown'}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="my-4 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-start gap-2">
+              <Zap className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+              <p className="leading-snug">
+                <strong>Anti-Cheat Notice:</strong> Saving changes will automatically record the exact date &amp; time on the player&apos;s official tournament card.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveEditRegistration} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1.5">
+                  eFootball Game ID *
+                </label>
+                <input
+                  type="text"
+                  value={editGameId}
+                  onChange={(e) => setEditGameId(e.target.value)}
+                  required
+                  placeholder="e.g. ASAA-123-456-789"
+                  className="w-full py-2.5 px-3.5 rounded-xl bg-muted/50 border border-border text-foreground font-mono text-sm focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1.5">
+                  Device Model *
+                </label>
+                <input
+                  type="text"
+                  value={editDeviceModel}
+                  onChange={(e) => setEditDeviceModel(e.target.value)}
+                  required
+                  placeholder="e.g. iPhone 15 Pro / Galaxy S24"
+                  className="w-full py-2.5 px-3.5 rounded-xl bg-muted/50 border border-border text-foreground text-sm focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingReg(null)}
+                  className="py-2.5 px-4 rounded-xl bg-muted text-muted-foreground hover:text-foreground text-xs font-bold transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="py-2.5 px-5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow hover:bg-primary/90 transition flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{savingEdit ? 'Saving...' : 'Save & Update Card'}</span>
                 </button>
               </div>
             </form>

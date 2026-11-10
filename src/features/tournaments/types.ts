@@ -62,6 +62,8 @@ export interface TournamentRegistration {
   reviewed_at?: string | null;
   reviewed_by?: string | null;
   created_at: string;
+  updated_at?: string | null;
+  last_update_type?: 'id' | 'device' | 'both' | null;
 }
 
 export interface TournamentGroup {
