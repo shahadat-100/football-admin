@@ -352,6 +352,43 @@ export function PublicTournaments() {
                 </div>
               )}
 
+              {/* Clean Play Deadline Banner */}
+              {matchdayMatches.length > 0 && matchdayMatches[0].play_deadline && (
+                <div className="flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-card border border-border shadow-sm text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
+                        Matchday {selectedMatchday} Play Deadline
+                      </span>
+                      <span className="text-sm font-black text-foreground">
+                        {new Date(matchdayMatches[0].play_deadline).toLocaleDateString('en-GB', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric'
+                        })} • {new Date(matchdayMatches[0].play_deadline).toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                  {new Date(matchdayMatches[0].play_deadline) < new Date() ? (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                      Deadline Passed
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      Ongoing
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 {matchdayMatches.map((m) => {
                   const isFinished = m.status === 'completed';
@@ -363,7 +400,7 @@ export function PublicTournaments() {
                         <span className="font-bold text-primary">Matchday {m.matchday}</span>
                         <span className="flex items-center gap-1 text-[11px]">
                           <Clock className="w-3 h-3 text-muted-foreground/60" />
-                          Play by: {new Date(m.play_deadline).toLocaleDateString()}
+                          Play by: {new Date(m.play_deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} • {new Date(m.play_deadline).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                         </span>
                       </div>
 
