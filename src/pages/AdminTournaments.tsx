@@ -6,7 +6,7 @@ import { TournamentKnockoutBracket } from '@/features/tournaments/components/Tou
 import { 
   Trophy, Plus, CheckCircle, XCircle, 
   ExternalLink, Play, ShieldAlert, Image as ImageIcon, Trash2, Edit3,
-  Clock, Lock, Shuffle, ArrowRight, Calendar, Zap, Save, X
+  Clock, Lock, Shuffle, ArrowRight, Calendar, Zap, Save, X, RotateCcw
 } from 'lucide-react';
 import { useFootballStore } from '@/store/footballStore';
 import { cn } from '@/shared/lib/cn';
@@ -410,10 +410,27 @@ export function AdminTournaments() {
       return;
     }
 
-    const confirmGen = window.confirm(
-      `Generate equal groups for ${approved.length} approved participants? (Any missing slots will be filled with BYE walkover bots)`
-    );
-    if (!confirmGen) return;
+    // Safety check: If groups already exist, show strict warning and require typed confirmation
+    const alreadyHasGroups = groups.length > 0 || matches.some(m => m.stage === 'group');
+    if (alreadyHasGroups) {
+      const confirmReset = window.confirm(
+        `⚠️ কঠোর সতর্কতা (CRITICAL WARNING):\n\nএই টুর্নামেন্টে ইতিমধ্যে ${groups.length}টি গ্রুপ এবং ফিক্সচার তৈরি করা আছে!\n\nআপনি কি নিশ্চিত যে আগের সব গ্রুপ, ম্যাচ এবং ফলাফল সম্পূর্ণ মুছে ফেলে নতুন করে ড্র করবেন?\n\n(This will permanently wipe all existing group matches and results!)`
+      );
+      if (!confirmReset) return;
+
+      const secondConfirm = window.prompt(
+        'সত্যিই আগের সব গ্রুপ ও ম্যাচ মুছে নতুন ড্র করতে টাইপ করুন: RESET'
+      );
+      if (secondConfirm?.trim().toUpperCase() !== 'RESET') {
+        alert('অ্যাকশন বাতিল করা হয়েছে। কোনো ডাটা পরিবর্তন করা হয়নি।');
+        return;
+      }
+    } else {
+      const confirmGen = window.confirm(
+        `Generate equal groups for ${approved.length} approved participants? (Any missing slots will be filled with BYE walkover bots)`
+      );
+      if (!confirmGen) return;
+    }
 
     try {
       setLoading(true);
@@ -934,15 +951,35 @@ export function AdminTournaments() {
             </div>
 
             <div className="flex items-center gap-2">
-              {selectedTournament.status === 'registration_open' && (
-                <button
-                  onClick={handleGenerateGroups}
-                  disabled={loading}
-                  className="flex items-center gap-2 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow transition active:scale-95 disabled:opacity-50"
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  Trigger Auto Group Draw ({approvedCount} Players)
-                </button>
+              {groups.length === 0 ? (
+                selectedTournament.status === 'registration_open' && (
+                  <button
+                    onClick={handleGenerateGroups}
+                    disabled={loading}
+                    className="flex items-center gap-2 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow transition active:scale-95 disabled:opacity-50"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    Trigger Auto Group Draw ({approvedCount} Players)
+                  </button>
+                )
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] font-bold text-emerald-600">
+                    <Lock className="w-3.5 h-3.5" />
+                    Groups Generated ({groups.length} Groups • Locked)
+                  </span>
+                  {selectedTournament.status === 'registration_open' && (
+                    <button
+                      onClick={handleGenerateGroups}
+                      disabled={loading}
+                      title="Wipe existing groups and draw new ones"
+                      className="flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white font-bold text-[11px] border border-rose-500/30 transition active:scale-95"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Reset & Re-Draw
+                    </button>
+                  )}
+                </div>
               )}
 
               <button
