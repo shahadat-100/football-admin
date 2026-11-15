@@ -982,7 +982,7 @@ export function AdminTournaments() {
                     <Lock className="w-3.5 h-3.5" />
                     Groups Generated ({groups.length} Groups • Locked)
                   </span>
-                  {selectedTournament.status === 'registration_open' && (
+                  {selectedTournament.status !== 'knockout_stage' && selectedTournament.status !== 'completed' && (
                     <button
                       onClick={handleGenerateGroups}
                       disabled={loading}
@@ -990,7 +990,7 @@ export function AdminTournaments() {
                       className="flex items-center gap-1.5 py-1.5 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500 text-rose-600 hover:text-white font-bold text-[11px] border border-rose-500/30 transition active:scale-95"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
-                      Reset & Re-Draw
+                      Reset & Re-Draw Groups
                     </button>
                   )}
                 </div>
