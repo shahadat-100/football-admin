@@ -643,7 +643,7 @@ export function AdminTournaments() {
 
   // ─── KNOCKOUT CONTROLLER & DEADLINE LOGIC ───
 
-  // Calculate qualified players from groups (Top 2 per group)
+  // Calculate qualified players from groups (Top 4 per group if 4 groups for Round of 16, else Top 2)
   const getQualifiedGroupPlayers = () => {
     // If group matches are not fully played, NO ONE is qualified yet!
     const groupMatches = matches.filter(m => m.stage === 'group');
@@ -654,13 +654,14 @@ export function AdminTournaments() {
       return [];
     }
 
+    const qualifyCount = groups.length === 4 ? 4 : 2;
     const qualified: { participant: TournamentParticipant; groupName: string; rank: number }[] = [];
     for (const group of groups) {
       const groupParts = participants.filter(p => p.group_id === group.id);
       const groupM = matches.filter(m => m.group_id === group.id);
       const standings = calculateGroupStandings(groupParts, groupM);
-      const top2 = standings.slice(0, 2);
-      for (const row of top2) {
+      const topQualifiers = standings.slice(0, qualifyCount);
+      for (const row of topQualifiers) {
         const part = participants.find(p => p.id === row.participant_id);
         if (part && !part.is_dummy && part.player_id) {
           qualified.push({

@@ -478,7 +478,9 @@ export function PublicTournaments() {
                       <h3 className="text-base font-black text-foreground uppercase tracking-wider">
                         {group.name}
                       </h3>
-                      <span className="text-xs text-muted-foreground font-semibold">Top 2 Qualify</span>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        Top {groups.length === 4 ? 4 : 2} Qualify
+                      </span>
                     </div>
 
                     <table className="w-full text-left text-xs">
@@ -495,9 +497,17 @@ export function PublicTournaments() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/40 font-medium">
-                        {standings.map((row) => (
-                          <tr key={row.participant_id} className="hover:bg-muted/40 transition">
-                            <td className="py-2.5 font-bold text-muted-foreground">{row.rank}</td>
+                        {standings.map((row) => {
+                          const isQualifying = row.rank <= (groups.length === 4 ? 4 : 2);
+                          return (
+                          <tr key={row.participant_id} className={`hover:bg-muted/40 transition ${isQualifying ? 'bg-emerald-500/[0.03]' : ''}`}>
+                            <td className="py-2.5 font-bold">
+                              <span className={`inline-flex items-center justify-center w-5 h-5 rounded-md text-[11px] font-black ${
+                                isQualifying ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'text-muted-foreground'
+                              }`}>
+                                {row.rank}
+                              </span>
+                            </td>
                             <td className="py-2.5 font-bold text-foreground flex items-center gap-2">
                               {row.avatar_url && (
                                 <img src={row.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover" />
@@ -515,7 +525,8 @@ export function PublicTournaments() {
                               {row.points}
                             </td>
                           </tr>
-                        ))}
+                        );
+                      })}
                       </tbody>
                     </table>
                   </div>
