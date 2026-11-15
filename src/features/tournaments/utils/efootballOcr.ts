@@ -255,7 +255,7 @@ export async function runEFootballOcr(
   const processedDataUrl = await preprocessImage(imageSource);
 
   const { data } = await Tesseract.recognize(processedDataUrl, 'eng', {
-    logger: (m) => {
+    logger: (m: any) => {
       if (m.status === 'recognizing text' && onProgress) {
         onProgress(Math.round(m.progress * 100));
       }

@@ -132,6 +132,12 @@ export function AdminTournaments() {
         }
       }
 
+      const participantPlayerMap = new Map<string, any>();
+      (partRes.data || []).forEach((part: any) => {
+        const found = currentPlayers.find(p => p.id === part.player_id);
+        if (found) participantPlayerMap.set(part.id, found);
+      });
+
       const mappedRegs = (regRes.data || []).map(r => ({
         ...r,
         player: currentPlayers.find(p => p.id === r.player_id)
@@ -139,8 +145,8 @@ export function AdminTournaments() {
 
       const mappedMatches = (matchRes.data || []).map(m => ({
         ...m,
-        player1: currentPlayers.find(p => p.id === m.player1_id),
-        player2: currentPlayers.find(p => p.id === m.player2_id)
+        player1: currentPlayers.find(p => p.id === m.player1_id) || participantPlayerMap.get(m.player1_id),
+        player2: currentPlayers.find(p => p.id === m.player2_id) || participantPlayerMap.get(m.player2_id)
       }));
 
       const mappedParticipants = (partRes.data || []).map(p => ({
@@ -439,6 +445,11 @@ export function AdminTournaments() {
         };
       });
 
+      // Clean up previous groups, participants, and matches for this tournament to prevent duplicates
+      await supabase.from('tournament_matches').delete().eq('tournament_id', selectedTournament.id);
+      await supabase.from('tournament_participants').delete().eq('tournament_id', selectedTournament.id);
+      await supabase.from('tournament_groups').delete().eq('tournament_id', selectedTournament.id);
+
       for (const g of groups) {
         const { data: groupData, error: gErr } = await supabase
           .from('tournament_groups')
@@ -454,7 +465,8 @@ export function AdminTournaments() {
         const participantIdMap: { id: string; is_dummy?: boolean }[] = [];
         for (const p of g.participants) {
           const isDummy = Boolean((p as any).is_dummy);
-          const { data: pData, error: pErr } = await supabase
+          const pPlayerId = isDummy ? (p.id || `dummy_${Math.random().toString(36).substring(7)}`) : p.id;
+          const { error: pErr } = await supabase
             .from('tournament_participants')
             .insert({
               tournament_id: selectedTournament.id,
@@ -469,7 +481,8 @@ export function AdminTournaments() {
             .single();
 
           if (pErr) throw pErr;
-          participantIdMap.push({ id: pData.id, is_dummy: isDummy });
+          // Use the player ID (or dummy id) so matches link directly to the player
+          participantIdMap.push({ id: pPlayerId, is_dummy: isDummy });
         }
 
         const fixtures = generateGroupFixtures(participantIdMap, deadlinesByMatchday);

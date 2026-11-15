@@ -238,7 +238,7 @@ export function calculateGroupStandings(
   const statsMap = new Map<string, GroupStandingRow>();
 
   for (const p of participants) {
-    statsMap.set(p.id, {
+    const row: GroupStandingRow = {
       participant_id: p.id,
       player_id: p.player_id,
       player_name: p.player?.name || (p.is_dummy ? 'BYE / Walkover' : 'Player'),
@@ -256,7 +256,11 @@ export function calculateGroupStandings(
       points: 0,
       rank: 1,
       is_qualified: false
-    });
+    };
+    statsMap.set(p.id, row);
+    if (p.player_id) {
+      statsMap.set(p.player_id, row);
+    }
   }
 
   for (const m of matches) {
