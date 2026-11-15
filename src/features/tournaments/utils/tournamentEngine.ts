@@ -270,6 +270,11 @@ export function calculateGroupStandings(
   for (const m of matches) {
     if (m.status !== 'completed') continue;
 
+    // Ignore any dummy / bye_slot matches completely so rest days never award fake points or played counts
+    if (m.player1_is_dummy || m.player2_is_dummy || m.player1_id?.startsWith('bye_slot') || m.player2_id?.startsWith('bye_slot')) {
+      continue;
+    }
+
     const p1Stats = m.player1_id ? statsMap.get(m.player1_id) : undefined;
     const p2Stats = m.player2_id ? statsMap.get(m.player2_id) : undefined;
 
