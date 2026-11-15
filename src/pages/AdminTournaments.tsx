@@ -1883,14 +1883,20 @@ export function AdminTournaments() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1">Days Per Matchday</label>
+                  <label className="block text-xs font-bold text-muted-foreground mb-1">
+                    Matchday Game Deadline (Days)
+                  </label>
                   <input
                     type="number"
+                    min="1"
+                    max="14"
                     value={intervalDays}
                     onChange={(e) => setIntervalDays(Number(e.target.value))}
-                    className="w-full py-2 px-3 rounded-xl bg-background border border-border text-sm"
+                    className="w-full py-2 px-3 rounded-xl bg-background border border-border text-sm font-bold"
                   />
-                  <span className="text-[10px] text-muted-foreground">Default: 2 days</span>
+                  <span className="text-[10px] text-muted-foreground block mt-0.5">
+                    Game deadline for each matchday (e.g. 3 days to play)
+                  </span>
                 </div>
               </div>
 
@@ -2020,7 +2026,9 @@ export function AdminTournaments() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1">Days Per Matchday</label>
+                  <label className="block text-xs font-bold text-muted-foreground mb-1">
+                    Matchday Game Deadline (Days)
+                  </label>
                   <input
                     type="number"
                     min="1"
@@ -2029,25 +2037,10 @@ export function AdminTournaments() {
                     onChange={(e) => setEditIntervalDays(Number(e.target.value))}
                     className="w-full py-2 px-3 rounded-xl bg-background border border-border text-sm font-bold"
                   />
-                  <span className="text-[10px] text-muted-foreground block mt-0.5">Interval between matchdays</span>
+                  <span className="text-[10px] text-muted-foreground block mt-0.5">
+                    Game deadline for each matchday (e.g. 3 days to play)
+                  </span>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">
-                  Submission Grace Period (Hours)
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="72"
-                  value={editGraceHours}
-                  onChange={(e) => setEditGraceHours(Number(e.target.value))}
-                  className="w-full py-2 px-3 rounded-xl bg-background border border-border text-sm font-semibold"
-                />
-                <span className="text-[10px] text-muted-foreground block mt-0.5">
-                  Extra hours allowed after match deadline for screenshot submission (Default: 24h)
-                </span>
               </div>
 
               <div>

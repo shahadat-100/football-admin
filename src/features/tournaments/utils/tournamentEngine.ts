@@ -39,12 +39,12 @@ export function calculateTournamentTimeline(params: {
     submissionDeadline: Date;
   }[] = [];
 
-  let currentPlayCursor = new Date(registrationDeadline.getTime() + 24 * 60 * 60 * 1000); // 1 day after reg close
+  let currentPlayCursor = new Date(registrationDeadline.getTime());
 
-  // 1. Group Stage Matchdays
+  // 1. Group Stage Matchdays (Each matchday has exactly ONE deadline, no extra gap days)
   for (let md = 1; md <= groupMatchdaysCount; md++) {
     const playDeadline = new Date(currentPlayCursor.getTime() + intervalDays * 24 * 60 * 60 * 1000);
-    const submissionDeadline = new Date(playDeadline.getTime() + graceHours * 60 * 60 * 1000);
+    const submissionDeadline = playDeadline; // Single official deadline for the match
 
     timeline.push({
       stage: 'group',
@@ -54,8 +54,8 @@ export function calculateTournamentTimeline(params: {
       submissionDeadline
     });
 
-    // Advance cursor to after submission deadline + small rest
-    currentPlayCursor = new Date(submissionDeadline.getTime());
+    // Next matchday starts immediately after this matchday deadline ends (no gap days)
+    currentPlayCursor = new Date(playDeadline.getTime());
   }
 
   // 2. Tie Breakers Day buffer (if needed)
