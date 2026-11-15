@@ -39,7 +39,13 @@ export function calculateTournamentTimeline(params: {
     submissionDeadline: Date;
   }[] = [];
 
-  let currentPlayCursor = new Date(registrationDeadline.getTime());
+  // If registration was in the past, start matchdays from today (when draw is made).
+  // Otherwise start when registration deadline closes.
+  const startTimestamp = Math.max(
+    registrationDeadline ? new Date(registrationDeadline).getTime() : 0,
+    params.startDate ? new Date(params.startDate).getTime() : Date.now()
+  );
+  let currentPlayCursor = new Date(startTimestamp);
 
   // 1. Group Stage Matchdays (Each matchday has exactly ONE deadline, no extra gap days)
   for (let md = 1; md <= groupMatchdaysCount; md++) {
