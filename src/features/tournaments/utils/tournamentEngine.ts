@@ -198,18 +198,22 @@ export function generateGroupFixtures(
 
       const p1Dummy = Boolean(p1.is_dummy);
       const p2Dummy = Boolean(p2.is_dummy);
-      const isAutoWin = p1Dummy || p2Dummy;
-      const autoWinPlayerId = p1Dummy ? p2.id : p2Dummy ? p1.id : undefined;
+
+      // If one player is a dummy BYE slot, the real player simply has an off/rest day this matchday.
+      // Do NOT create a fake completed fixture or award 3 free points before anyone plays!
+      if (p1Dummy || p2Dummy) {
+        continue;
+      }
 
       fixtures.push({
         matchday: md,
         player1_id: p1.id,
         player2_id: p2.id,
-        player1_is_dummy: p1Dummy,
-        player2_is_dummy: p2Dummy,
-        is_auto_win: isAutoWin,
-        auto_win_player_id: autoWinPlayerId,
-        status: isAutoWin ? 'completed' : 'scheduled',
+        player1_is_dummy: false,
+        player2_is_dummy: false,
+        is_auto_win: false,
+        auto_win_player_id: undefined,
+        status: 'scheduled',
         play_deadline: deadlines.playDeadline,
         submission_deadline: deadlines.submissionDeadline
       });
