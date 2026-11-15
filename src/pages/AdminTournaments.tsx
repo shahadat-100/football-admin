@@ -6,7 +6,7 @@ import { TournamentKnockoutBracket } from '@/features/tournaments/components/Tou
 import { 
   Trophy, Plus, CheckCircle, XCircle, 
   ExternalLink, Play, ShieldAlert, Image as ImageIcon, Trash2, Edit3,
-  Clock, Lock, Shuffle, ArrowRight, Calendar, Zap, Save, X, RotateCcw
+  Clock, Lock, Shuffle, ArrowRight, Calendar, Zap, Save, X, RotateCcw, Loader2
 } from 'lucide-react';
 import { useFootballStore } from '@/store/footballStore';
 import { cn } from '@/shared/lib/cn';
@@ -65,6 +65,8 @@ export function AdminTournaments() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [resetInput, setResetInput] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'registrations' | 'disputes' | 'matches'>('registrations');
 
   // Manual Score Resolution State
@@ -414,6 +416,7 @@ export function AdminTournaments() {
 
     try {
       setLoading(true);
+      setIsResetting(true);
       const mapped = approved.map(r => ({
         id: r.player_id,
         name: r.player?.name || 'Player',
@@ -507,13 +510,17 @@ export function AdminTournaments() {
         .update({ status: 'group_stage' })
         .eq('id', selectedTournament.id);
 
-      alert('Groups and 5-Matchday Round Robin schedule generated successfully!');
+      setIsResetModalOpen(false);
+      setResetInput('');
+      setSuccessMessage('✅ গ্রুপ ড্র এবং ৫-ম্যাচডে রাউন্ড রবিন সফলভাবে তৈরি হয়েছে!');
+      setTimeout(() => setSuccessMessage(null), 4000);
       fetchTournaments();
     } catch (err) {
       console.error('Failed to generate groups:', err);
       alert('Failed to generate groups');
     } finally {
       setLoading(false);
+      setIsResetting(false);
     }
   };
 
@@ -1713,7 +1720,17 @@ export function AdminTournaments() {
       {/* Reset & Re-Draw Confirmation Modal */}
       {isResetModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-card border border-red-500/30 rounded-2xl shadow-2xl p-6 space-y-5">
+          <div className="w-full max-w-md bg-card border border-red-500/30 rounded-2xl shadow-2xl p-6 space-y-5 relative overflow-hidden">
+            
+            {/* Loader Overlay */}
+            {isResetting && (
+              <div className="absolute inset-0 z-10 bg-card/90 backdrop-blur-sm flex flex-col items-center justify-center gap-3 rounded-2xl">
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                <p className="text-sm font-bold text-foreground">রিসেট হচ্ছে ও নতুন ড্র তৈরি হচ্ছে...</p>
+                <p className="text-xs text-muted-foreground">অনুগ্রহ করে অপেক্ষা করুন</p>
+              </div>
+            )}
+
             {/* Warning Header */}
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0">
@@ -1750,6 +1767,7 @@ export function AdminTournaments() {
                 placeholder="RESET"
                 className="w-full py-2.5 px-4 rounded-xl bg-background border border-red-500/30 text-sm font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-red-500/50 placeholder:text-muted-foreground/30"
                 autoFocus
+                disabled={isResetting}
               />
             </div>
 
@@ -1758,18 +1776,17 @@ export function AdminTournaments() {
               <button
                 onClick={() => { setIsResetModalOpen(false); setResetInput(''); }}
                 className="flex-1 py-2.5 px-4 rounded-xl border border-border text-sm font-bold text-muted-foreground hover:bg-muted/50 transition-colors"
+                disabled={isResetting}
               >
                 বাতিল করুন
               </button>
               <button
                 onClick={() => {
-                  setIsResetModalOpen(false);
-                  setResetInput('');
                   executeGenerateGroups();
                 }}
-                disabled={resetInput.trim().toUpperCase() !== 'RESET'}
+                disabled={resetInput.trim().toUpperCase() !== 'RESET' || isResetting}
                 className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-black transition-all ${
-                  resetInput.trim().toUpperCase() === 'RESET'
+                  resetInput.trim().toUpperCase() === 'RESET' && !isResetting
                     ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/25'
                     : 'bg-red-600/20 text-red-400/40 cursor-not-allowed'
                 }`}
@@ -1777,6 +1794,27 @@ export function AdminTournaments() {
                 রিসেট ও রি-ড্র করুন
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Toast Popup */}
+      {successMessage && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] animate-in slide-in-from-top-5 fade-in duration-300">
+          <div className="flex items-center gap-3 bg-emerald-950/90 border border-emerald-500/30 rounded-2xl shadow-2xl shadow-emerald-500/10 px-6 py-4 backdrop-blur-sm">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <CheckCircle className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-emerald-300">{successMessage}</p>
+              <p className="text-xs text-emerald-400/60 mt-0.5">পৃষ্ঠা রিফ্রেশ হচ্ছে...</p>
+            </div>
+            <button 
+              onClick={() => setSuccessMessage(null)} 
+              className="ml-2 text-emerald-400/40 hover:text-emerald-300 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}

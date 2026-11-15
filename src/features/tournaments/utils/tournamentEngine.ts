@@ -329,8 +329,14 @@ export function calculateGroupStandings(
     }
   }
 
-  // Filter out dummy bots from ranking
-  const rows = Array.from(statsMap.values()).filter(r => !r.is_dummy);
+  // Filter out dummy bots and deduplicate (same row is stored under both participant_id & player_id keys)
+  const seen = new Set<string>();
+  const rows = Array.from(statsMap.values()).filter(r => {
+    if (r.is_dummy) return false;
+    if (seen.has(r.participant_id)) return false;
+    seen.add(r.participant_id);
+    return true;
+  });
 
   // Sort strictly by Points -> GD -> GF -> Least GA
   rows.sort((a, b) => {
