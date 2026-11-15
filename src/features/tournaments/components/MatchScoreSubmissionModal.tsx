@@ -276,14 +276,23 @@ export const MatchScoreSubmissionModal: React.FC<MatchScoreSubmissionModalProps>
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-lg bg-[#001738] border border-[#c89850]/30 rounded-3xl shadow-2xl p-6 sm:p-8 text-white my-8">
-        <button
-          onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition"
-        >
-          <X className="w-5 h-5" />
-        </button>
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm overflow-y-auto">
+      <div className="min-h-full flex items-start sm:items-center justify-center p-0 sm:p-4">
+        <div className="relative w-full max-w-lg bg-[#001738] sm:border border-[#c89850]/30 sm:rounded-3xl shadow-2xl text-white min-h-screen sm:min-h-0 sm:my-8">
+          {/* Sticky Close Bar — Always visible on mobile */}
+          <div className="sticky top-0 z-20 flex items-center justify-between px-4 sm:px-6 py-3 bg-[#001738]/95 backdrop-blur-sm border-b border-white/5 sm:border-0 sm:bg-transparent sm:absolute sm:top-0 sm:right-0 sm:left-auto sm:p-5 sm:border-b-0">
+            <span className="text-xs font-bold text-[#c89850] uppercase tracking-wider font-mono sm:hidden">
+              Match Submission
+            </span>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="p-5 sm:p-8 pt-2 sm:pt-6">
 
         {success ? (
           <div className="text-center py-8">
@@ -767,6 +776,8 @@ export const MatchScoreSubmissionModal: React.FC<MatchScoreSubmissionModalProps>
             )}
           </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
   );
