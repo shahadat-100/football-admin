@@ -63,6 +63,8 @@ export function AdminTournaments() {
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [resetInput, setResetInput] = useState('');
   const [activeTab, setActiveTab] = useState<'registrations' | 'disputes' | 'matches'>('registrations');
 
   // Manual Score Resolution State
@@ -401,35 +403,13 @@ export function AdminTournaments() {
     }
   };
 
-  // Generate Equal Groups & Round-Robin Fixtures
-  const handleGenerateGroups = async () => {
+  // Execute Group Draw & Round-Robin Fixtures
+  const executeGenerateGroups = async () => {
     if (!selectedTournament) return;
     const approved = registrations.filter(r => r.status === 'approved');
     if (approved.length < 2) {
       alert('Need at least 2 approved participants to generate groups.');
       return;
-    }
-
-    // Safety check: If groups already exist, show strict warning and require typed confirmation
-    const alreadyHasGroups = groups.length > 0 || matches.some(m => m.stage === 'group');
-    if (alreadyHasGroups) {
-      const confirmReset = window.confirm(
-        `⚠️ কঠোর সতর্কতা (CRITICAL WARNING):\n\nএই টুর্নামেন্টে ইতিমধ্যে ${groups.length}টি গ্রুপ এবং ফিক্সচার তৈরি করা আছে!\n\nআপনি কি নিশ্চিত যে আগের সব গ্রুপ, ম্যাচ এবং ফলাফল সম্পূর্ণ মুছে ফেলে নতুন করে ড্র করবেন?\n\n(This will permanently wipe all existing group matches and results!)`
-      );
-      if (!confirmReset) return;
-
-      const secondConfirm = window.prompt(
-        'সত্যিই আগের সব গ্রুপ ও ম্যাচ মুছে নতুন ড্র করতে টাইপ করুন: RESET'
-      );
-      if (secondConfirm?.trim().toUpperCase() !== 'RESET') {
-        alert('অ্যাকশন বাতিল করা হয়েছে। কোনো ডাটা পরিবর্তন করা হয়নি।');
-        return;
-      }
-    } else {
-      const confirmGen = window.confirm(
-        `Generate equal groups for ${approved.length} approved participants? (Any missing slots will be filled with BYE walkover bots)`
-      );
-      if (!confirmGen) return;
     }
 
     try {
@@ -534,6 +514,17 @@ export function AdminTournaments() {
       alert('Failed to generate groups');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Trigger Group Draw (Opens beautiful in-app modal if groups already exist)
+  const handleGenerateGroups = () => {
+    const alreadyHasGroups = groups.length > 0 || matches.some(m => m.stage === 'group');
+    if (alreadyHasGroups) {
+      setResetInput('');
+      setIsResetModalOpen(true);
+    } else {
+      executeGenerateGroups();
     }
   };
 
@@ -1716,6 +1707,77 @@ export function AdminTournaments() {
       ) : (
         <div className="bg-card border border-border p-12 text-center rounded-2xl text-muted-foreground">
           No tournament selected. Create a new tournament to start!
+        </div>
+      )}
+
+      {/* Reset & Re-Draw Confirmation Modal */}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-card border border-red-500/30 rounded-2xl shadow-2xl p-6 space-y-5">
+            {/* Warning Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-red-400">রিসেট ও পুনরায় ড্র</h3>
+                <p className="text-xs text-muted-foreground">এই অ্যাকশন পূর্বাবস্থায় ফেরানো যাবে না</p>
+              </div>
+            </div>
+
+            {/* Warning Body */}
+            <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 space-y-2">
+              <p className="text-sm text-red-300 font-semibold">নিচের সবকিছু সম্পূর্ণ মুছে যাবে:</p>
+              <ul className="text-xs text-red-300/80 space-y-1 ml-4 list-disc">
+                <li>সকল গ্রুপ বিভাজন</li>
+                <li>সকল ম্যাচ ফিক্সচার ও স্কোর</li>
+                <li>সকল ম্যাচ-ডে রেকর্ড</li>
+              </ul>
+              <p className="text-xs text-red-300/80 mt-2">
+                এরপর সম্পূর্ণ নতুন করে গ্রুপ ড্র হবে।
+              </p>
+            </div>
+
+            {/* Confirmation Input */}
+            <div>
+              <label className="block text-xs font-bold text-muted-foreground mb-2">
+                নিশ্চিত করতে নিচে <span className="text-red-400 font-black">RESET</span> লিখুন:
+              </label>
+              <input
+                type="text"
+                value={resetInput}
+                onChange={(e) => setResetInput(e.target.value)}
+                placeholder="RESET"
+                className="w-full py-2.5 px-4 rounded-xl bg-background border border-red-500/30 text-sm font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-red-500/50 placeholder:text-muted-foreground/30"
+                autoFocus
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setIsResetModalOpen(false); setResetInput(''); }}
+                className="flex-1 py-2.5 px-4 rounded-xl border border-border text-sm font-bold text-muted-foreground hover:bg-muted/50 transition-colors"
+              >
+                বাতিল করুন
+              </button>
+              <button
+                onClick={() => {
+                  setIsResetModalOpen(false);
+                  setResetInput('');
+                  executeGenerateGroups();
+                }}
+                disabled={resetInput.trim().toUpperCase() !== 'RESET'}
+                className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-black transition-all ${
+                  resetInput.trim().toUpperCase() === 'RESET'
+                    ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/25'
+                    : 'bg-red-600/20 text-red-400/40 cursor-not-allowed'
+                }`}
+              >
+                রিসেট ও রি-ড্র করুন
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
