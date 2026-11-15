@@ -13,6 +13,39 @@ import {
 } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 
+function useCountdown(targetDateStr?: string | null) {
+  const [timeLeft, setTimeLeft] = useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+    isExpired: boolean;
+  }>({ days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: false });
+
+  useEffect(() => {
+    if (!targetDateStr) return;
+
+    const calc = () => {
+      const diff = new Date(targetDateStr).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, isExpired: true });
+        return;
+      }
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+      setTimeLeft({ days, hours, minutes, seconds, isExpired: false });
+    };
+
+    calc();
+    const timer = setInterval(calc, 1000);
+    return () => clearInterval(timer);
+  }, [targetDateStr]);
+
+  return timeLeft;
+}
+
 export function PublicTournaments() {
   const storePlayers = useFootballStore((state) => state.players) || [];
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -92,6 +125,8 @@ export function PublicTournaments() {
 
   const matchdayMatches = matches.filter(m => m.stage === 'group' && m.matchday === selectedMatchday);
   const availableMatchdays = Array.from(new Set(matches.filter(m => m.stage === 'group').map(m => m.matchday))).sort((a, b) => a - b);
+  const currentMatchdayDeadline = matchdayMatches.length > 0 ? matchdayMatches[0].play_deadline : null;
+  const countdown = useCountdown(currentMatchdayDeadline);
 
   const getStageIndex = (status?: string) => {
     switch (status) {
@@ -352,40 +387,97 @@ export function PublicTournaments() {
                 </div>
               )}
 
-              {/* Clean Play Deadline Banner */}
-              {matchdayMatches.length > 0 && matchdayMatches[0].play_deadline && (
-                <div className="flex items-center justify-between p-3.5 sm:p-4 rounded-2xl bg-card border border-border shadow-sm text-xs">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-                      <Clock className="w-4 h-4" />
+              {/* Bold Play Deadline & Live Countdown Banner */}
+              {currentMatchdayDeadline && (
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-card via-card to-card border-2 border-[#c89850]/40 p-4 sm:p-5 shadow-xl shadow-black/20">
+                  {/* Subtle Background Glow */}
+                  <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-[#c89850]/10 rounded-full blur-3xl pointer-events-none" />
+
+                  <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    {/* LEFT SIDE: Deadline Countdown Counter */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-[#c89850]/20 text-[#c89850] border border-[#c89850]/40 shadow-sm">
+                          Matchday {selectedMatchday} Deadline
+                        </span>
+                        {countdown.isExpired ? (
+                          <span className="flex items-center gap-1 text-[11px] font-black text-rose-500 uppercase tracking-wide">
+                            <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                            Deadline Passed
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            Time Remaining:
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Big Bold Digital Counter */}
+                      {countdown.isExpired ? (
+                        <div className="text-lg sm:text-xl font-black text-rose-400 tracking-tight flex items-center gap-2">
+                          <span>⏰ Matchplay Window Closed</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 sm:gap-2 font-mono">
+                          <div className="flex flex-col items-center justify-center min-w-[48px] sm:min-w-[56px] py-1.5 px-2 rounded-xl bg-background/90 border border-[#c89850]/40 shadow-inner">
+                            <span className="text-lg sm:text-2xl font-black text-[#c89850] leading-none">
+                              {String(countdown.days).padStart(2, '0')}
+                            </span>
+                            <span className="text-[9px] uppercase font-bold text-muted-foreground mt-0.5">Days</span>
+                          </div>
+                          <span className="text-[#c89850] font-black text-lg sm:text-xl">:</span>
+                          <div className="flex flex-col items-center justify-center min-w-[48px] sm:min-w-[56px] py-1.5 px-2 rounded-xl bg-background/90 border border-[#c89850]/40 shadow-inner">
+                            <span className="text-lg sm:text-2xl font-black text-[#c89850] leading-none">
+                              {String(countdown.hours).padStart(2, '0')}
+                            </span>
+                            <span className="text-[9px] uppercase font-bold text-muted-foreground mt-0.5">Hours</span>
+                          </div>
+                          <span className="text-[#c89850] font-black text-lg sm:text-xl">:</span>
+                          <div className="flex flex-col items-center justify-center min-w-[48px] sm:min-w-[56px] py-1.5 px-2 rounded-xl bg-background/90 border border-[#c89850]/40 shadow-inner">
+                            <span className="text-lg sm:text-2xl font-black text-[#c89850] leading-none">
+                              {String(countdown.minutes).padStart(2, '0')}
+                            </span>
+                            <span className="text-[9px] uppercase font-bold text-muted-foreground mt-0.5">Mins</span>
+                          </div>
+                          <span className="text-[#c89850] font-black text-lg sm:text-xl">:</span>
+                          <div className="flex flex-col items-center justify-center min-w-[48px] sm:min-w-[56px] py-1.5 px-2 rounded-xl bg-background/90 border border-[#c89850]/40 shadow-inner">
+                            <span className="text-lg sm:text-2xl font-black text-[#c89850] leading-none">
+                              {String(countdown.seconds).padStart(2, '0')}
+                            </span>
+                            <span className="text-[9px] uppercase font-bold text-muted-foreground mt-0.5">Secs</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
-                        Matchday {selectedMatchday} Play Deadline
-                      </span>
-                      <span className="text-sm font-black text-foreground">
-                        {new Date(matchdayMatches[0].play_deadline).toLocaleDateString('en-GB', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric'
-                        })} • {new Date(matchdayMatches[0].play_deadline).toLocaleTimeString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true
-                        })}
-                      </span>
+
+                    {/* RIGHT SIDE: Bold High-Contrast Deadline Date Badge */}
+                    <div className="flex items-center gap-3 self-start md:self-auto bg-[#c89850]/10 border-2 border-[#c89850]/40 rounded-2xl p-3 sm:p-4 shadow-sm">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#c89850] text-[#00265a] flex items-center justify-center font-black shadow-md flex-shrink-0">
+                        <Calendar className="w-5 h-5 sm:w-6 sm:h-6" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase font-black text-[#c89850] tracking-wider block">
+                          Play Deadline Date & Time
+                        </span>
+                        <span className="text-sm sm:text-base font-black text-foreground block">
+                          {new Date(currentMatchdayDeadline).toLocaleDateString('en-GB', {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </span>
+                        <span className="text-xs sm:text-sm font-black text-[#c89850] block mt-0.5 font-mono">
+                          ⏰ {new Date(currentMatchdayDeadline).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                          })}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  {new Date(matchdayMatches[0].play_deadline) < new Date() ? (
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                      Deadline Passed
-                    </span>
-                  ) : (
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      Ongoing
-                    </span>
-                  )}
                 </div>
               )}
 
