@@ -647,6 +647,15 @@ export function AdminTournaments() {
 
   // Calculate qualified players from groups (Top 2 per group)
   const getQualifiedGroupPlayers = () => {
+    // If group matches are not fully played, NO ONE is qualified yet!
+    const groupMatches = matches.filter(m => m.stage === 'group');
+    if (groupMatches.length === 0) return [];
+    const completedGroupMatches = groupMatches.filter(m => m.status === 'completed');
+    if (completedGroupMatches.length < groupMatches.length) {
+      // Group stage is still ongoing!
+      return [];
+    }
+
     const qualified: { participant: TournamentParticipant; groupName: string; rank: number }[] = [];
     for (const group of groups) {
       const groupParts = participants.filter(p => p.group_id === group.id);
@@ -670,6 +679,11 @@ export function AdminTournaments() {
   // 1. Perform Random Draw for Knockouts (Stage 1: Dynamically supports R64 / R32 / R16 / QF / SF)
   const handlePerformKnockoutDraw = async (playDeadlineStr: string, graceHours: number) => {
     if (!selectedTournament) return;
+    const groupMatches = matches.filter(m => m.stage === 'group');
+    if (groupMatches.length > 0 && groupMatches.some(m => m.status !== 'completed')) {
+      alert('⚠️ গ্রুপ পর্বের সব ম্যাচ এখনও শেষ হয়নি! সব ম্যাচ সম্পন্ন হওয়ার পর শীর্ষ ২ জনকে নিয়ে নকআউট ড্র করা যাবে।');
+      return;
+    }
     const qualified = getQualifiedGroupPlayers();
     if (qualified.length < 2) {
       alert('Need at least 2 qualified players from groups to start knockouts.');
@@ -1380,38 +1394,72 @@ export function AdminTournaments() {
               {/* Dynamic Knockout Status Overview Cards (R64 / R32 / R16 / QF / SF / Final) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {knockoutMatches.length === 0 ? (
-                  <div className="p-5 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4 md:col-span-3 max-w-md">
-                    <div>
-                      <span className="text-xs font-black uppercase text-primary tracking-wider">Initial Knockout Draw</span>
-                      <h3 className="text-base font-black text-foreground mt-1">
-                        {getQualifiedGroupPlayers().length > 0 
-                          ? `${getQualifiedGroupPlayers().length} Qualified Contenders Ready` 
-                          : 'Knockout Stage'}
-                      </h3>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Fair random shuffle to seed contenders into the dynamic knockout bracket (R64 / R32 / R16 / QF / SF).
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        const d = new Date();
-                        d.setDate(d.getDate() + 2);
-                        setDeadlineModal({
-                          isOpen: true,
-                          stage: 'quarter_final',
-                          title: 'Start Knockout Stage: Random Draw',
-                          description: 'Qualifying contenders from each group will be fairly shuffled into bracket pairs.',
-                          playDeadline: formatForDateTimeLocal(d.toISOString()),
-                          graceHours: selectedTournament?.result_submission_grace_hours || 24,
-                          isInitialDraw: true
-                        });
-                      }}
-                      className="w-full py-2.5 px-4 rounded-xl bg-primary text-primary-foreground font-bold text-xs flex items-center justify-center gap-1.5 shadow hover:opacity-90 transition active:scale-95"
-                    >
-                      <Shuffle className="w-3.5 h-3.5" />
-                      Conduct Random Draw
-                    </button>
-                  </div>
+                  (() => {
+                    const groupMatches = matches.filter(m => m.stage === 'group');
+                    const totalGroupM = groupMatches.length;
+                    const completedGroupM = groupMatches.filter(m => m.status === 'completed').length;
+                    const isGroupStageDone = totalGroupM > 0 && completedGroupM === totalGroupM;
+                    const qualifiedList = getQualifiedGroupPlayers();
+
+                    return (
+                      <div className="p-5 rounded-2xl bg-card border border-border shadow-sm flex flex-col justify-between space-y-4 md:col-span-3 max-w-lg">
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-black uppercase text-primary tracking-wider">
+                              Knockout Stage Setup
+                            </span>
+                            {!isGroupStageDone && (
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/30 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                Group Stage In Progress ({completedGroupM}/{totalGroupM})
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 className="text-base font-black text-foreground mt-2">
+                            {isGroupStageDone
+                              ? `${qualifiedList.length} Qualified Contenders Ready`
+                              : 'Group Stage in Progress • Knockout Draw Locked'}
+                          </h3>
+
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                            {isGroupStageDone
+                              ? 'All group matches are completed! The top 2 contenders from each group are ready to be seeded into the knockout bracket.'
+                              : `গ্রুপ পর্বের সব ম্যাচ শেষ না হওয়া পর্যন্ত নকআউট ড্র করা যাবে না। বর্তমানে ${completedGroupM}/${totalGroupM} ম্যাচ সম্পন্ন হয়েছে।`}
+                          </p>
+                        </div>
+
+                        {isGroupStageDone ? (
+                          <button
+                            onClick={() => {
+                              const d = new Date();
+                              d.setDate(d.getDate() + 2);
+                              setDeadlineModal({
+                                isOpen: true,
+                                stage: 'quarter_final',
+                                title: 'Start Knockout Stage: Random Draw',
+                                description: 'Qualifying contenders from each group will be fairly shuffled into bracket pairs.',
+                                playDeadline: formatForDateTimeLocal(d.toISOString()),
+                                graceHours: selectedTournament?.result_submission_grace_hours || 24,
+                                isInitialDraw: true
+                              });
+                            }}
+                            className="w-full py-2.5 px-4 rounded-xl bg-primary text-primary-foreground font-bold text-xs flex items-center justify-center gap-1.5 shadow hover:opacity-90 transition active:scale-95"
+                          >
+                            <Shuffle className="w-3.5 h-3.5" />
+                            Conduct Random Draw ({qualifiedList.length} Qualifiers)
+                          </button>
+                        ) : (
+                          <div className="p-3.5 rounded-xl bg-amber-500/5 border border-amber-500/25 flex items-center gap-2.5 text-xs text-amber-700 dark:text-amber-400 font-semibold">
+                            <Lock className="w-4 h-4 flex-shrink-0" />
+                            <span>
+                              গ্রুপ পর্বের মোট {totalGroupM}টি ম্যাচের সবকটি শেষ হওয়ার পরই সেরা কোয়ালিফায়ারদের নিয়ে ড্র আনলক হবে।
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
                 ) : (
                   activeKnockoutConfigs.map((cfg, idx) => {
                     const roundMatches = knockoutMatches
