@@ -114,33 +114,29 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
       </div>
 
       <div className="grid gap-2">
-        <label className="text-[12px] font-medium text-gray-400">Profile Image</label>
-        <ImageUpload
-          value={watch('profileImageUrl')}
-          onChange={(val) => setValue('profileImageUrl', val || '')}
-          onRemove={() => setValue('profileImageUrl', '')}
-          maxWidth={800}
-          aspectRatio="1:1"
-        />
-      </div>
-
-      <div className="grid gap-1.5">
         <div className="flex items-center justify-between">
-          <label className="text-[12px] font-medium text-gray-400">Cover Image / Gallery Card</label>
-          <span className="text-[10.5px] font-mono font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
-            Best Ratio: 4:5 (1080 × 1350 px)
+          <label className="text-[12px] font-semibold text-gray-300">Player Image (Transparent Cutout)</label>
+          <span className="text-[10.5px] font-mono font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+            Recommended: Transparent PNG / WebP Cutout
           </span>
         </div>
         <p className="text-[11px] text-muted-foreground leading-tight">
-          Transparent PNG cutout recommended. Any image (Story/Landscape) will auto-fit safely without cutting the head.
+          Upload a transparent background cutout image of the player. It is automatically optimized to 4:5 ratio (800×1000px WebP) and synced across all cards, leaderboards, and gallery posters.
         </p>
         <ImageUpload
-          value={watch('coverImageUrl')}
-          onChange={(val) => setValue('coverImageUrl', val || '')}
-          onRemove={() => setValue("coverImageUrl", "")}
-          bucket="covers"
+          value={watch('profileImageUrl')}
+          onChange={(val) => {
+            setValue('profileImageUrl', val || '');
+            setValue('coverImageUrl', val || '');
+          }}
+          onRemove={() => {
+            setValue('profileImageUrl', '');
+            setValue('coverImageUrl', '');
+          }}
+          bucket="images"
           aspectRatio="4:5"
-          maxWidth={1600}
+          maxWidth={800}
+          autoFitForGallery={true}
           className="w-full max-w-sm pt-1"
         />
       </div>

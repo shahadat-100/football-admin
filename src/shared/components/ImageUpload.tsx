@@ -28,8 +28,8 @@ export function ImageUpload({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Automatically enable gallery aspect ratio (4:5) ONLY for covers bucket or when autoFitForGallery is explicitly requested
-  const isGalleryCard = Boolean(autoFitForGallery || bucket === 'covers' || (aspectRatio === '4:5' && bucket === 'covers'));
+  // Enable portrait cutout aspect ratio (4:5) when requested or when bucket is covers
+  const isGalleryCard = Boolean(autoFitForGallery || aspectRatio === '4:5' || bucket === 'covers');
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     let file = e.target.files?.[0];
