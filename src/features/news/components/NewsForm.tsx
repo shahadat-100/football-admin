@@ -51,6 +51,8 @@ export function NewsForm({ initial, onSave, onClose }: NewsFormProps) {
           value={image}
           onChange={setImage}
           onRemove={() => setImage(undefined)}
+          maxWidth={1200}
+          aspectRatio="16:9"
         />
       </div>
 

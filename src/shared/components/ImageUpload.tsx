@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Button } from './Button';
 import { ImagePlus, X, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { fitImageForGallery } from '@/shared/lib/imageProcessing';
+import { fitImageForGallery, compressImageClientSide } from '@/shared/lib/imageProcessing';
 
 interface ImageUploadProps {
   value?: string;
@@ -12,6 +12,7 @@ interface ImageUploadProps {
   bucket?: string;
   aspectRatio?: '4:5' | '16:9' | '1:1' | '4:3';
   autoFitForGallery?: boolean;
+  maxWidth?: number;
 }
 
 export function ImageUpload({ 
@@ -21,7 +22,8 @@ export function ImageUpload({
   className, 
   bucket = 'images',
   aspectRatio,
-  autoFitForGallery
+  autoFitForGallery,
+  maxWidth
 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -39,26 +41,41 @@ export function ImageUpload({
       try {
         setIsUploading(true);
 
-        // Normalize any image format (Story 9:16, Landscape 16:9, Square 1:1)
-        // into a uniform 4:5 card height (1080 x 1350) with safe headroom (no chopped heads!)
         if (isGalleryCard) {
+          // Normalize to 4:5 with safe headroom and WebP compression
           file = await fitImageForGallery(file, {
             aspectRatio: 4 / 5,
-            targetWidth: 1080,
-            targetHeight: 1350,
+            targetWidth: maxWidth || 1080,
+            targetHeight: Math.round((maxWidth || 1080) * (5 / 4)),
             alignment: 'bottom',
             headroom: 0.05,
-            format: 'image/png',
+            format: 'image/webp',
+            quality: 0.80,
+          });
+        } else {
+          // Determine target max dimension:
+          // Avatars (1:1 / images): 800px
+          // Banners / News: 1200px
+          // Covers: 1600px
+          const targetMaxWidth = maxWidth || (bucket === 'covers' ? 1600 : (aspectRatio === '1:1' ? 800 : 1200));
+          file = await compressImageClientSide(file, {
+            maxWidth: targetMaxWidth,
+            maxHeight: targetMaxWidth,
+            quality: 0.80,
+            targetSizeKb: 150,
           });
         }
 
-        const ext = file.name.split('.').pop()?.toLowerCase() || (file.type === 'image/png' ? 'png' : 'jpg');
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
-        const contentType = file.type || (ext === 'png' ? 'image/png' : 'image/jpeg');
+        const uniqueSuffix = Math.random().toString(36).substring(2, 9);
+        const fileName = `${Date.now()}-${uniqueSuffix}.webp`;
 
         const { error } = await supabase.storage
           .from(bucket)
-          .upload(fileName, file, { contentType, upsert: true });
+          .upload(fileName, file, {
+            contentType: 'image/webp',
+            cacheControl: '31536000',
+            upsert: true
+          });
 
         if (error) {
           console.error("Upload error:", error);
@@ -100,6 +117,8 @@ export function ImageUpload({
           <img 
             src={value} 
             alt="Upload preview" 
+            loading="lazy"
+            decoding="async"
             className={`w-full h-full ${isGalleryCard ? 'object-contain object-bottom' : 'object-contain'}`} 
           />
           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -118,7 +137,7 @@ export function ImageUpload({
           {isUploading ? (
             <>
               <Loader2 className="w-8 h-8 mb-2 opacity-50 animate-spin text-amber-500" />
-              <span className="text-[11px] font-medium text-amber-500">Fitting to 4:5 & Uploading...</span>
+              <span className="text-[11px] font-medium text-amber-500">Optimizing & Uploading...</span>
             </>
           ) : (
             <>
@@ -132,7 +151,7 @@ export function ImageUpload({
                     4:5 (1080 × 1350)
                   </span>
                   <span className="text-[9.5px] text-muted-foreground/80 mt-1 text-center px-2">
-                    PNG Cutout Recommended
+                    WebP / PNG Cutout
                   </span>
                 </>
               )}
@@ -143,4 +162,3 @@ export function ImageUpload({
     </div>
   );
 }
-

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { TournamentMatch, TournamentMatchStats } from '../types';
 import { runEFootballOcr, ExtractedEFootballStats } from '../utils/efootballOcr';
+import { compressImageClientSide } from '@/shared/lib/imageProcessing';
 import { X, Upload, CheckCircle2, AlertTriangle, ShieldAlert, Swords, Sparkles, Lock } from 'lucide-react';
 
 interface MatchScoreSubmissionModalProps {
@@ -89,13 +90,24 @@ export const MatchScoreSubmissionModal: React.FC<MatchScoreSubmissionModalProps>
       setUploadingImage(true);
       setError(null);
 
-      // 1. Upload to Supabase Storage
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `tournaments/match_${match.id}_${Date.now()}.${ext}`;
+      // 1. Compress image to WebP client-side
+      const compressed = await compressImageClientSide(file, {
+        maxWidth: 1200,
+        maxHeight: 1200,
+        quality: 0.80,
+        targetSizeKb: 150,
+      });
+
+      const uniqueSuffix = Math.random().toString(36).substring(2, 8);
+      const fileName = `tournaments/match_${match.id}_${Date.now()}_${uniqueSuffix}.webp`;
 
       const { error: uploadError } = await supabase.storage
         .from('images')
-        .upload(fileName, file, { contentType: file.type || 'image/jpeg', upsert: true });
+        .upload(fileName, compressed, {
+          contentType: 'image/webp',
+          cacheControl: '31536000',
+          upsert: true
+        });
 
       if (uploadError) throw uploadError;
 

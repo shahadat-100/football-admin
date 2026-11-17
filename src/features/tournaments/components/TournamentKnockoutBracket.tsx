@@ -74,7 +74,15 @@ export const TournamentKnockoutBracket: React.FC<TournamentKnockoutBracketProps>
           )}>
             <div className="flex items-center gap-2 truncate">
               {match?.player1?.profileImageUrl ? (
-                <img src={match.player1.profileImageUrl} alt="" className="w-6 h-6 rounded-full object-cover ring-1 ring-border" />
+                <img
+                  src={match.player1.profileImageUrl}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  width={24}
+                  height={24}
+                  className="w-6 h-6 rounded-full object-cover ring-1 ring-border"
+                />
               ) : (
                 <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px]">⚽</span>
               )}
@@ -92,7 +100,15 @@ export const TournamentKnockoutBracket: React.FC<TournamentKnockoutBracketProps>
           )}>
             <div className="flex items-center gap-2 truncate">
               {match?.player2?.profileImageUrl ? (
-                <img src={match.player2.profileImageUrl} alt="" className="w-6 h-6 rounded-full object-cover ring-1 ring-border" />
+                <img
+                  src={match.player2.profileImageUrl}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  width={24}
+                  height={24}
+                  className="w-6 h-6 rounded-full object-cover ring-1 ring-border"
+                />
               ) : (
                 <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px]">⚽</span>
               )}

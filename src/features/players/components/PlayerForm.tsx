@@ -119,6 +119,8 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
           value={watch('profileImageUrl')}
           onChange={(val) => setValue('profileImageUrl', val || '')}
           onRemove={() => setValue('profileImageUrl', '')}
+          maxWidth={800}
+          aspectRatio="1:1"
         />
       </div>
 
@@ -138,6 +140,7 @@ export function PlayerForm({ initial, onSave, onClose }: PlayerFormProps) {
           onRemove={() => setValue("coverImageUrl", "")}
           bucket="covers"
           aspectRatio="4:5"
+          maxWidth={1600}
           className="w-full max-w-sm pt-1"
         />
       </div>

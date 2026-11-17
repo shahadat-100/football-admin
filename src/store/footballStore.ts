@@ -1896,13 +1896,20 @@ export const useFootballStore = create<FootballStore>()(
 
       fetchClubRanks: async () => {
         if (get().clubRanks.length > 0) return;
-        const { data, error } = await supabase.from('club_ranks').select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabase
+          .from('club_ranks')
+          .select('id, title, subtitle, description, theme_color, image_url, created_at')
+          .order('created_at', { ascending: false });
         if (data) set({ clubRanks: data.map(mapClubRankFromDb) });
         if (error) console.error('Error fetching club ranks:', error);
       },
       addClubRank: async (rank) => {
         const dbData = mapClubRankToDb(rank);
-        const { data, error } = await supabase.from('club_ranks').insert([dbData]).select('*').single();
+        const { data, error } = await supabase
+          .from('club_ranks')
+          .insert([dbData])
+          .select('id, title, subtitle, description, theme_color, image_url, created_at')
+          .single();
         if (data) {
           set((state) => ({ clubRanks: [mapClubRankFromDb(data), ...state.clubRanks] }));
         }
@@ -1913,7 +1920,12 @@ export const useFootballStore = create<FootballStore>()(
       },
       updateClubRank: async (rank) => {
         const dbData = mapClubRankToDb(rank);
-        const { data, error } = await supabase.from('club_ranks').update(dbData).eq('id', rank.id).select('*').single();
+        const { data, error } = await supabase
+          .from('club_ranks')
+          .update(dbData)
+          .eq('id', rank.id)
+          .select('id, title, subtitle, description, theme_color, image_url, created_at')
+          .single();
         if (data) {
           set((state) => ({ clubRanks: state.clubRanks.map(x => x.id === rank.id ? mapClubRankFromDb(data) : x) }));
         }

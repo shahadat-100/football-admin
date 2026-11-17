@@ -28,7 +28,15 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
         {...props}
       >
         {src ? (
-          <img src={src} alt={name} className="h-full w-full object-cover object-center" loading="lazy" />
+          <img
+            src={src}
+            alt={name}
+            className="h-full w-full object-cover object-center"
+            loading="lazy"
+            decoding="async"
+            width={isNum ? (size as number) : undefined}
+            height={isNum ? (size as number) : undefined}
+          />
         ) : (
           <span style={{ fontSize: isNum ? (size as number) * 0.35 : 'inherit' }}>
             {initials(name)}

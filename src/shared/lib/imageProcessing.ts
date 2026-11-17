@@ -17,36 +17,37 @@ export interface ImageFitOptions {
   alignment?: 'bottom' | 'center';
   /** Safe headroom factor from top (e.g. 0.05 = 5% padding so heads never touch or clip the top border). Default is 0.05. */
   headroom?: number;
-  /** Output compression quality from 0.1 to 1.0. Default is 0.92. */
+  /** Output compression quality from 0.1 to 1.0. Default is 0.80 for WebP. */
   quality?: number;
-  /** Output MIME type. Default is 'image/png' to preserve transparency for cutouts. */
+  /** Output MIME type. Default is 'image/webp' to optimize storage and egress. */
   format?: 'image/png' | 'image/jpeg' | 'image/webp';
+}
+
+export interface CompressImageOptions {
+  maxWidth?: number;
+  maxHeight?: number;
+  quality?: number; // 0.1 to 1.0, default 0.80
+  targetSizeKb?: number; // default 150 KB
 }
 
 /**
  * Standardizes any uploaded image (Story, Landscape, Portrait, Square)
- * into a uniform static gallery height and aspect ratio.
- * 
- * Guarantees:
- * 1. Head is NEVER cut off (Safe Headroom & proportional fitting).
- * 2. Every single output image has the EXACT same dimensions (default: 1080 x 1350 / 4:5).
- * 3. Preserves transparent background for player cutouts.
+ * into a uniform static gallery height and aspect ratio with WebP compression.
  */
 export async function fitImageForGallery(
   file: File,
   options: ImageFitOptions = {}
 ): Promise<File> {
   const targetRatio = options.aspectRatio ?? (4 / 5);
-  const targetWidth = options.targetWidth ?? 1080;
-  const targetHeight = options.targetHeight ?? Math.round(targetWidth / targetRatio); // 1350 for 1080 @ 4:5
+  const targetWidth = Math.min(options.targetWidth ?? 1080, 1600);
+  const targetHeight = options.targetHeight ?? Math.round(targetWidth / targetRatio);
   const alignment = options.alignment ?? 'bottom';
-  const headroom = options.headroom ?? 0.05; // 5% safe breathing room at top
-  const quality = options.quality ?? 0.92;
-  const isInputPng = file.type === 'image/png' || file.name.toLowerCase().endsWith('.png');
-  const format = options.format ?? (isInputPng ? 'image/png' : 'image/png'); // Default to PNG to keep cutouts clean
+  const headroom = options.headroom ?? 0.05;
+  const quality = options.quality ?? 0.80;
+  // Default to WebP to drastically reduce egress while preserving alpha transparency
+  const format = options.format ?? 'image/webp';
 
   return new Promise((resolve) => {
-    // Non-image files are returned as-is
     if (!file.type.startsWith('image/')) {
       return resolve(file);
     }
@@ -60,21 +61,14 @@ export async function fitImageForGallery(
       const naturalW = img.naturalWidth || img.width;
       const naturalH = img.naturalHeight || img.height;
 
-      // Available vertical space reserving safe headroom at top
       const availableH = targetHeight * (1 - headroom);
       const availableW = targetWidth;
 
-      // Fit-contain scale factor so 100% of the image fits inside available area
       const scale = Math.min(availableW / naturalW, availableH / naturalH);
       const scaledW = Math.round(naturalW * scale);
       const scaledH = Math.round(naturalH * scale);
 
-      // Horizontal centering
       const offsetX = Math.round((targetWidth - scaledW) / 2);
-
-      // Vertical placement:
-      // If 'bottom', player stands firmly on the bottom of the card with all headroom at the top
-      // If 'center', centered vertically
       let offsetY: number;
       if (alignment === 'bottom') {
         offsetY = Math.round(targetHeight - scaledH);
@@ -82,7 +76,6 @@ export async function fitImageForGallery(
         offsetY = Math.round((targetHeight - scaledH) / 2);
       }
 
-      // Create standardized canvas with exact target dimensions
       const canvas = document.createElement('canvas');
       canvas.width = targetWidth;
       canvas.height = targetHeight;
@@ -94,12 +87,7 @@ export async function fitImageForGallery(
 
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-
-      // Transparent base canvas for cutouts
       ctx.clearRect(0, 0, targetWidth, targetHeight);
-
-      // If the image is a solid photo (e.g. JPEG without alpha), optional subtle dark/gradient backdrop
-      // can be used, but for transparent cutouts, keeping it transparent allows the card template to show
       ctx.drawImage(img, offsetX, offsetY, scaledW, scaledH);
 
       canvas.toBlob(
@@ -108,7 +96,7 @@ export async function fitImageForGallery(
             return resolve(file);
           }
 
-          const fileExt = format === 'image/png' ? 'png' : format === 'image/webp' ? 'webp' : 'jpg';
+          const fileExt = format === 'image/webp' ? 'webp' : format === 'image/png' ? 'png' : 'jpg';
           const originalBase = file.name.replace(/\.[^/.]+$/, '');
           const newFileName = `${originalBase}-gallery.${fileExt}`;
 
@@ -127,6 +115,87 @@ export async function fitImageForGallery(
     img.onerror = (err) => {
       URL.revokeObjectURL(objectUrl);
       console.warn('Could not process image in canvas, falling back to original file:', err);
+      resolve(file);
+    };
+
+    img.src = objectUrl;
+  });
+}
+
+/**
+ * Compresses an image client-side to WebP format, resizing within maxWidth/maxHeight,
+ * and dynamically adjusting quality to stay under targetSizeKb (target: < 150 KB).
+ */
+export async function compressImageClientSide(
+  file: File,
+  options: CompressImageOptions = {}
+): Promise<File> {
+  if (!file.type.startsWith('image/')) return file;
+
+  const maxWidth = options.maxWidth ?? 1200;
+  const maxHeight = options.maxHeight ?? maxWidth;
+  const targetSizeKb = options.targetSizeKb ?? 150;
+  let quality = options.quality ?? 0.80;
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = async () => {
+      URL.revokeObjectURL(objectUrl);
+
+      let width = img.naturalWidth || img.width;
+      let height = img.naturalHeight || img.height;
+
+      // Maintain aspect ratio without enlargement
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(file);
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const exportBlob = (q: number): Promise<Blob | null> =>
+        new Promise((res) => canvas.toBlob(res, 'image/webp', q));
+
+      let blob = await exportBlob(quality);
+      if (!blob) return resolve(file);
+
+      // Iteratively reduce quality if file exceeds targetSizeKb
+      while (blob.size > targetSizeKb * 1024 && quality > 0.45) {
+        quality -= 0.1;
+        const smallerBlob = await exportBlob(quality);
+        if (smallerBlob) {
+          blob = smallerBlob;
+        } else {
+          break;
+        }
+      }
+
+      const originalBase = file.name.replace(/\.[^/.]+$/, '');
+      const uniqueSuffix = Math.random().toString(36).substring(2, 8);
+      const newFileName = `${originalBase}-${uniqueSuffix}.webp`;
+
+      const compressedFile = new File([blob], newFileName, {
+        type: 'image/webp',
+        lastModified: Date.now(),
+      });
+
+      resolve(compressedFile);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
       resolve(file);
     };
 

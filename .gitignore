@@ -1,9 +1,12 @@
 node_modules/
 dist/
 .env
+.env.*
 .env.local
 .env.production
+.env.migrate
 .DS_Store
 .claude/
 *.traineddata
 *.tsbuildinfo
+

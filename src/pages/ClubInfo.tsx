@@ -362,6 +362,8 @@ export function ClubInfo() {
                 value={rankForm.imageUrl}
                 onChange={b64 => setRankForm({ ...rankForm, imageUrl: b64 })}
                 onRemove={() => setRankForm({ ...rankForm, imageUrl: '' })}
+                maxWidth={800}
+                aspectRatio="1:1"
               />
             </div>
             <div>
@@ -430,6 +432,8 @@ export function ClubInfo() {
                 value={achievementForm.imageUrl}
                 onChange={b64 => setAchievementForm({ ...achievementForm, imageUrl: b64 })}
                 onRemove={() => setAchievementForm({ ...achievementForm, imageUrl: '' })}
+                maxWidth={1200}
+                aspectRatio="16:9"
               />
             </div>
             <div>

@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 
-const supabaseUrl = 'https://wrfsbsxigcaapvjityjv.supabase.co';
-const supabaseKey = 'sb_publishable_PWrcWPSGFr0XpNgr62qDvQ_TDEPnYMX';
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://jwhjistshnelarinyzac.supabase.co';
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || '';
 
 async function testRpc(params) {
   const url = `${supabaseUrl}/rest/v1/rpc/get_player_stats_period`;
