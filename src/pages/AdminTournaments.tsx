@@ -537,14 +537,18 @@ export function AdminTournaments() {
 
   // Dispute Action: Admin Manually Sets Official Score
   const handleResolveScore = async (matchId: string) => {
-    const scores = resolveScores[matchId];
-    if (!scores) return;
+    const targetMatch = matches.find(m => m.id === matchId);
+    if (!targetMatch) return;
+
+    // Use edited resolveScores if touched, otherwise fall back to match scores or 0
+    const scores = resolveScores[matchId] || {
+      s1: targetMatch.player1_score ?? 0,
+      s2: targetMatch.player2_score ?? 0
+    };
 
     try {
       const s1 = scores.s1;
       const s2 = scores.s2;
-      const targetMatch = matches.find(m => m.id === matchId);
-      if (!targetMatch) return;
 
       if (targetMatch.stage !== 'group' && s1 === s2) {
         alert('Knockout matches cannot end in a draw! Please adjust score to reflect match or penalty winner.');
@@ -563,7 +567,10 @@ export function AdminTournaments() {
         })
         .eq('id', matchId);
 
-      if (error) throw error;
+      if (error) {
+        alert('Failed to save score: ' + error.message);
+        throw error;
+      }
 
       // If Grand Final completed, crown champion and mark tournament completed!
       if (targetMatch.stage === 'final' && winnerId && selectedTournament) {
@@ -580,8 +587,9 @@ export function AdminTournaments() {
 
       alert('Match official score verified and completed!');
       if (selectedTournament) fetchTournamentData(selectedTournament.id);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to resolve score:', err);
+      alert('Error updating match: ' + (err?.message || 'Unknown error'));
     }
   };
 
