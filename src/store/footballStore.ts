@@ -122,26 +122,30 @@ export const mapClubAchievementToDb = (a: any) => ({
   description: a.description || null,
 });
 
-export const mapPlayerFromDb = (p: any): Player => ({
-  id: p.id,
-  name: p.name,
-  profileImageUrl: p.profileimageurl || '',
-  coverImageUrl: (p as any).coverimageurl || '',
-  jerseyNumber: p.jerseynumber ?? undefined,
-  dateOfBirth: p.dateOFbirth || undefined,
-  education: p.education || '',
-  location: p.location || '',
-  aboutMe: p.aboutMe || '',
-  openionAboutClub: p.openionAboutClub || '',
-  email: p.email || '',
-  // Extract role names from the joined junction table data
-  playerRoles: (p.player_player_roles ?? []).map((r: any) => r.player_role?.name).filter(Boolean),
-  // Extract tag names from the joined junction table data
-  customTags: (p.player_custom_tags ?? []).map((t: any) => t.custom_tags?.name).filter(Boolean),
-  customStringTags: Array.isArray(p.custom_string_tags) ? p.custom_string_tags : [],
-  createdAt: p.createdat || '',
-  seasons: [],
-});
+export const mapPlayerFromDb = (p: any): Player => {
+  const profileUrl = p.profileimageurl || '';
+  const coverUrl = (p as any).coverimageurl || profileUrl;
+  return {
+    id: p.id,
+    name: p.name,
+    profileImageUrl: profileUrl || coverUrl,
+    coverImageUrl: coverUrl,
+    jerseyNumber: p.jerseynumber ?? undefined,
+    dateOfBirth: p.dateOFbirth || undefined,
+    education: p.education || '',
+    location: p.location || '',
+    aboutMe: p.aboutMe || '',
+    openionAboutClub: p.openionAboutClub || '',
+    email: p.email || '',
+    // Extract role names from the joined junction table data
+    playerRoles: (p.player_player_roles ?? []).map((r: any) => r.player_role?.name).filter(Boolean),
+    // Extract tag names from the joined junction table data
+    customTags: (p.player_custom_tags ?? []).map((t: any) => t.custom_tags?.name).filter(Boolean),
+    customStringTags: Array.isArray(p.custom_string_tags) ? p.custom_string_tags : [],
+    createdAt: p.createdat || '',
+    seasons: [],
+  };
+};
 
 // Only send columns that actually exist on the players table
 export const mapPlayerToDb = (p: any) => ({
@@ -777,24 +781,28 @@ export const useFootballStore = create<FootballStore>()(
           });
 
           // Map to Player type manually
-          const mappedPlayers = players.map(p => ({
-            id: p.id,
-            name: p.name,
-            profileImageUrl: (p as any).profileimageurl || '',
-            coverImageUrl: (p as any).coverimageurl || '',
-            jerseyNumber: p.jerseynumber ?? undefined,
-            dateOfBirth: p.dateOFbirth || undefined,
-            education: p.education || '',
-            location: p.location || '',
-            aboutMe: p.aboutMe || '',
-            openionAboutClub: p.openionAboutClub || '',
-            email: p.email || '',
-            playerRoles: playerRolesMap.get(p.id) || [],
-            customTags: playerTagsMap.get(p.id) || [],
-            customStringTags: Array.isArray(p.custom_string_tags) ? p.custom_string_tags : [],
-            createdAt: p.createdat || '',
-            seasons: [],
-          }));
+          const mappedPlayers = players.map(p => {
+            const profileUrl = (p as any).profileimageurl || '';
+            const coverUrl = (p as any).coverimageurl || profileUrl;
+            return {
+              id: p.id,
+              name: p.name,
+              profileImageUrl: profileUrl || coverUrl,
+              coverImageUrl: coverUrl,
+              jerseyNumber: p.jerseynumber ?? undefined,
+              dateOfBirth: p.dateOFbirth || undefined,
+              education: p.education || '',
+              location: p.location || '',
+              aboutMe: p.aboutMe || '',
+              openionAboutClub: p.openionAboutClub || '',
+              email: p.email || '',
+              playerRoles: playerRolesMap.get(p.id) || [],
+              customTags: playerTagsMap.get(p.id) || [],
+              customStringTags: Array.isArray(p.custom_string_tags) ? p.custom_string_tags : [],
+              createdAt: p.createdat || '',
+              seasons: [],
+            };
+          });
 
           set({ players: mappedPlayers });
         } catch (error) {
