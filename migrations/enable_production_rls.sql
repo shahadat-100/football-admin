@@ -126,13 +126,19 @@ CREATE POLICY "Admin Full Access" ON public.tournament_submissions FOR ALL TO au
 CREATE POLICY "Admin Full Access" ON public.tournaments FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 
--- ── 5. Public Tournament Submission & Registration Policies ─────────────────
+-- ── 5. Public Tournament Submission, Registration & Match Score Update ────
 CREATE POLICY "Public Registration Insert" ON public.tournament_registrations
   FOR INSERT TO anon, authenticated
   WITH CHECK (true);
 
 CREATE POLICY "Public Submission Insert" ON public.tournament_submissions
   FOR INSERT TO anon, authenticated
+  WITH CHECK (true);
+
+-- Allow public visitor to submit scores and flag match as pending_approval or disputed
+CREATE POLICY "Public Match Score Update" ON public.tournament_matches
+  FOR UPDATE TO anon, authenticated
+  USING (true)
   WITH CHECK (true);
 
 
